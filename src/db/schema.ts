@@ -12,6 +12,7 @@ import {
   primaryKey,
   index,
   uuid,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
@@ -56,7 +57,7 @@ export const themeEnum = pgEnum('theme', [
 // ─────────────────────────────────────────────
 
 export const user = pgTable('user', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
@@ -152,7 +153,10 @@ export const colorPalettes = pgTable(
     colors: text('colors').array().notNull(),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (t) => ({
     ownerIdx: index('color_palettes_owner_idx').on(t.ownerId),
@@ -177,7 +181,10 @@ export const pixels = pgTable(
     }),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (t) => ({
     ownerIdx: index('pixels_owner_idx').on(t.ownerId),
@@ -214,7 +221,10 @@ export const tables = pgTable(
     theme: themeEnum('theme'),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (t) => ({
     ownerIdx: index('tables_owner_idx').on(t.ownerId),
@@ -272,13 +282,16 @@ export const cells = pgTable(
     }),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (t) => ({
     // Critical: fast lookup of all cells in a table
     tableIdx: index('cells_table_idx').on(t.tableId),
     // Unique constraint: only one cell per grid position per table
-    positionIdx: index('cells_position_idx').on(t.tableId, t.col, t.row),
+    positionIdx: uniqueIndex('cells_position_idx').on(t.tableId, t.col, t.row),
   }),
 )
 
@@ -302,7 +315,10 @@ export const pages = pgTable(
     tableIds: uuid('table_ids').array().default([]),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (t) => ({
     ownerIdx: index('pages_owner_idx').on(t.ownerId),
@@ -330,7 +346,10 @@ export const templates = pgTable(
     theme: themeEnum('theme'),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (t) => ({
     ownerIdx: index('templates_owner_idx').on(t.ownerId),

@@ -20,7 +20,7 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       theme: {
-        type: ['theme'],
+        type: 'string',
         required: false,
         defaultValue: 'journal',
         input: true,
