@@ -56,7 +56,7 @@ export const themeEnum = pgEnum('theme', [
 // AUTH
 // ─────────────────────────────────────────────
 
-export const user = pgTable('user', {
+export const users = pgTable('users', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
@@ -93,7 +93,7 @@ export const session = pgTable(
     userAgent: text('user_agent'),
     userId: text('user_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+      .references(() => users.id, { onDelete: 'cascade' }),
   },
   (t) => [index('session_userId_idx').on(t.userId)],
 )
@@ -106,7 +106,7 @@ export const account = pgTable(
     providerId: text('provider_id').notNull(),
     userId: text('user_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+      .references(() => users.id, { onDelete: 'cascade' }),
     accessToken: text('access_token'),
     refreshToken: text('refresh_token'),
     idToken: text('id_token'),
@@ -147,7 +147,7 @@ export const colorPalettes = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(), // e.g. "Matrix Green", "Fire Scale"
-    ownerId: uuid('owner_id').references(() => user.id, {
+    ownerId: text('owner_id').references(() => users.id, {
       onDelete: 'cascade',
     }),
     isPublic: boolean('is_public').default(false), // future: community palettes
@@ -179,7 +179,7 @@ export const pixels = pgTable(
     label: text('label'), // short label shown in key
     color: text('color').notNull(), // hex color string
     unit: unitTypeEnum('unit'),
-    ownerId: uuid('owner_id').references(() => user.id, {
+    ownerId: text('owner_id').references(() => users.id, {
       onDelete: 'cascade',
     }),
 
@@ -204,9 +204,9 @@ export const tables = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
     description: text('description'),
-    ownerId: uuid('owner_id')
+    ownerId: text('owner_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+      .references(() => users.id, { onDelete: 'cascade' }),
     isPublic: boolean('is_public').default(false),
 
     // Grid dimensions
@@ -280,7 +280,7 @@ export const cells = pgTable(
     note: text('note'), // optional text annotation
     colorOverride: text('color_override'), // if user overrides the pixel color for this cell
     filledAt: timestamp('filled_at'), // when the user marked this cell
-    ownerId: uuid('owner_id').references(() => user.id, {
+    ownerId: text('owner_id').references(() => users.id, {
       onDelete: 'cascade',
     }),
 
@@ -308,9 +308,9 @@ export const pages = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
     description: text('description'),
-    ownerId: uuid('owner_id')
+    ownerId: text('owner_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+      .references(() => users.id, { onDelete: 'cascade' }),
     isPublic: boolean('is_public').default(false),
     theme: themeEnum('theme'),
 
@@ -338,7 +338,7 @@ export const templates = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
     description: text('description'),
-    ownerId: uuid('owner_id').references(() => user.id, {
+    ownerId: text('owner_id').references(() => users.id, {
       onDelete: 'set null',
     }),
     isPublic: boolean('is_public').default(false),
@@ -363,7 +363,7 @@ export const templates = pgTable(
 // RELATIONS
 // ─────────────────────────────────────────────
 
-export const userRelations = relations(user, ({ many }) => ({
+export const userRelations = relations(users, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   tables: many(tables),
@@ -374,21 +374,21 @@ export const userRelations = relations(user, ({ many }) => ({
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
-  user: one(user, {
+  user: one(users, {
     fields: [session.userId],
-    references: [user.id],
+    references: [users.id],
   }),
 }))
 
 export const accountRelations = relations(account, ({ one }) => ({
-  user: one(user, {
+  user: one(users, {
     fields: [account.userId],
-    references: [user.id],
+    references: [users.id],
   }),
 }))
 
 export const tablesRelations = relations(tables, ({ one, many }) => ({
-  owner: one(user, { fields: [tables.ownerId], references: [user.id] }),
+  owner: one(users, { fields: [tables.ownerId], references: [users.id] }),
   tablePixels: many(tablePixels),
   cells: many(cells),
 }))
@@ -396,7 +396,7 @@ export const tablesRelations = relations(tables, ({ one, many }) => ({
 export const cellsRelations = relations(cells, ({ one }) => ({
   table: one(tables, { fields: [cells.tableId], references: [tables.id] }),
   pixel: one(pixels, { fields: [cells.pixelId], references: [pixels.id] }),
-  owner: one(user, { fields: [cells.ownerId], references: [user.id] }),
+  owner: one(users, { fields: [cells.ownerId], references: [users.id] }),
 }))
 
 export const tablePixelsRelations = relations(tablePixels, ({ one }) => ({
@@ -411,30 +411,30 @@ export const tablePixelsRelations = relations(tablePixels, ({ one }) => ({
 }))
 
 export const pixelsRelations = relations(pixels, ({ one }) => ({
-  owner: one(user, { fields: [pixels.ownerId], references: [user.id] }),
+  owner: one(users, { fields: [pixels.ownerId], references: [users.id] }),
 }))
 
 export const colorPalettesRelations = relations(colorPalettes, ({ one }) => ({
-  owner: one(user, {
+  owner: one(users, {
     fields: [colorPalettes.ownerId],
-    references: [user.id],
+    references: [users.id],
   }),
 }))
 
 export const pagesRelations = relations(pages, ({ one }) => ({
-  owner: one(user, { fields: [pages.ownerId], references: [user.id] }),
+  owner: one(users, { fields: [pages.ownerId], references: [users.id] }),
 }))
 
 export const templatesRelations = relations(templates, ({ one }) => ({
-  owner: one(user, { fields: [templates.ownerId], references: [user.id] }),
+  owner: one(users, { fields: [templates.ownerId], references: [users.id] }),
 }))
 
 // ─────────────────────────────────────────────
 // TYPE EXPORTS (inferred from schema)
 // ─────────────────────────────────────────────
 
-export type User = typeof user.$inferSelect
-export type NewUser = typeof user.$inferInsert
+export type User = typeof users.$inferSelect
+export type NewUser = typeof users.$inferInsert
 export type Session = typeof session.$inferSelect
 export type NewSession = typeof session.$inferInsert
 export type Account = typeof account.$inferSelect

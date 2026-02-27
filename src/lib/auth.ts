@@ -10,14 +10,15 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  // socialProviders: {
-  //   github: {
-  //     clientId: process.env.GITHUB_CLIENT_ID as string,
-  //     clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
-  //   },
-  // },
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_AUTH_ID as string,
+      clientSecret: process.env.GITHUB_AUTH_SECRET as string,
+    },
+  },
   plugins: [tanstackStartCookies()],
   user: {
+    modelName: 'users',
     additionalFields: {
       theme: {
         type: ['journal', 'matrix', 'knightrider', 'synthwave', 'blueprint'],
