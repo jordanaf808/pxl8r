@@ -17,4 +17,33 @@ export const auth = betterAuth({
   //   },
   // },
   plugins: [tanstackStartCookies()],
+  user: {
+    additionalFields: {
+      theme: {
+        type: ['theme'],
+        required: false,
+        defaultValue: 'journal',
+        input: true,
+      },
+      savedPixelIds: {
+        type: 'string[]',
+        required: false,
+        defaultValue: [],
+        input: false,
+      },
+      savedTableIds: {
+        type: 'string[]',
+        required: false,
+        defaultValue: [],
+        input: false,
+      },
+      savedTemplateIds: {
+        type: 'string[]',
+        required: false,
+        defaultValue: [],
+        input: false,
+      },
+    },
+  },
+  experimental: { joins: true },
 })
