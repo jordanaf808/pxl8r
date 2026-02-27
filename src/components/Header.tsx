@@ -19,13 +19,7 @@ export default function Header() {
           <Menu size={24} />
         </button>
         <h1 className="ml-4 text-xl font-semibold">
-          <Link to="/">
-            <img
-              src="/tanstack-word-logo-white.svg"
-              alt="TanStack Logo"
-              className="h-10"
-            />
-          </Link>
+          <Link to="/">PXL8</Link>
         </h1>
       </header>
 

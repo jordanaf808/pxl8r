@@ -61,36 +61,29 @@ function App() {
               alt="TanStack Logo"
               className="w-24 h-24 md:w-32 md:h-32"
             />
-            <h1 className="text-6xl md:text-7xl font-black text-white [letter-spacing:-0.08em]">
-              <span className="text-gray-300">TANSTACK</span>{' '}
+            <h1 className="text-6xl md:text-7xl font-black text-white [letter-spacing:-0.04em]">
               <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                START
+                PXL8
               </span>
             </h1>
           </div>
           <p className="text-2xl md:text-3xl text-gray-300 mb-4 font-light">
-            The framework for next generation AI applications
+            A simple, modern pixel tracker
           </p>
           <p className="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
-            Full-stack framework powered by TanStack Router for React and Solid.
-            Build modern applications with server functions, streaming, and type
-            safety.
+            Track and Organize your tasks and goals with pixels to help break
+            them down into smaller more manageable pieces and have fun
+            completing them.
           </p>
           <div className="flex flex-col items-center gap-4">
             <a
-              href="https://tanstack.com/start"
+              href="/demo"
               target="_blank"
               rel="noopener noreferrer"
               className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50"
             >
-              Documentation
+              Try It Out
             </a>
-            <p className="text-gray-400 text-sm mt-2">
-              Begin your TanStack Start journey by editing{' '}
-              <code className="px-2 py-1 bg-slate-700 rounded text-cyan-400">
-                /src/routes/index.tsx
-              </code>
-            </p>
           </div>
         </div>
       </section>
