@@ -20,7 +20,7 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       theme: {
-        type: 'string',
+        type: ['journal', 'matrix', 'knightrider', 'synthwave', 'blueprint'],
         required: false,
         defaultValue: 'journal',
         input: true,

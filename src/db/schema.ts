@@ -14,7 +14,7 @@ import {
   uuid,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 
 // ─────────────────────────────────────────────
 // ENUMS
@@ -62,18 +62,21 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'), // avatar
-  theme: themeEnum('theme').default('journal'),
-
-  // Arrays of owned/saved IDs — lightweight references
-  savedPixelIds: uuid('saved_pixel_ids').array().default([]),
-  savedTableIds: uuid('saved_table_ids').array().default([]),
-  savedTemplateIds: uuid('saved_template_ids').array().default([]),
-
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  theme: text('theme').default('journal'),
+  savedPixelIds: text('saved_pixel_ids')
+    .array()
+    .default(sql`ARRAY[]::text[]`),
+  savedTableIds: text('saved_table_ids')
+    .array()
+    .default(sql`ARRAY[]::text[]`),
+  savedTemplateIds: text('saved_template_ids')
+    .array()
+    .default(sql`ARRAY[]::text[]`),
 })
 
 export const session = pgTable(
