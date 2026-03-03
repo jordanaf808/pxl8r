@@ -1,18 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { authClient } from '@/lib/auth-client'
+import { useSession, signIn, signOut, signUp } from '@/lib/auth-client'
+import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/demo/better-auth')({
   component: BetterAuthDemo,
 })
 
 function BetterAuthDemo() {
-  const { data: session, isPending } = authClient.useSession()
+  const { data: session, isPending, error, refetch } = useSession()
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [error, setError] = useState('')
+  const [authError, setAuthError] = useState('')
   const [loading, setLoading] = useState(false)
 
   if (isPending) {
@@ -58,7 +59,7 @@ function BetterAuthDemo() {
 
           <button
             onClick={() => {
-              void authClient.signOut()
+              void signOut()
             }}
             className="w-full h-9 px-4 text-sm font-medium border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           >
@@ -84,30 +85,32 @@ function BetterAuthDemo() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    setAuthError('')
     setLoading(true)
 
     try {
       if (isSignUp) {
-        const result = await authClient.signUp.email({
+        const result = await signUp.email({
           email,
           password,
           name,
+          callbackURL: '/',
         })
         if (result.error) {
-          setError(result.error.message || 'Sign up failed')
+          setAuthError(result.error.message || 'Sign up failed')
         }
       } else {
-        const result = await authClient.signIn.email({
+        const result = await signIn.email({
           email,
           password,
+          callbackURL: '/',
         })
         if (result.error) {
-          setError(result.error.message || 'Sign in failed')
+          setAuthError(result.error.message || 'Sign in failed')
         }
       }
     } catch (err) {
-      setError('An unexpected error occurred')
+      setAuthError('An unexpected error occurred')
     } finally {
       setLoading(false)
     }
@@ -124,6 +127,8 @@ function BetterAuthDemo() {
             ? 'Enter your information to create an account'
             : 'Enter your email below to login to your account'}
         </p>
+
+        <Button onClick={() => signIn.social({ provider: 'github' })}></Button>
 
         <form onSubmit={handleSubmit} className="grid gap-4">
           {isSignUp && (
@@ -177,9 +182,11 @@ function BetterAuthDemo() {
             />
           </div>
 
-          {error && (
+          {authError && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">
+                {authError}
+              </p>
             </div>
           )}
 
@@ -206,7 +213,7 @@ function BetterAuthDemo() {
             type="button"
             onClick={() => {
               setIsSignUp(!isSignUp)
-              setError('')
+              setAuthError('')
             }}
             className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
           >
