@@ -328,6 +328,22 @@ export const pages = pgTable(
   }),
 )
 
+export const pageTables = pgTable(
+  'page_tables',
+  {
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    tableId: uuid('table_id')
+      .notNull()
+      .references(() => tables.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').default(0), // preserves display order
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.pageId, t.tableId] }),
+  }),
+)
+
 // ─────────────────────────────────────────────
 // TEMPLATES — saveable table configurations (no cell data)
 // ─────────────────────────────────────────────
@@ -391,6 +407,7 @@ export const tablesRelations = relations(tables, ({ one, many }) => ({
   owner: one(users, { fields: [tables.ownerId], references: [users.id] }),
   tablePixels: many(tablePixels),
   cells: many(cells),
+  pageTables: many(pageTables),
 }))
 
 export const cellsRelations = relations(cells, ({ one }) => ({
@@ -421,8 +438,14 @@ export const colorPalettesRelations = relations(colorPalettes, ({ one }) => ({
   }),
 }))
 
-export const pagesRelations = relations(pages, ({ one }) => ({
+export const pagesRelations = relations(pages, ({ one, many }) => ({
   owner: one(users, { fields: [pages.ownerId], references: [users.id] }),
+  pageTables: many(pageTables),
+}))
+
+export const pageTablesRelations = relations(pageTables, ({ one }) => ({
+  page: one(pages, { fields: [pageTables.pageId], references: [pages.id] }),
+  table: one(tables, { fields: [pageTables.tableId], references: [tables.id] }),
 }))
 
 export const templatesRelations = relations(templates, ({ one }) => ({

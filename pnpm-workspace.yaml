@@ -2,4 +2,5 @@ onlyBuiltDependencies:
   - '@sentry-internal/node-cpu-profiler'
   - core-js
   - esbuild
+  - msw
   - unrs-resolver

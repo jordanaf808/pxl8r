@@ -2,33 +2,34 @@ import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { db } from '@/db/index'
 import { desc } from 'drizzle-orm'
-import { todos } from '@/db/schema'
+import { users as usersSchema } from '@/db/schema'
+import type { User } from '@/db/schema'
 
-const getTodos = createServerFn({
+const getUsers = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  return await db.query.todos.findMany({
-    orderBy: [desc(todos.createdAt)],
+  return await db.query.users.findMany({
+    orderBy: [desc(usersSchema.createdAt)],
   })
 })
 
-const createTodo = createServerFn({
-  method: 'POST',
-})
-  .inputValidator((data: { title: string }) => data)
-  .handler(async ({ data }) => {
-    await db.insert(todos).values({ title: data.title })
-    return { success: true }
-  })
+// const createTodo = createServerFn({
+//   method: 'POST',
+// })
+//   .inputValidator((data: { title: string }) => data)
+//   .handler(async ({ data }) => {
+//     await db.insert(todos).values({ title: data.title })
+//     return { success: true }
+//   })
 
 export const Route = createFileRoute('/demo/drizzle')({
   component: DemoDrizzle,
-  loader: async () => await getTodos(),
+  loader: async () => await getUsers(),
 })
 
 function DemoDrizzle() {
   const router = useRouter()
-  const todos = Route.useLoaderData()
+  const users = Route.useLoaderData()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -37,13 +38,14 @@ function DemoDrizzle() {
 
     if (!title) return
 
-    try {
-      await createTodo({ data: { title } })
-      router.invalidate()
-      ;(e.target as HTMLFormElement).reset()
-    } catch (error) {
-      console.error('Failed to create todo:', error)
-    }
+    window.alert('submitted')
+    // try {
+    //   await createTodo({ data: { title } })
+    //   router.invalidate()
+    //   ;(e.target as HTMLFormElement).reset()
+    // } catch (error) {
+    //   console.error('Failed to create todo:', error)
+    // }
   }
 
   return (
@@ -88,9 +90,9 @@ function DemoDrizzle() {
         <h2 className="text-2xl font-bold mb-4 text-indigo-200">Todos</h2>
 
         <ul className="space-y-3 mb-6">
-          {todos.map((todo) => (
+          {users.map((user: User) => (
             <li
-              key={todo.id}
+              key={user.id}
               className="rounded-lg p-4 shadow-md border transition-all hover:scale-[1.02] cursor-pointer group"
               style={{
                 background:
@@ -100,15 +102,15 @@ function DemoDrizzle() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-lg font-medium text-white group-hover:text-indigo-200 transition-colors">
-                  {todo.title}
+                  {user.name}
                 </span>
-                <span className="text-xs text-indigo-300/70">#{todo.id}</span>
+                <span className="text-xs text-indigo-300/70">#{user.id}</span>
               </div>
             </li>
           ))}
-          {todos.length === 0 && (
+          {users.length === 0 && (
             <li className="text-center py-8 text-indigo-300/70">
-              No todos yet. Create one below!
+              No users yet.
             </li>
           )}
         </ul>
@@ -133,7 +135,7 @@ function DemoDrizzle() {
               color: 'white',
             }}
           >
-            Add Todo
+            Submit
           </button>
         </form>
 
