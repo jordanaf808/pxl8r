@@ -1,4 +1,4 @@
-import { useSession, signOut } from '@/lib/auth-client'
+import { useSession, signOut } from '@/lib/auth/auth-client'
 import { Link } from '@tanstack/react-router'
 
 export default function BetterAuthHeader() {

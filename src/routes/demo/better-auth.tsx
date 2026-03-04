@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { useSession, signIn, signOut, signUp } from '@/lib/auth-client'
+import { useSession, signIn, signOut, signUp } from '@/lib/auth/auth-client'
 import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/demo/better-auth')({
@@ -128,7 +128,9 @@ function BetterAuthDemo() {
             : 'Enter your email below to login to your account'}
         </p>
 
-        <Button onClick={() => signIn.social({ provider: 'github' })}></Button>
+        <Button onClick={() => signIn.social({ provider: 'github' })}>
+          GitHub
+        </Button>
 
         <form onSubmit={handleSubmit} className="grid gap-4">
           {isSignUp && (

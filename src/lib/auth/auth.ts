@@ -4,7 +4,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { users, account, session, verification } from '@/db/schema'
 
-export const auth = betterAuth({
+const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
@@ -14,6 +14,12 @@ export const auth = betterAuth({
       verification,
     },
   }),
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 5, // 5min
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },
@@ -55,3 +61,5 @@ export const auth = betterAuth({
   // },
   experimental: { joins: true },
 })
+
+export default auth
