@@ -1,6 +1,8 @@
 onlyBuiltDependencies:
+  - '@prisma/engines'
   - '@sentry-internal/node-cpu-profiler'
   - core-js
   - esbuild
   - msw
+  - prisma
   - unrs-resolver
