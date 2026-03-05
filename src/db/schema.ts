@@ -77,7 +77,7 @@ export const users = pgTable('users', {
   savedPixelIds: text('saved_pixel_ids')
     .array()
     .default(sql`ARRAY[]::text[]`),
-  savedTableIds: text('saved_table_ids')
+  savedGridIds: text('saved_grid_ids')
     .array()
     .default(sql`ARRAY[]::text[]`),
   savedTemplateIds: text('saved_template_ids')
@@ -207,11 +207,11 @@ export const pixels = pgTable(
 )
 
 // ─────────────────────────────────────────────
-// TABLES (the pixel grid itself)
+// Grids (the pixel grid itself)
 // ─────────────────────────────────────────────
 
-export const tables = pgTable(
-  'tables',
+export const grids = pgTable(
+  'grids',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
@@ -241,28 +241,28 @@ export const tables = pgTable(
       .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
   (t) => ({
-    ownerIdx: index('tables_owner_idx').on(t.ownerId),
+    ownerIdx: index('grids_owner_idx').on(t.ownerId),
   }),
 )
 
 // ─────────────────────────────────────────────
-// TABLE_PIXELS — which pixel types belong to a table (the legend/key)
-// Junction table: tables ↔ pixels
+// GRID_PIXELS — which pixel types belong to a grid (the legend/key)
+// Junction table: grids ↔ pixels
 // ─────────────────────────────────────────────
 
-export const tablePixels = pgTable(
-  'table_pixels',
+export const gridPixels = pgTable(
+  'grid_pixels',
   {
-    tableId: uuid('table_id')
+    gridId: uuid('grid_id')
       .notNull()
-      .references(() => tables.id, { onDelete: 'cascade' }),
+      .references(() => grids.id, { onDelete: 'cascade' }),
     pixelId: uuid('pixel_id')
       .notNull()
       .references(() => pixels.id, { onDelete: 'cascade' }),
     sortOrder: integer('sort_order').default(0), // display order in the legend
   },
   (t) => ({
-    pk: primaryKey({ columns: [t.tableId, t.pixelId] }),
+    pk: primaryKey({ columns: [t.gridId, t.pixelId] }),
   }),
 )
 
@@ -275,9 +275,12 @@ export const cells = pgTable(
   'cells',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    tableId: uuid('table_id')
+    ownerId: text('owner_id').references(() => users.id, {
+      onDelete: 'cascade',
+    }),
+    gridId: uuid('grid_id')
       .notNull()
-      .references(() => tables.id, { onDelete: 'cascade' }),
+      .references(() => grids.id, { onDelete: 'cascade' }),
     pixelId: uuid('pixel_id').references(() => pixels.id, {
       onDelete: 'set null',
     }),
@@ -290,10 +293,7 @@ export const cells = pgTable(
     value: integer('value'), // numeric value if tracking amounts
     note: text('note'), // optional text annotation
     colorOverride: text('color_override'), // if user overrides the pixel color for this cell
-    filledAt: timestamp('filled_at'), // when the user marked this cell
-    ownerId: text('owner_id').references(() => users.id, {
-      onDelete: 'cascade',
-    }),
+    completedAt: timestamp('completed_at'), // when the user marked this cell
 
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
@@ -301,15 +301,15 @@ export const cells = pgTable(
       .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
   (t) => ({
-    // Critical: fast lookup of all cells in a table
-    tableIdx: index('cells_table_idx').on(t.tableId),
-    // Unique constraint: only one cell per grid position per table
-    positionIdx: uniqueIndex('cells_position_idx').on(t.tableId, t.col, t.row),
+    // Critical: fast lookup of all cells in a grid
+    gridIdx: index('cells_grid_idx').on(t.gridId),
+    // Unique constraint: only one cell per grid position per grid
+    positionIdx: uniqueIndex('cells_position_idx').on(t.gridId, t.col, t.row),
   }),
 )
 
 // ─────────────────────────────────────────────
-// PAGES — dashboard views that group multiple tables
+// PAGES — dashboard views that group multiple grids
 // ─────────────────────────────────────────────
 
 export const pages = pgTable(
@@ -324,8 +324,8 @@ export const pages = pgTable(
     isPublic: boolean('is_public').default(false),
     theme: themeEnum('theme'),
 
-    // Ordered array of tableIds shown on this page
-    tableIds: uuid('table_ids').array().default([]),
+    // Ordered array of gridIds shown on this page
+    gridIds: uuid('grid_ids').array().default([]),
 
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
@@ -337,24 +337,24 @@ export const pages = pgTable(
   }),
 )
 
-export const pageTables = pgTable(
-  'page_tables',
+export const pageGrids = pgTable(
+  'page_grids',
   {
     pageId: uuid('page_id')
       .notNull()
       .references(() => pages.id, { onDelete: 'cascade' }),
-    tableId: uuid('table_id')
+    gridId: uuid('grid_id')
       .notNull()
-      .references(() => tables.id, { onDelete: 'cascade' }),
+      .references(() => grids.id, { onDelete: 'cascade' }),
     sortOrder: integer('sort_order').default(0), // preserves display order
   },
   (t) => ({
-    pk: primaryKey({ columns: [t.pageId, t.tableId] }),
+    pk: primaryKey({ columns: [t.pageId, t.gridId] }),
   }),
 )
 
 // ─────────────────────────────────────────────
-// TEMPLATES — saveable table configurations (no cell data)
+// TEMPLATES — saveable grid configurations (no cell data)
 // ─────────────────────────────────────────────
 
 export const templates = pgTable(
@@ -368,7 +368,7 @@ export const templates = pgTable(
     }),
     isPublic: boolean('is_public').default(false),
 
-    // Snapshot of table config + pixel definitions (no cell data)
+    // Snapshot of grid config + pixel definitions (no cell data)
     config: jsonb('config').notNull(), // { columns, rows, scaleType, scaleUnit, pixels[] }
     tags: text('tags').array().default([]), // e.g. ["fitness", "work", "gaming"]
     theme: themeEnum('theme'),
@@ -390,7 +390,7 @@ export const templates = pgTable(
 export const userRelations = relations(users, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
-  tables: many(tables),
+  grids: many(grids),
   pages: many(pages),
   pixels: many(pixels),
   colorPalettes: many(colorPalettes),
@@ -411,26 +411,26 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }))
 
-export const tablesRelations = relations(tables, ({ one, many }) => ({
-  owner: one(users, { fields: [tables.ownerId], references: [users.id] }),
-  tablePixels: many(tablePixels),
+export const gridsRelations = relations(grids, ({ one, many }) => ({
+  owner: one(users, { fields: [grids.ownerId], references: [users.id] }),
+  gridPixels: many(gridPixels),
   cells: many(cells),
-  pageTables: many(pageTables),
+  pageGrids: many(pageGrids),
 }))
 
 export const cellsRelations = relations(cells, ({ one }) => ({
-  table: one(tables, { fields: [cells.tableId], references: [tables.id] }),
+  grid: one(grids, { fields: [cells.gridId], references: [grids.id] }),
   pixel: one(pixels, { fields: [cells.pixelId], references: [pixels.id] }),
   owner: one(users, { fields: [cells.ownerId], references: [users.id] }),
 }))
 
-export const tablePixelsRelations = relations(tablePixels, ({ one }) => ({
-  table: one(tables, {
-    fields: [tablePixels.tableId],
-    references: [tables.id],
+export const gridPixelsRelations = relations(gridPixels, ({ one }) => ({
+  grid: one(grids, {
+    fields: [gridPixels.gridId],
+    references: [grids.id],
   }),
   pixel: one(pixels, {
-    fields: [tablePixels.pixelId],
+    fields: [gridPixels.pixelId],
     references: [pixels.id],
   }),
 }))
@@ -448,12 +448,12 @@ export const colorPalettesRelations = relations(colorPalettes, ({ one }) => ({
 
 export const pagesRelations = relations(pages, ({ one, many }) => ({
   owner: one(users, { fields: [pages.ownerId], references: [users.id] }),
-  pageTables: many(pageTables),
+  pageGrids: many(pageGrids),
 }))
 
-export const pageTablesRelations = relations(pageTables, ({ one }) => ({
-  page: one(pages, { fields: [pageTables.pageId], references: [pages.id] }),
-  table: one(tables, { fields: [pageTables.tableId], references: [tables.id] }),
+export const pageGridsRelations = relations(pageGrids, ({ one }) => ({
+  page: one(pages, { fields: [pageGrids.pageId], references: [pages.id] }),
+  grid: one(grids, { fields: [pageGrids.gridId], references: [grids.id] }),
 }))
 
 export const templatesRelations = relations(templates, ({ one }) => ({
@@ -472,8 +472,8 @@ export type Account = typeof account.$inferSelect
 export type NewAccount = typeof account.$inferInsert
 export type Verification = typeof verification.$inferSelect
 export type NewVerification = typeof verification.$inferInsert
-export type Table = typeof tables.$inferSelect
-export type NewTable = typeof tables.$inferInsert
+export type Grid = typeof grids.$inferSelect
+export type NewGrid = typeof grids.$inferInsert
 export type Cell = typeof cells.$inferSelect
 export type NewCell = typeof cells.$inferInsert
 export type Pixel = typeof pixels.$inferSelect
