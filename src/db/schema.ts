@@ -13,6 +13,8 @@ import {
   index,
   uuid,
   uniqueIndex,
+  check,
+  smallint,
 } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
 
@@ -33,6 +35,9 @@ export const unitTypeEnum = pgEnum('unit_type', [
   'reps',
   'steps',
   'miles',
+  'kilometers',
+  'pages',
+  'rating',
   'custom',
 ])
 
@@ -155,11 +160,10 @@ export const colorPalettes = pgTable(
     // Array of hex strings, ordered: [ "#1a1a1a", "#00ff41", "#00cc33" ]
     colors: text('colors').array().notNull(),
 
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+      .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
   (t) => ({
     ownerIdx: index('color_palettes_owner_idx').on(t.ownerId),
@@ -174,23 +178,31 @@ export const pixels = pgTable(
   'pixels',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    name: text('name').notNull(), // e.g. "Completed", "Skipped", "PR"
-    description: text('description'),
-    label: text('label'), // short label shown in key
-    color: text('color').notNull(), // hex color string
-    unit: unitTypeEnum('unit'),
     ownerId: text('owner_id').references(() => users.id, {
       onDelete: 'cascade',
     }),
+    name: text('name').notNull(),
+    description: text('description'),
+    endGoal: text('endGoal'), // short label shown in key
+    type: text('type').notNull(),
+    unit: unitTypeEnum('unit'), // unit to measure by
+    color: text('color').notNull(), // hex color string
+    completed: boolean().default(false),
+    progress: smallint().default(0),
+    groupId: text('groupId'),
 
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+      .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
   (t) => ({
     ownerIdx: index('pixels_owner_idx').on(t.ownerId),
+    // Add check constraint for 0-100 range
+    progressRange: check(
+      'progress_range',
+      sql`${t.progress} >= 0 AND ${t.progress} <= 100`,
+    ),
   }),
 )
 
@@ -210,24 +222,23 @@ export const tables = pgTable(
     isPublic: boolean('is_public').default(false),
 
     // Grid dimensions
-    columns: integer('columns').notNull().default(7),
-    rows: integer('rows').notNull().default(52), // 7x52 = year tracker
+    columns: smallint('columns').notNull().default(7),
+    rows: smallint('rows').notNull().default(52), // 7x52 = year tracker
 
     // Scale configuration
     scaleType: scaleTypeEnum('scale_type').default('daily'),
     scaleUnit: unitTypeEnum('scale_unit'),
-    scaleStart: integer('scale_start'), // e.g. 0 (start value)
-    scaleEnd: integer('scale_end'), // e.g. 100 (goal value)
+    scaleStart: smallint('scale_start'), // e.g. 0 (start value)
+    scaleEnd: smallint('scale_end'), // e.g. 100 (goal value)
     scaleLabel: text('scale_label'), // e.g. "lbs", "miles", "%"
 
     // Theme override (inherits user theme if null)
     theme: themeEnum('theme'),
 
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+      .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
   (t) => ({
     ownerIdx: index('tables_owner_idx').on(t.ownerId),
@@ -272,8 +283,8 @@ export const cells = pgTable(
     }),
 
     // Grid position — col/row index (0-based)
-    col: integer('col').notNull(),
-    row: integer('row').notNull(),
+    col: smallint('col').notNull(),
+    row: smallint('row').notNull(),
 
     // Optional metadata per cell
     value: integer('value'), // numeric value if tracking amounts
@@ -284,11 +295,10 @@ export const cells = pgTable(
       onDelete: 'cascade',
     }),
 
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+      .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
   (t) => ({
     // Critical: fast lookup of all cells in a table
@@ -317,11 +327,10 @@ export const pages = pgTable(
     // Ordered array of tableIds shown on this page
     tableIds: uuid('table_ids').array().default([]),
 
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+      .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
   (t) => ({
     ownerIdx: index('pages_owner_idx').on(t.ownerId),
@@ -364,11 +373,10 @@ export const templates = pgTable(
     tags: text('tags').array().default([]), // e.g. ["fitness", "work", "gaming"]
     theme: themeEnum('theme'),
 
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+      .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
   (t) => ({
     ownerIdx: index('templates_owner_idx').on(t.ownerId),
