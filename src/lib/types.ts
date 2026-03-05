@@ -17,8 +17,8 @@ export interface Block {
   name: string
   description: string
   type: string
-  unit: string
-  endGoal: string
+  unit: typeof unitTypeEnum
+  endGoal: number
   color: string
   completed: boolean
   progress: number

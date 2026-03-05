@@ -37,6 +37,7 @@ export const unitTypeEnum = pgEnum('unit_type', [
   'miles',
   'kilometers',
   'pages',
+  'books',
   'rating',
   'custom',
 ])
@@ -183,13 +184,12 @@ export const pixels = pgTable(
     }),
     name: text('name').notNull(),
     description: text('description'),
-    endGoal: text('endGoal'), // short label shown in key
     type: text('type').notNull(),
     unit: unitTypeEnum('unit'), // unit to measure by
+    endGoal: integer('endGoal'), // short label shown in key
     color: text('color').notNull(), // hex color string
     completed: boolean().default(false),
     progress: smallint().default(0),
-    groupId: text('groupId'),
 
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')

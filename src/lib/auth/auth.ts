@@ -45,7 +45,7 @@ const auth = betterAuth({
         defaultValue: [],
         input: false,
       },
-      savedTableIds: {
+      savedGridIds: {
         type: 'string[]',
         required: false,
         defaultValue: [],
