@@ -16,4 +16,5 @@ export default defineConfig({
     database: process.env.DB_NAME!,
     ssl: false,
   },
+  tablesFilter: ['db_pxl8r_*'],
 })

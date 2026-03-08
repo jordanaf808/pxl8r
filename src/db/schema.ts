@@ -186,7 +186,7 @@ export const pixels = pgTable(
     description: text('description'),
     type: text('type').notNull(),
     unit: unitTypeEnum('unit'), // unit to measure by
-    endGoal: integer('endGoal'), // short label shown in key
+    endGoal: integer('end_goal'), // short label shown in key
     color: text('color').notNull(), // hex color string
     completed: boolean().default(false),
     progress: smallint().default(0),

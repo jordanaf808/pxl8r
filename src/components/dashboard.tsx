@@ -10,7 +10,7 @@ import { CreateGroupModal } from '@/components/create-group-modal'
 import { StatsBar } from '@/components/stats-bar'
 import type { Block, BlockType, BlockGroup } from '@/lib/types'
 import { BLOCK_TYPE_LABELS } from '@/lib/types'
-import type { User } from '@/db/schema'
+import type { NewPixel, User } from '@/db/schema'
 import { SAMPLE_BLOCKS, SAMPLE_GROUPS } from '@/db/mock-data'
 
 interface DashboardProps {
@@ -19,7 +19,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ user, onLogout }: DashboardProps) {
-  const [blocks, setBlocks] = useState<Block[]>(SAMPLE_BLOCKS)
+  const [blocks, setBlocks] = useState<NewPixel[]>(SAMPLE_BLOCKS)
   const [groups, setGroups] = useState<BlockGroup[]>(SAMPLE_GROUPS)
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false)
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
@@ -30,16 +30,16 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   // ---- Block CRUD ----
   const addBlock = (
     blockData: Omit<
-      Block,
+      NewPixel,
       'id' | 'completed' | 'progress' | 'createdAt' | 'completedAt'
     >,
   ) => {
-    const newBlock: Block = {
+    const newBlock: NewPixel = {
       ...blockData,
       id: Date.now().toString(),
       completed: false,
       progress: 0,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
     }
     setBlocks((prev) => [newBlock, ...prev])
   }
