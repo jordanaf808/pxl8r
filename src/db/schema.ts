@@ -2,7 +2,7 @@
 // Drizzle ORM + PostgreSQL
 
 import {
-  pgTable,
+  // pgTable,
   text,
   integer,
   boolean,
@@ -15,12 +15,21 @@ import {
   uniqueIndex,
   check,
   smallint,
+  pgTableCreator,
 } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
+
+const pgTable = pgTableCreator((name) => `db_pxl8r_${name}`)
 
 // ─────────────────────────────────────────────
 // ENUMS
 // ─────────────────────────────────────────────
+export const pixelTypeEnum = pgEnum('pixel_type', [
+  'boolean', // done/not done
+  'numeric', // track a value
+  'rating', // 1-5 stars etc
+  'time', // duration based
+])
 
 export const unitTypeEnum = pgEnum('unit_type', [
   'percent',
@@ -184,7 +193,7 @@ export const pixels = pgTable(
     }),
     name: text('name').notNull(),
     description: text('description'),
-    type: text('type').notNull(),
+    type: pixelTypeEnum('type'),
     unit: unitTypeEnum('unit'), // unit to measure by
     endGoal: integer('end_goal'), // short label shown in key
     color: text('color').notNull(), // hex color string
@@ -324,8 +333,8 @@ export const pages = pgTable(
     isPublic: boolean('is_public').default(false),
     theme: themeEnum('theme'),
 
-    // Ordered array of gridIds shown on this page
-    gridIds: uuid('grid_ids').array().default([]),
+    // This is already being tracked in pageGrids junction-table
+    // gridIds: uuid('grid_ids').array().default([]),
 
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
@@ -435,8 +444,9 @@ export const gridPixelsRelations = relations(gridPixels, ({ one }) => ({
   }),
 }))
 
-export const pixelsRelations = relations(pixels, ({ one }) => ({
+export const pixelsRelations = relations(pixels, ({ one, many }) => ({
   owner: one(users, { fields: [pixels.ownerId], references: [users.id] }),
+  gridPixels: many(gridPixels),
 }))
 
 export const colorPalettesRelations = relations(colorPalettes, ({ one }) => ({
