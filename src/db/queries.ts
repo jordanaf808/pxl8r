@@ -155,160 +155,44 @@ export const MUTATIONS = {
       .middleware([authMiddleware])
       .inputValidator(bulkUpsertSchema)
       .handler(async ({ data, context }) => {
-        // check auth
         console.log('//// check auth - context: ', context, 'data: ', data)
         const { user } = context
-        const { ownerId, gridId, cells: cellUpdates, matchStrategy } = data
+        const { ownerId, gridId, cells: cellUpdates } = data
+
         if (!user.id || user.id !== ownerId) throw new Error('Unauthorized')
 
-        const results = await db.transaction(async (trx) => {
-          const processed = []
-          const errors = []
+        const values = cellUpdates.map((cell) => ({
+          gridId,
+          ownerId: user.id,
+          pixelId: cell.pixelId ?? null,
+          col: cell.col,
+          row: cell.row,
+          value: cell.value ?? null,
+          note: cell.note ?? null,
+          colorOverride: cell.colorOverride ?? null,
+          completedAt: cell.completedAt ?? null,
+        }))
 
-          // Group operations for efficiency
-          const inserts: CellUpdate[] = []
-          const updates: Array<{ id: string; data: Partial<CellUpdate> }> = []
-          const positionMatches: Array<{
-            col: number
-            row: number
-            cellData: CellUpdate
-          }> = []
+        const results = await db
+          .insert(cells)
+          .values(values)
+          .onConflictDoUpdate({
+            target: [cells.gridId, cells.col, cells.row],
+            set: {
+              pixelId: sql`excluded.pixel_id`,
+              value: sql`excluded.value`,
+              note: sql`excluded.note`,
+              colorOverride: sql`excluded.color_override`,
+              completedAt: sql`excluded.completed_at`,
+              updatedAt: sql`NOW()`,
+            },
+          })
+          .returning({ id: cells.id, col: cells.col, row: cells.row })
 
-          // -----------------------------------------------------------------------
-          // Phase 1: Determine insert vs update for each cell
-          // -----------------------------------------------------------------------
-
-          for (const cellData of cellUpdates) {
-            if (cellData.id) {
-              // Explicit ID = direct update
-              const { id, col, row, ...updateData } = cellData
-              updates.push({ id, data: updateData })
-            } else if (matchStrategy === 'position') {
-              // Match by position - need to check if exists
-              positionMatches.push({
-                col: cellData.col,
-                row: cellData.row,
-                cellData: cellData,
-              })
-            } else {
-              errors.push({
-                col: cellData.col,
-                row: cellData.row,
-                error: 'ID required when using id-only strategy',
-              })
-            }
-          }
-
-          // -----------------------------------------------------------------------
-          // Phase 2: Resolve position-based matches (batch query for efficiency)
-          // -----------------------------------------------------------------------
-
-          if (positionMatches.length > 0) {
-            const existingCells = await trx.query.cells.findMany({
-              where: (cell) =>
-                and(
-                  eq(cell.gridId, gridId),
-                  // Build OR conditions for all positions
-                  sql`(${cell.col}, ${cell.row}) IN (${sql.join(
-                    positionMatches.map((p) => sql`(${p.col}, ${p.row})`),
-                  )})`,
-                ),
-              columns: { id: true, col: true, row: true },
-            })
-
-            // Map existing cells by position for O(1) lookup
-            const existingByPosition = new Map(
-              existingCells.map((c) => [`${c.col},${c.row}`, c.id]),
-            )
-
-            for (const { col, row, cellData } of positionMatches) {
-              const key = `${col},${row}`
-              const existingId = existingByPosition.get(key)
-
-              if (existingId) {
-                // Update existing
-                const { col: _, row: __, ...updateData } = cellData
-                updates.push({ id: existingId, data: updateData })
-              } else {
-                // Insert new
-                inserts.push(cellData)
-              }
-            }
-          }
-
-          // -----------------------------------------------------------------------
-          // Phase 3: Execute batch insert for new cells
-          // -----------------------------------------------------------------------
-
-          let insertedIds: string[] = []
-          if (inserts.length > 0) {
-            // Drizzle's insert().values() with onConflictDoUpdate for true upsert
-            // But since we already resolved conflicts, we can do plain insert
-            const insertValues = inserts.map((cell) => ({
-              gridId,
-              // ownerId: userId, // from auth
-              col: cell.col,
-              row: cell.row,
-              value: cell.value ?? null,
-              note: cell.note ?? null,
-              colorOverride: cell.colorOverride ?? null,
-              completedAt: cell.completedAt ?? null,
-              pixelId: cell.pixelId ?? null,
-            }))
-
-            const result = await trx
-              .insert(cells)
-              .values(insertValues)
-              .returning({
-                id: cells.id,
-                col: cells.col,
-                row: cells.row,
-              })
-
-            insertedIds = result.map((r) => r.id)
-            processed.push(
-              ...result.map((r) => ({
-                operation: 'insert',
-                id: r.id,
-                col: r.col,
-                row: r.row,
-              })),
-            )
-          }
-
-          // -----------------------------------------------------------------------
-          // Phase 4: Execute updates (batched by which fields are present)
-          // -----------------------------------------------------------------------
-
-          if (updates.length > 0) {
-            // Group updates by which fields they contain for efficient batching
-            // This handles your requirement: "columns being updated might change between rows"
-            const updateGroups = groupUpdatesByFields(updates)
-
-            for (const [fieldKey, group] of updateGroups) {
-              // Build dynamic SQL for this group
-              await executeDynamicUpdate(trx, group)
-            }
-
-            processed.push(
-              ...updates.map((u) => ({
-                operation: 'update',
-                id: u.id,
-              })),
-            )
-          }
-
-          return {
-            success: errors.length === 0,
-            processed: processed.length,
-            inserted: insertedIds.length,
-            updated: updates.length,
-            errors: errors.length > 0 ? errors : undefined,
-          }
-        })
-
-        console.log('//// bulkUpsertCells results: ', results)
-        return results
+        return {
+          success: true,
+          processed: results.length,
+        }
       }),
   },
   delete: {
