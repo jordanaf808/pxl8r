@@ -1,13 +1,17 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { db } from '.'
 import { users, grids, cells, pages, pixels, gridPixels } from './schema'
-import { bulkUpsertSchema, updateUserSchema } from '@/lib/types'
+import {
+  bulkUpsertSchema,
+  updatableCellFields,
+  updateCellSchema,
+  updateUserSchema,
+} from '@/lib/types'
 import type { NewCell, NewPage, NewGrid, NewPixel } from './schema'
-import type { CellUpdate, DBTransaction, UpdateUserInput } from '@/lib/types'
+import type { CellUpdate, DBTransaction } from '@/lib/types'
 import { authMiddleware } from '@/lib/auth/auth-middleware'
-import { updateUser } from 'better-auth/api'
 
 export const MUTATIONS = {
   create: {
@@ -151,11 +155,17 @@ export const MUTATIONS = {
     updatePage: createServerFn({ method: 'POST' })
       .inputValidator(bulkUpsertSchema)
       .handler(async ({ data }) => {}),
-    bulkUpsertCells: createServerFn({ method: 'POST' })
+
+    updateCell: createServerFn({ method: 'POST' })
       .middleware([authMiddleware])
-      .inputValidator(bulkUpsertSchema)
+      .inputValidator(updateCellSchema)
       .handler(async ({ data, context }) => {
-        console.log('//// check auth - context: ', context, 'data: ', data)
+        console.log(
+          '//// updateCell - check auth - context: ',
+          context,
+          'data: ',
+          data,
+        )
         const { user } = context
         const { ownerId, gridId, cells: cellUpdates } = data
 
@@ -192,6 +202,53 @@ export const MUTATIONS = {
         return {
           success: true,
           processed: results.length,
+        }
+      }),
+
+    bulkUpsertCells: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator(bulkUpsertSchema)
+      .handler(async ({ data, context }) => {
+        console.log('//// check auth - context: ', context, 'data: ', data)
+        const { user } = context
+        const { ownerId, gridId, cells: cellUpserts } = data
+
+        if (!user.id || user.id !== ownerId) throw new Error('Unauthorized')
+
+        const values = cellUpserts.map((cell) => ({
+          gridId,
+          ownerId: user.id, // not needed in onConflictDoUpdate, because we don't change that value
+          pixelId: cell.pixelId ?? null,
+          col: cell.col,
+          row: cell.row,
+          value: cell.value ?? null,
+          note: cell.note ?? null,
+          colorOverride: cell.colorOverride ?? null,
+          completedAt: cell.completedAt ?? null,
+          updatedAt: sql`NOW()`,
+        }))
+
+        const results = await db
+          .insert(cells)
+          .values(values)
+          .onConflictDoUpdate({
+            target: [cells.gridId, cells.col, cells.row],
+            set: {
+              // COALESCE(excluded.column, table.column) means "use the new value if it's not null, otherwise keep the existing value."
+              pixelId: sql`COALESCE(excluded.pixel_id, ${cells.pixelId})`,
+              value: sql`COALESCE(excluded.value, ${cells.value})`,
+              note: sql`COALESCE(excluded.note, ${cells.note})`,
+              colorOverride: sql`COALESCE(excluded.color_override, ${cells.colorOverride})`,
+              completedAt: sql`COALESCE(excluded.completed_at, ${cells.completedAt})`,
+              updatedAt: sql`NOW()`,
+            },
+          })
+          .returning({ id: cells.id, col: cells.col, row: cells.row })
+
+        return {
+          success: true,
+          processed: results.length,
+          results,
         }
       }),
   },

@@ -168,6 +168,17 @@ export const updatableCellFields = z.object({
 })
 
 // Schema for a single cell in the bulk operation
+export const updateCellSchema = z.object({
+  // For upsert: if id provided, update; otherwise insert (or match by position)
+  id: z.uuid().optional(),
+  // Position identifiers (used for matching existing cells when id not provided)
+  col: z.int().min(0).max(1000),
+  row: z.int().min(0).max(1000),
+  // The actual data to upsert
+  ...updatableCellFields.shape,
+})
+
+// Schema for a single cell in the bulk operation
 export const bulkCellSchema = z.object({
   // For upsert: if id provided, update; otherwise insert (or match by position)
   id: z.uuid().optional(),
