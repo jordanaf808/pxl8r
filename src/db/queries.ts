@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { db } from '.'
 import { users, grids, cells, pages, pixels, gridPixels } from './schema'
@@ -167,36 +167,28 @@ export const MUTATIONS = {
           data,
         )
         const { user } = context
-        const { ownerId, gridId, cells: cellUpdates } = data
+        const { id: cellId, note, value, colorOverride } = data
 
-        if (!user.id || user.id !== ownerId) throw new Error('Unauthorized')
+        if (!user.id) throw new Error('Unauthorized')
+        if (!cellId) throw new Error('missing ID')
 
-        const values = cellUpdates.map((cell) => ({
-          gridId,
-          ownerId: user.id,
-          pixelId: cell.pixelId ?? null,
-          col: cell.col,
-          row: cell.row,
-          value: cell.value ?? null,
-          note: cell.note ?? null,
-          colorOverride: cell.colorOverride ?? null,
-          completedAt: cell.completedAt ?? null,
-        }))
+        // null = intentionally clear
+        const values = {
+          note,
+          value,
+          colorOverride,
+          updatedAt: new Date(),
+        }
 
         const results = await db
-          .insert(cells)
-          .values(values)
-          .onConflictDoUpdate({
-            target: [cells.gridId, cells.col, cells.row],
-            set: {
-              pixelId: sql`excluded.pixel_id`,
-              value: sql`excluded.value`,
-              note: sql`excluded.note`,
-              colorOverride: sql`excluded.color_override`,
-              completedAt: sql`excluded.completed_at`,
-              updatedAt: sql`NOW()`,
-            },
-          })
+          .update(cells)
+          .set(values)
+          .where(
+            and(
+              eq(cells.id, cellId),
+              eq(cells.ownerId, user.id), // ownership check
+            ),
+          )
           .returning({ id: cells.id, col: cells.col, row: cells.row })
 
         return {
@@ -225,7 +217,6 @@ export const MUTATIONS = {
           note: cell.note ?? null,
           colorOverride: cell.colorOverride ?? null,
           completedAt: cell.completedAt ?? null,
-          updatedAt: sql`NOW()`,
         }))
 
         const results = await db
