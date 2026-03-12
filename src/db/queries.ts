@@ -2,35 +2,74 @@ import { createServerFn } from '@tanstack/react-start'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { db } from '.'
-import { users, grids, cells, pages, pixels, gridPixels } from './schema'
 import {
-  bulkUpsertSchema,
-  updatableCellFields,
+  users,
+  grids,
+  cells,
+  pages,
+  pixels,
+  gridPixels,
+  pageGrids,
+} from './schema'
+import {
+  bulkUpsertCellsSchema,
   updateCellSchema,
+  updateGridSchema,
+  updatePageGridSchema,
+  updatePageGridsSchema,
+  updatePageSchema,
+  updatePixelSchema,
   updateUserSchema,
-} from '@/lib/types'
-import type { NewCell, NewPage, NewGrid, NewPixel } from './schema'
-import type { CellUpdate, DBTransaction } from '@/lib/types'
+} from '@/db/types'
+import type { NewPage, NewGrid, NewPixel } from './schema'
+import type {
+  CellUpdateInput,
+  DBTransaction,
+  CreateManyCellsInput,
+  bulkGridPixelsInput,
+} from '@/db/types'
 import { authMiddleware } from '@/lib/auth/auth-middleware'
 
 export const MUTATIONS = {
   create: {
     createPage: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
       .inputValidator((data: NewPage) => data)
-      .handler(async ({ data }) => {
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Unauthorized')
+
         return await db.insert(pages).values({
-          ownerId: data.ownerId,
+          ownerId: user.id,
           name: data.name,
           description: data.description,
           isPublic: data.isPublic,
           theme: data.theme,
         })
       }),
+    createPixel: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator((data: NewPixel) => data)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Unauthorized')
+
+        const values = {
+          ownerId: user.id,
+          ...data,
+        }
+
+        return await db.insert(pixels).values(values)
+      }),
     createGrid: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
       .inputValidator((data: NewGrid) => data)
-      .handler(async ({ data }) => {
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Unauthorized')
+
         return await db.insert(grids).values({
-          ownerId: data.ownerId,
+          ownerId: user.id,
           name: data.name,
           description: data.description,
           isPublic: data.isPublic,
@@ -47,25 +86,156 @@ export const MUTATIONS = {
           theme: data.theme,
         })
       }),
-    createGridCells: createServerFn({ method: 'POST' })
-      .inputValidator((data: NewCell[]) => data)
-      .handler(async ({ data }) => {
-        return await db.insert(cells).values(data)
+    createCell: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator((data: CreateManyCellsInput) => data)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        const { ownerId, gridId, cells: cellsData } = data
+
+        if (!user.id) throw new Error('Not Logged In')
+        if (ownerId !== user.id) throw new Error('Not Grid Owner')
+
+        const values = cellsData.map((cell) => ({
+          ownerId: user.id,
+          gridId: gridId,
+          ...cell,
+        }))
+
+        return await db.insert(cells).values(values)
       }),
-    createPixel: createServerFn({ method: 'POST' })
-      .inputValidator((data: NewPixel) => data)
-      .handler(async ({ data }) => {
-        return await db.insert(pixels).values(data)
+    createManyCells: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator((data: CreateManyCellsInput) => data)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        const { ownerId, gridId, cells: cellsData } = data
+
+        if (!user.id) throw new Error('Not Logged In')
+        if (ownerId !== user.id) throw new Error('Not Grid Owner')
+
+        const values = cellsData.map((cell) => ({
+          ownerId: user.id,
+          gridId: gridId,
+          ...cell,
+        }))
+
+        return await db.insert(cells).values(values)
       }),
-    addPixelToGrid: createServerFn({ method: 'POST' })
-      .inputValidator((data: typeof gridPixels.$inferInsert) => data)
-      .handler(async ({ data }) => {
-        const { gridId, pixelId, sortOrder } = data
-        await db.insert(gridPixels).values({
+
+    bulkUpsertCells: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator(bulkUpsertCellsSchema)
+      .handler(async ({ data, context }) => {
+        console.log('//// check auth - context: ', context, 'data: ', data)
+        const { user } = context
+        const { ownerId, gridId, cells: cellUpserts } = data
+
+        if (!user.id || user.id !== ownerId) throw new Error('Unauthorized')
+
+        const values = cellUpserts.map((cell) => ({
           gridId,
-          pixelId,
-          sortOrder,
-        })
+          ownerId: user.id, // not needed in onConflictDoUpdate(), because we don't change that value
+          pixelId: cell.pixelId ?? null,
+          col: cell.col,
+          row: cell.row,
+          value: cell.value ?? null,
+          note: cell.note ?? null,
+          colorOverride: cell.colorOverride ?? null,
+          completedAt: cell.completedAt ?? null,
+        }))
+
+        const results = await db
+          .insert(cells)
+          .values(values)
+          .onConflictDoUpdate({
+            target: [cells.gridId, cells.col, cells.row],
+            set: {
+              // COALESCE(excluded.column, table.column) means "use the new value if it's not null, otherwise keep the existing value."
+              pixelId: sql`COALESCE(excluded.pixel_id, ${cells.pixelId})`,
+              value: sql`COALESCE(excluded.value, ${cells.value})`,
+              note: sql`COALESCE(excluded.note, ${cells.note})`,
+              colorOverride: sql`COALESCE(excluded.color_override, ${cells.colorOverride})`,
+              completedAt: sql`COALESCE(excluded.completed_at, ${cells.completedAt})`,
+              updatedAt: sql`NOW()`,
+            },
+          })
+          .returning({ id: cells.id, col: cells.col, row: cells.row })
+
+        return {
+          success: true,
+          processed: results.length,
+          results,
+        }
+      }),
+    bulkUpsertGridPixels: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator((data: bulkGridPixelsInput) => data)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        const { ownerId, gridId, pixelData } = data
+
+        if (!user.id) throw new Error('Unauthorized')
+        if (ownerId !== user.id) throw new Error('Not Grid Owner')
+
+        const values = pixelData.map((pixel) => ({
+          gridId: gridId,
+          pixelId: pixel.pixelId,
+          sortOrder: pixel.sortOrder,
+        }))
+
+        await db
+          .insert(gridPixels)
+          .values(values)
+          .onConflictDoUpdate({
+            target: [gridPixels.gridId, gridPixels.pixelId],
+            set: {
+              // COALESCE(excluded.column, table.column) means "use the new value if it's not null, otherwise keep the existing value."
+              sortOrder: sql`COALESCE(excluded.sort_order, ${gridPixels.sortOrder})`,
+            },
+          })
+          .returning({
+            gridId: gridPixels.gridId,
+            pixelId: gridPixels.pixelId,
+            sortOrder: gridPixels.sortOrder,
+          })
+      }),
+    bulkUpsertPageGrids: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator(updatePageGridsSchema)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Unauthorized')
+
+        const { pageId, ownerId, gridIds } = data
+        if (ownerId !== user.id) throw new Error('Not Grid Owner')
+
+        const values = gridIds.map((grid) => ({
+          pageId: pageId,
+          gridId: grid.id,
+          sortOrder: grid.sortOrder,
+        }))
+
+        const results = await db
+          .insert(pageGrids)
+          .values(values)
+          .onConflictDoUpdate({
+            target: [pageGrids.gridId, pageGrids.pageId],
+            set: {
+              // COALESCE(excluded.column, table.column) means "use the new value if it's not null, otherwise keep the existing value."
+              sortOrder: sql`COALESCE(excluded.sort_order, ${pageGrids.sortOrder})`,
+            },
+          })
+          .returning({
+            gridId: pageGrids.gridId,
+            pixelId: pageGrids.pageId,
+            sortOrder: pageGrids.sortOrder,
+          })
+
+        return {
+          success: true,
+          results: results,
+        }
       }),
   },
   update: {
@@ -146,15 +316,132 @@ export const MUTATIONS = {
 
         return updatedUser
       }),
+
     updateGrid: createServerFn({ method: 'POST' })
-      .inputValidator(bulkUpsertSchema)
-      .handler(async ({ data }) => {}),
+      .middleware([authMiddleware])
+      .inputValidator(updateGridSchema)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        const { ownerId, id: gridId, ...gridData } = data
+        if (!user.id) throw new Error('Unauthorized')
+        if (ownerId !== user.id) throw new Error('Not Grid Owner')
+
+        console.log('//// updateGrid - gridData: ', gridData)
+
+        const results = await db
+          .update(grids)
+          .set(gridData)
+          .where(
+            and(
+              eq(grids.id, gridId),
+              eq(grids.ownerId, user.id), // ownership check
+            ),
+          )
+          .returning({
+            id: grids.id,
+            name: grids.name,
+            isPublic: grids.isPublic,
+            scaleType: grids.scaleType,
+          })
+
+        return {
+          success: true,
+          results: results,
+        }
+      }),
     updatePixel: createServerFn({ method: 'POST' })
-      .inputValidator(bulkUpsertSchema)
-      .handler(async ({ data }) => {}),
+      .middleware([authMiddleware])
+      .inputValidator(updatePixelSchema)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        const { id: pixelId, ownerId, ...pixelData } = data
+        if (!user.id) throw new Error('Unauthorized')
+        if (ownerId !== user.id) throw new Error('Not Pixel Owner')
+
+        const results = await db
+          .update(pixels)
+          .set(pixelData)
+          .where(
+            and(
+              eq(pixels.id, pixelId),
+              eq(pixels.ownerId, user.id), // ownership check
+            ),
+          )
+          .returning({
+            id: pixels.id,
+            name: pixels.name,
+            type: pixels.type,
+            unit: pixels.unit,
+            endGoal: pixels.endGoal,
+            completed: pixels.completed,
+            progress: pixels.progress,
+          })
+
+        return {
+          success: true,
+          results: results,
+        }
+      }),
     updatePage: createServerFn({ method: 'POST' })
-      .inputValidator(bulkUpsertSchema)
-      .handler(async ({ data }) => {}),
+      .middleware([authMiddleware])
+      .inputValidator(updatePageSchema)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Unauthorized')
+
+        const { id: pageId, ownerId, ...pageData } = data
+
+        const results = await db
+          .update(pages)
+          .set(pageData)
+          .where(
+            and(
+              eq(pages.id, pageId),
+              eq(pages.ownerId, user.id), // ownership check
+            ),
+          )
+          .returning({
+            id: pages.id,
+            name: pages.name,
+            description: pages.description,
+            theme: pages.theme,
+            isPublic: pages.isPublic,
+          })
+
+        return {
+          success: true,
+          results: results,
+        }
+      }),
+    updatePageGridSort: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator(updatePageGridSchema)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Not Logged In.')
+
+        const { pageId, ownerId, gridId, sortOrder } = data
+        if (user.id !== ownerId) throw new Error('Unauthorized')
+
+        const results = await db
+          .update(pageGrids)
+          .set({
+            sortOrder: sortOrder,
+          })
+          .where(
+            and(eq(pageGrids.pageId, pageId), eq(pageGrids.gridId, gridId)),
+          )
+          .returning({
+            pageId: pageGrids.pageId,
+            gridId: pageGrids.gridId,
+            sortOrder: pageGrids.sortOrder,
+          })
+
+        return {
+          success: true,
+          results: results,
+        }
+      }),
 
     updateCell: createServerFn({ method: 'POST' })
       .middleware([authMiddleware])
@@ -167,17 +454,18 @@ export const MUTATIONS = {
           data,
         )
         const { user } = context
-        const { id: cellId, note, value, colorOverride } = data
+        const { id: cellId, ownerId, note, value, colorOverride } = data
 
-        if (!user.id) throw new Error('Unauthorized')
-        if (!cellId) throw new Error('missing ID')
+        if (!cellId) throw new Error('missing Cell ID')
+        if (!user.id) throw new Error('Not Logged In.')
+        if (user.id !== ownerId) throw new Error('Unauthorized')
 
         // null = intentionally clear
         const values = {
           note,
           value,
           colorOverride,
-          updatedAt: new Date(),
+          updatedAt: sql`NOW()`,
         }
 
         const results = await db
@@ -196,106 +484,168 @@ export const MUTATIONS = {
           processed: results.length,
         }
       }),
-
-    bulkUpsertCells: createServerFn({ method: 'POST' })
-      .middleware([authMiddleware])
-      .inputValidator(bulkUpsertSchema)
-      .handler(async ({ data, context }) => {
-        console.log('//// check auth - context: ', context, 'data: ', data)
-        const { user } = context
-        const { ownerId, gridId, cells: cellUpserts } = data
-
-        if (!user.id || user.id !== ownerId) throw new Error('Unauthorized')
-
-        const values = cellUpserts.map((cell) => ({
-          gridId,
-          ownerId: user.id, // not needed in onConflictDoUpdate, because we don't change that value
-          pixelId: cell.pixelId ?? null,
-          col: cell.col,
-          row: cell.row,
-          value: cell.value ?? null,
-          note: cell.note ?? null,
-          colorOverride: cell.colorOverride ?? null,
-          completedAt: cell.completedAt ?? null,
-        }))
-
-        const results = await db
-          .insert(cells)
-          .values(values)
-          .onConflictDoUpdate({
-            target: [cells.gridId, cells.col, cells.row],
-            set: {
-              // COALESCE(excluded.column, table.column) means "use the new value if it's not null, otherwise keep the existing value."
-              pixelId: sql`COALESCE(excluded.pixel_id, ${cells.pixelId})`,
-              value: sql`COALESCE(excluded.value, ${cells.value})`,
-              note: sql`COALESCE(excluded.note, ${cells.note})`,
-              colorOverride: sql`COALESCE(excluded.color_override, ${cells.colorOverride})`,
-              completedAt: sql`COALESCE(excluded.completed_at, ${cells.completedAt})`,
-              updatedAt: sql`NOW()`,
-            },
-          })
-          .returning({ id: cells.id, col: cells.col, row: cells.row })
-
-        return {
-          success: true,
-          processed: results.length,
-          results,
-        }
-      }),
   },
+
   delete: {
-    deletePagesById: createServerFn({ method: 'POST' })
-      .inputValidator((data: { pageId: string[] }) => data)
-      .handler(async ({ data }) => {
-        return await db.delete(pages).where(inArray(pages.id, data.pageId))
+    deletePageById: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator((data: { pageId: string }) => data)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Not Logged In')
+
+        return await db
+          .delete(pages)
+          .where(and(eq(pages.id, data.pageId), eq(pages.ownerId, user.id)))
       }),
-    deleteGridsById: createServerFn({ method: 'POST' })
-      .inputValidator((data: { gridId: string[] }) => data)
-      .handler(async ({ data }) => {
-        return await db.delete(grids).where(inArray(grids.id, data.gridId))
+    deleteGridById: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator((data: { gridId: string }) => data)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Not Logged In')
+
+        return await db
+          .delete(grids)
+          .where(and(eq(grids.id, data.gridId), eq(grids.ownerId, user.id)))
       }),
-    deleteCellsById: createServerFn({ method: 'POST' })
+    deleteManyCellsById: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
       .inputValidator((data: { cellIds: string[] }) => data)
-      .handler(async ({ data }) => {
-        return await db.delete(cells).where(inArray(cells.id, data.cellIds))
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Not Logged In')
+
+        return await db
+          .delete(cells)
+          .where(
+            and(inArray(cells.id, data.cellIds), eq(cells.ownerId, user.id)),
+          )
       }),
-    deletePixelsById: createServerFn({ method: 'POST' })
-      .inputValidator((data: { pixelIds: string[] }) => data)
-      .handler(async ({ data }) => {
+    deletePixelById: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator((data: { pixelId: string }) => data)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Not Logged In')
+
         return await db
           .delete(pixels)
-          .where(inArray(pixels.id, data.pixelIds))
+          .where(and(eq(pixels.id, data.pixelId), eq(pixels.ownerId, user.id)))
           .returning()
+      }),
+    deleteGridsFromPage: createServerFn({ method: 'POST' })
+      .middleware([authMiddleware])
+      .inputValidator((data: { pageId: string; gridIds: string[] }) => data)
+      .handler(async ({ data, context }) => {
+        const { user } = context
+        if (!user.id) throw new Error('Unauthorized')
+
+        const { pageId, gridIds } = data
+
+        // Verify ownership
+        const page = await db
+          .select({ ownerId: pages.ownerId })
+          .from(pages)
+          .where(eq(pages.id, pageId))
+
+        if (!page[0] || page[0].ownerId !== user.id) {
+          throw new Error('Not Page Owner')
+        }
+
+        const results = await db
+          .delete(pageGrids)
+          .where(
+            and(
+              eq(pageGrids.pageId, pageId),
+              inArray(pageGrids.gridId, gridIds),
+            ),
+          )
+          .returning()
+
+        return { success: true, results }
       }),
   },
 }
 export const QUERIES = {
-  getUserById: createServerFn({
-    method: 'GET', // default
-  })
+  getUserById: createServerFn({ method: 'GET' }) // fyi - GET is default
+    .middleware([authMiddleware])
     .inputValidator((data: { userId: string }) => data)
-    .handler(async ({ data }) => {
-      return await db.select().from(users).where(eq(users.id, data.userId))
+    .handler(async ({ data, context }) => {
+      const { user } = context
+      if (!user.id) throw new Error('Not Logged In')
+
+      return await db.select().from(users).where(eq(users.id, user.id))
+    }),
+  getPagesByOwnerId: createServerFn()
+    .middleware([authMiddleware])
+    .handler(async ({ context }) => {
+      const { user } = context
+      if (!user.id) throw new Error('Not Logged In')
+
+      return await db.select().from(pages).where(eq(pages.ownerId, user.id))
     }),
   getGridsByOwnerId: createServerFn()
-    .inputValidator((data: { userId: string }) => data)
-    .handler(async ({ data }) => {
-      return await db.select().from(grids).where(eq(grids.ownerId, data.userId))
+    .middleware([authMiddleware])
+    .handler(async ({ context }) => {
+      const { user } = context
+      if (!user.id) throw new Error('Not Logged In')
+
+      return await db.select().from(grids).where(eq(grids.ownerId, user.id))
     }),
   getGridById: createServerFn()
+    .middleware([authMiddleware])
     .inputValidator((data: { gridId: string }) => data)
-    .handler(async ({ data }) => {
-      return await db.select().from(grids).where(eq(grids.id, data.gridId))
+    .handler(async ({ data, context }) => {
+      const { user } = context
+      if (!user.id) throw new Error('Not Logged In')
+
+      return await db
+        .select()
+        .from(grids)
+        .where(and(eq(grids.id, data.gridId), eq(grids.ownerId, user.id)))
+    }),
+  getCellsByGrid: createServerFn()
+    .middleware([authMiddleware])
+    .inputValidator((data: { gridId: string }) => data)
+    .handler(async ({ data, context }) => {
+      const { gridId } = data
+      const { user } = context
+      if (!user.id) throw new Error('Not Logged In')
+
+      return await db
+        .select()
+        .from(cells)
+        .where(and(eq(cells.gridId, gridId), eq(cells.ownerId, user.id)))
+        .orderBy(cells.updatedAt)
+    }),
+  getPixelsByOwnerId: createServerFn()
+    .middleware([authMiddleware])
+    .handler(async ({ context }) => {
+      const { user } = context
+      if (!user.id) throw new Error('Not Logged In')
+
+      return await db.select().from(pixels).where(eq(pixels.ownerId, user.id))
     }),
   getPixelsByGridId: createServerFn()
+    .middleware([authMiddleware])
     .inputValidator((data: { gridId: string }) => data)
-    .handler(async ({ data }) => {
+    .handler(async ({ data, context }) => {
+      const { user } = context
+      if (!user.id) throw new Error('Not Logged In')
       const { gridId } = data
+
       return await db
         .select()
         .from(gridPixels)
         .innerJoin(pixels, eq(gridPixels.pixelId, pixels.id))
-        .where(eq(gridPixels.gridId, gridId))
+        .innerJoin(grids, eq(gridPixels.gridId, grids.id))
+        .where(
+          and(
+            eq(gridPixels.gridId, gridId),
+            eq(grids.ownerId, user.id), // Ownership check
+          ),
+        )
         .orderBy(gridPixels.sortOrder)
     }),
 }
@@ -338,69 +688,20 @@ function buildArrayUpdate(
  * Groups updates by which fields are present to minimize SQL statements
  * while handling dynamic columns per row
  */
-function groupUpdatesByFields(
-  updates: Array<{ id: string; data: Partial<CellUpdate> }>,
-): Map<string, typeof updates> {
-  const groups = new Map<string, typeof updates>()
+// function groupUpdatesByFields(
+//   updates: Array<{ id: string; data: Partial<CellUpdateInput> }>,
+// ): Map<string, typeof updates> {
+//   const groups = new Map<string, typeof updates>()
 
-  for (const update of updates) {
-    // Create a key based on which fields are present (sorted for consistency)
-    const fields = Object.keys(update.data).sort().join(',')
+//   for (const update of updates) {
+//     // Create a key based on which fields are present (sorted for consistency)
+//     const fields = Object.keys(update.data).sort().join(',')
 
-    if (!groups.has(fields)) {
-      groups.set(fields, [])
-    }
-    groups.get(fields)!.push(update)
-  }
+//     if (!groups.has(fields)) {
+//       groups.set(fields, [])
+//     }
+//     groups.get(fields)!.push(update)
+//   }
 
-  return groups
-}
-
-/**
- * Executes a dynamic update for a group of cells that share the same fields
- * Uses CASE statements for batch updating different rows with different values
- */
-async function executeDynamicUpdate(
-  trx: DBTransaction,
-  group: Array<{ id: string; data: Partial<CellUpdate> }>,
-) {
-  if (group.length === 0) return
-
-  const fields = Object.keys(group[0].data)
-  if (fields.length === 0) return
-
-  // Build a single UPDATE with CASE statements for each field
-  // This is more efficient than N separate queries
-  const setClauses: string[] = []
-  const whereIds: string[] = []
-
-  for (const field of fields) {
-    const cases = group
-      .map(({ id, data }) => {
-        const value = data[field as keyof CellUpdate]
-        // Proper SQL value formatting
-        const sqlValue =
-          value === null
-            ? 'NULL'
-            : typeof value === 'string'
-              ? `'${value.replace(/'/g, "''")}'`
-              : value instanceof Date
-                ? `'${value.toISOString()}'`
-                : String(value)
-
-        return `WHEN id = '${id}' THEN ${sqlValue}`
-      })
-      .join(' ')
-
-    setClauses.push(`${field} = CASE ${cases} ELSE ${field} END`)
-    whereIds.push(...group.map((g) => `'${g.id}'`))
-  }
-
-  const sqlQuery = `
-    UPDATE cells 
-    SET ${setClauses.join(', ')}, updated_at = NOW()
-    WHERE id IN (${[...new Set(whereIds)].join(', ')})
-  `
-
-  await trx.execute(sql.raw(sqlQuery))
-}
+//   return groups
+// }

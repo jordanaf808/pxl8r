@@ -1,0 +1,288 @@
+import {
+  pixelTypeEnum,
+  scaleTypeEnum,
+  themeEnum,
+  unitTypeEnum,
+} from '@/db/schema'
+import type * as schema from './schema'
+import type { NodePgQueryResultHKT } from 'drizzle-orm/node-postgres/session'
+import type { PgTransaction } from 'drizzle-orm/pg-core'
+import type { ExtractTablesWithRelations } from 'drizzle-orm/relations'
+import z from 'zod'
+
+export type BlockType =
+  | 'workout'
+  | 'project'
+  | 'finance'
+  | 'mood'
+  | 'skill'
+  | 'habit'
+  | 'reading'
+  | 'custom'
+
+export type BlockColor = 'rust' | 'sage' | 'gold' | 'slate' | 'warm'
+
+export interface Block {
+  id: string
+  name: string
+  description: string
+  type: string
+  unit: typeof schema.unitTypeEnum
+  endGoal: number
+  color: string
+  completed: boolean
+  progress: number
+  createdAt: string
+  completedAt?: string
+  groupId?: string
+}
+
+export interface BlockGroup {
+  id: string
+  name: string
+  description: string
+  color: BlockColor
+  blockIds: string[]
+  createdAt: string
+}
+
+export interface User {
+  name: string
+  email: string
+}
+
+export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
+  workout: 'Workout',
+  project: 'Project',
+  finance: 'Finance',
+  mood: 'Mood',
+  skill: 'Skill',
+  habit: 'Habit',
+  reading: 'Reading',
+  custom: 'Custom',
+}
+
+export const BLOCK_TYPE_ICONS: Record<BlockType, string> = {
+  workout: 'dumbbell',
+  project: 'folder',
+  finance: 'coins',
+  mood: 'heart',
+  skill: 'lightbulb',
+  habit: 'repeat',
+  reading: 'book',
+  custom: 'star',
+}
+
+export const BLOCK_COLORS: Record<
+  BlockColor,
+  { bg: string; text: string; label: string }
+> = {
+  rust: { bg: '#c75c4a', text: '#faf6f0', label: 'Rust Red' },
+  sage: { bg: '#5b8a72', text: '#faf6f0', label: 'Sage Green' },
+  gold: { bg: '#c9963a', text: '#faf6f0', label: 'Warm Gold' },
+  slate: { bg: '#6b83a6', text: '#faf6f0', label: 'Slate Blue' },
+  warm: { bg: '#a67c5b', text: '#faf6f0', label: 'Earthy Brown' },
+}
+
+/**
+ * Database Types
+ */
+/**
+ * CREATE
+ */
+
+// Schema for a single cell in the bulk operation
+export const createCellSchema = z.object({
+  col: z.int().min(0).max(1000),
+  row: z.int().min(0).max(1000),
+  // The actual data to upsert
+  pixelId: z.uuid(),
+  value: z.number(),
+  note: z.string().max(500).optional(),
+  colorOverride: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(), // hex color
+  updatedAt: z.nullish(z.coerce.date()),
+  completedAt: z.nullish(z.coerce.date()),
+})
+
+export const createManyCellsSchema = z.object({
+  ownerId: z.uuid(), // grid owner ID
+  gridId: z.uuid(),
+  cells: z.array(createCellSchema).min(1).max(365), // reasonable batch limit
+})
+
+export type CreateCellInput = z.infer<typeof createCellSchema>
+export type CreateManyCellsInput = z.infer<typeof createManyCellsSchema>
+
+export const bulkGridPixelSchema = z.object({
+  pixelId: z.uuid(),
+  sortOrder: z
+    .string()
+    .regex(
+      /^(alphabetic|reverse|type|\d{1,4})$/,
+      'Must be "alphabetic", "reverse", "type", or a number 0-9999',
+    ),
+})
+export const bulkGridPixelsSchema = z.object({
+  ownerId: z.uuid(), // grid owner ID
+  gridId: z.uuid(),
+  pixelData: z.array(bulkGridPixelSchema).min(1).max(365),
+})
+
+export type bulkGridPixelsInput = z.infer<typeof bulkGridPixelsSchema>
+
+/**
+ * UPDATES
+ */
+export const updatableUserFields = z.object({
+  name: z.string().max(66).optional(),
+  image: z.url().max(500).nullable().optional(), // avatar
+  theme: z.enum(themeEnum.enumValues).optional(),
+
+  // Array operations - we'll handle these separately
+  savedPixelIds: z.array(z.uuid()).optional(),
+  savedGridIds: z.array(z.uuid()).optional(),
+  savedTemplateIds: z.array(z.uuid()).optional(),
+})
+
+// Main update schema with array operation types
+export const updateUserSchema = z
+  .object({
+    // Allow partial updates
+    data: updatableUserFields,
+
+    // Array operations (set, add, remove)
+    arrayOperations: z
+      .object({
+        savedPixelIds: z.enum(['set', 'add', 'remove']).optional(),
+        savedGridIds: z.enum(['set', 'add', 'remove']).optional(),
+        savedTemplateIds: z.enum(['set', 'add', 'remove']).optional(),
+      })
+      .optional(),
+  })
+  .strict() // Prevent extra fields
+
+export type UpdateUserInput = z.infer<typeof updateUserSchema>
+
+export const updatePageSchema = z.object({
+  id: z.uuid(),
+  ownerId: z.uuid(),
+  name: z.string().max(66).optional(),
+  description: z.string().max(666).optional(),
+  theme: z.enum(themeEnum.enumValues).optional(),
+  isPublic: z.boolean().optional(),
+  // gridIds: z.array(z.uuid()).optional(),
+})
+
+export const updateGridSchema = z.object({
+  id: z.uuid(),
+  ownerId: z.uuid(),
+  name: z.string().max(66).optional(),
+  description: z.string().max(333).optional(),
+  isPublic: z.boolean().optional(),
+  columns: z.int().min(0).max(1000).optional(),
+  rows: z.int().min(0).max(1000).optional(),
+  scaleType: z.enum(scaleTypeEnum.enumValues).optional(),
+  scaleUnit: z.enum(unitTypeEnum.enumValues).optional(),
+  scaleStart: z.int().max(10000).optional(),
+  scaleEnd: z.int().max(10000).optional(),
+  scaleLabel: z.string().max(66).optional(),
+  theme: z.enum(themeEnum.enumValues).optional(),
+})
+
+export const updatePageGridSchema = z.object({
+  pageId: z.uuid(),
+  ownerId: z.uuid(),
+  gridId: z.uuid(),
+  sortOrder: z
+    .string()
+    .regex(
+      /^(alphabetic|reverse|type|\d{1,4})$/,
+      'Must be "alphabetic", "reverse", "type", or a number 0-9999',
+    ),
+})
+export const bulkPageGridSchema = z.object({
+  id: z.uuid(),
+  sortOrder: z
+    .string()
+    .regex(
+      /^(alphabetic|reverse|type|\d{1,4})$/,
+      'Must be "alphabetic", "reverse", "type", or a number 0-9999',
+    ),
+})
+export const updatePageGridsSchema = z.object({
+  pageId: z.uuid(),
+  ownerId: z.uuid(),
+  gridIds: z.array(bulkPageGridSchema).min(1).max(365),
+})
+
+export const updatePixelSchema = z.object({
+  id: z.uuid(),
+  ownerId: z.uuid(),
+  name: z.string().max(66).optional(),
+  description: z.string().max(333).optional(),
+  type: z.enum(pixelTypeEnum.enumValues).optional(),
+  unit: z.enum(unitTypeEnum.enumValues).optional(),
+  endGoal: z.number().max(10000).optional(),
+  color: z
+    .string()
+    .regex(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i)
+    .optional(), // hex color string
+  completed: z.boolean().optional(),
+  progress: z.int().max(100).optional(),
+})
+
+// BulkUpsert Cells Types
+// Define which columns can be bulk-updated
+export const updatableCellFields = z.object({
+  value: z.number().optional(),
+  note: z.string().max(500).optional(),
+  colorOverride: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(), // hex color
+  updatedAt: z.nullish(z.coerce.date()),
+})
+
+// Schema for a single cell in the bulk operation
+export const updateCellSchema = z.object({
+  ownerId: z.uuid(),
+  id: z.uuid(),
+  // The actual data to upsert
+  ...updatableCellFields.shape,
+})
+
+// Schema for a single cell in the bulk operation
+export const bulkCellSchema = z.object({
+  // For upsert: if id provided, update; otherwise insert (or match by position)
+  id: z.uuid().optional(),
+  // Position identifiers (used for matching existing cells when id not provided)
+  col: z.int().min(0).max(1000),
+  row: z.int().min(0).max(1000),
+  // The actual data to upsert
+  pixelId: z.uuid().optional(),
+  completedAt: z.nullish(z.coerce.date()),
+  ...updatableCellFields.shape,
+})
+
+export const bulkUpsertCellsSchema = z.object({
+  ownerId: z.uuid(),
+  gridId: z.uuid(),
+  cells: z.array(bulkCellSchema).min(1).max(365), // reasonable batch limit
+  // Strategy: 'position' = match by col/row if no id, 'id-only' = require id for updates
+  matchStrategy: z.enum(['position', 'id-only']).default('position'),
+})
+
+export type BulkUpsertCellsInput = z.infer<typeof bulkUpsertCellsSchema>
+export type CellUpdateInput = z.infer<typeof bulkCellSchema>
+
+/**
+ * Transaction
+ */
+export type DBTransaction = PgTransaction<
+  NodePgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>

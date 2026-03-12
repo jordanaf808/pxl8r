@@ -173,7 +173,8 @@ export const colorPalettes = pgTable(
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date()),
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (t) => ({
     ownerIdx: index('color_palettes_owner_idx').on(t.ownerId),
@@ -268,7 +269,7 @@ export const gridPixels = pgTable(
     pixelId: uuid('pixel_id')
       .notNull()
       .references(() => pixels.id, { onDelete: 'cascade' }),
-    sortOrder: integer('sort_order').default(0), // display order in the legend
+    sortOrder: text('sort_order').notNull().default('manual'), // display order in the legend
   },
   (t) => ({
     pk: primaryKey({ columns: [t.gridId, t.pixelId] }),
@@ -339,7 +340,8 @@ export const pages = pgTable(
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date()),
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (t) => ({
     ownerIdx: index('pages_owner_idx').on(t.ownerId),
@@ -355,7 +357,7 @@ export const pageGrids = pgTable(
     gridId: uuid('grid_id')
       .notNull()
       .references(() => grids.id, { onDelete: 'cascade' }),
-    sortOrder: integer('sort_order').default(0), // preserves display order
+    sortOrder: text('sort_order').notNull().default('manual'), // preserves display order
   },
   (t) => ({
     pk: primaryKey({ columns: [t.pageId, t.gridId] }),
@@ -385,7 +387,8 @@ export const templates = pgTable(
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date()),
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (t) => ({
     ownerIdx: index('templates_owner_idx').on(t.ownerId),

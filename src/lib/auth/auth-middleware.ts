@@ -11,12 +11,17 @@ export const authMiddleware = createMiddleware().server(async ({ next }) => {
     },
   })
 
+  console.log('//// AUTH-MIDDLEWARE - session: ', session)
+
+  if (!session?.user.id)
+    throw new Error('Auth-Middleware - Not Logged In', { cause: 401 })
+
   return next({
     context: {
       user: {
-        id: session?.user.id,
-        name: session?.user.name,
-        image: session?.user.image,
+        id: session.user.id,
+        name: session.user.name,
+        image: session.user.image,
       },
     },
   })
