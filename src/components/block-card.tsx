@@ -1,54 +1,114 @@
-"use client"
+'use client'
 
-import { useState, useRef, useEffect } from "react"
-import { Trash2, FolderInput } from "lucide-react"
-import { DoodleCheckmark, DoodleStar, DoodleCircle } from "@/components/sketchy-elements"
-import type { Block, BlockGroup } from "@/lib/types"
-import { BLOCK_TYPE_LABELS, BLOCK_COLORS } from "@/lib/types"
+import { useState, useRef, useEffect } from 'react'
+import { Trash2, FolderInput } from 'lucide-react'
+import {
+  DoodleCheckmark,
+  DoodleStar,
+  DoodleCircle,
+} from '@/components/sketchy-elements'
+import type { Block, BlockGroup } from '@/db/types'
+import { BLOCK_TYPE_LABELS, BLOCK_COLORS } from '@/db/types'
 
 const TYPE_DOODLES: Record<string, React.ReactNode> = {
   workout: (
     <svg viewBox="0 0 24 24" width={18} height={18} className="inline-block">
-      <path d="M4 12h16M7 8v8M17 8v8M2 10v4M22 10v4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M4 12h16M7 8v8M17 8v8M2 10v4M22 10v4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   project: (
     <svg viewBox="0 0 24 24" width={18} height={18} className="inline-block">
-      <path d="M3 7h18v12H3z M3 7l4-3h10l4 3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M3 7h18v12H3z M3 7l4-3h10l4 3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   finance: (
     <svg viewBox="0 0 24 24" width={18} height={18} className="inline-block">
-      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M12 7v10M9 9.5c0-1 1.3-2 3-2s3 .8 3 2-1.3 2-3 2-3 .8-3 2 1.3 2 3 2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M12 7v10M9 9.5c0-1 1.3-2 3-2s3 .8 3 2-1.3 2-3 2-3 .8-3 2 1.3 2 3 2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   mood: (
     <svg viewBox="0 0 24 24" width={18} height={18} className="inline-block">
-      <path d="M12 3 C6 3, 3 8, 3 12 C3 18, 8 21, 12 21 C16 21, 21 18, 21 12 C21 8, 18 3, 12 3 Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M12 3 C6 3, 3 8, 3 12 C3 18, 8 21, 12 21 C16 21, 21 18, 21 12 C21 8, 18 3, 12 3 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
       <circle cx="9" cy="10" r="1.2" fill="currentColor" />
       <circle cx="15" cy="10" r="1.2" fill="currentColor" />
-      <path d="M8 15 Q12 18, 16 15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path
+        d="M8 15 Q12 18, 16 15"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   skill: (
     <svg viewBox="0 0 24 24" width={18} height={18} className="inline-block">
-      <path d="M12 3 L14 9 L20 10 L15 14 L17 20 L12 16 L7 20 L9 14 L4 10 L10 9 Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M12 3 L14 9 L20 10 L15 14 L17 20 L12 16 L7 20 L9 14 L4 10 L10 9 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   habit: (
     <svg viewBox="0 0 24 24" width={18} height={18} className="inline-block">
-      <path d="M17 2 L21 6 L17 10 M21 6 H7 M7 22 L3 18 L7 14 M3 18 H17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M17 2 L21 6 L17 10 M21 6 H7 M7 22 L3 18 L7 14 M3 18 H17"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   reading: (
     <svg viewBox="0 0 24 24" width={18} height={18} className="inline-block">
-      <path d="M2 4h8c2 0 2 1 2 2v14s-1-1-2-1H2V4z M22 4h-8c-2 0-2 1-2 2v14s1-1 2-1h8V4z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M2 4h8c2 0 2 1 2 2v14s-1-1-2-1H2V4z M22 4h-8c-2 0-2 1-2 2v14s1-1 2-1h8V4z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
-  custom: (
-    <DoodleStar size={18} />
-  ),
+  custom: <DoodleStar size={18} />,
 }
 
 interface BlockCardProps {
@@ -84,8 +144,8 @@ export function BlockCard({
         setShowGroupMenu(false)
       }
     }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
   }, [showGroupMenu])
 
   // Generate slight rotation for hand-drawn feel
@@ -104,10 +164,10 @@ export function BlockCard({
         style={{
           backgroundColor: colorInfo.bg,
           color: colorInfo.text,
-          borderRadius: "4px 12px 6px 14px",
+          borderRadius: '4px 12px 6px 14px',
           boxShadow: isHovered
-            ? "4px 4px 0px var(--journal-warm), 6px 6px 0px rgba(0,0,0,0.05)"
-            : "2px 2px 0px var(--journal-warm)",
+            ? '4px 4px 0px var(--journal-warm), 6px 6px 0px rgba(0,0,0,0.05)'
+            : '2px 2px 0px var(--journal-warm)',
         }}
       >
         {/* Action buttons */}
@@ -127,8 +187,8 @@ export function BlockCard({
                 <div
                   className="absolute right-0 top-7 z-20 bg-[var(--journal-cream)] w-44 py-1 shadow-lg animate-float-in"
                   style={{
-                    border: "1.5px solid var(--journal-warm)",
-                    borderRadius: "3px 8px 5px 10px",
+                    border: '1.5px solid var(--journal-warm)',
+                    borderRadius: '3px 8px 5px 10px',
                   }}
                 >
                   {groups.map((g) => (
@@ -144,7 +204,7 @@ export function BlockCard({
                         className="w-2.5 h-2.5 shrink-0"
                         style={{
                           backgroundColor: BLOCK_COLORS[g.color].bg,
-                          borderRadius: "1px 3px 2px 4px",
+                          borderRadius: '1px 3px 2px 4px',
                         }}
                       />
                       <span className="truncate">{g.name}</span>
@@ -180,13 +240,31 @@ export function BlockCard({
           <div
             className="inline-flex items-center gap-1 text-xs font-serif px-2 py-0.5 mb-2 opacity-70"
             style={{
-              backgroundColor: "rgba(255,255,255,0.15)",
-              borderRadius: "1px 4px 2px 5px",
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              borderRadius: '1px 4px 2px 5px',
             }}
           >
             <svg viewBox="0 0 12 12" width={10} height={10}>
-              <rect x="1" y="6" width="10" height="5" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1" />
-              <rect x="2" y="3.5" width="8" height="3" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1" />
+              <rect
+                x="1"
+                y="6"
+                width="10"
+                height="5"
+                rx="0.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+              />
+              <rect
+                x="2"
+                y="3.5"
+                width="8"
+                height="3"
+                rx="0.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+              />
             </svg>
             {groupName}
           </div>
@@ -214,11 +292,12 @@ export function BlockCard({
         <div
           className="text-sm font-serif px-2 py-1 mb-3 inline-block"
           style={{
-            backgroundColor: "rgba(255,255,255,0.15)",
-            borderRadius: "2px 5px 3px 6px",
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            borderRadius: '2px 5px 3px 6px',
           }}
         >
-          {"Goal: "}{block.endGoal}
+          {'Goal: '}
+          {block.endGoal}
         </div>
 
         {/* Progress bar */}
@@ -230,16 +309,16 @@ export function BlockCard({
           <div
             className="w-full h-3 relative overflow-hidden"
             style={{
-              backgroundColor: "rgba(255,255,255,0.2)",
-              borderRadius: "2px 4px 3px 5px",
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              borderRadius: '2px 4px 3px 5px',
             }}
           >
             <div
               className="h-full transition-all duration-500 ease-out"
               style={{
                 width: `${block.progress}%`,
-                backgroundColor: "rgba(255,255,255,0.5)",
-                borderRadius: "2px 4px 3px 5px",
+                backgroundColor: 'rgba(255,255,255,0.5)',
+                borderRadius: '2px 4px 3px 5px',
               }}
             />
             {/* Sketch marks on the bar */}
@@ -272,22 +351,18 @@ export function BlockCard({
           >
             <div
               className={`w-5 h-5 flex items-center justify-center transition-all ${
-                block.completed
-                  ? "bg-white/30"
-                  : "border-2 border-white/40"
+                block.completed ? 'bg-white/30' : 'border-2 border-white/40'
               }`}
-              style={{ borderRadius: "2px 5px 3px 6px" }}
+              style={{ borderRadius: '2px 5px 3px 6px' }}
             >
               {block.completed && <DoodleCheckmark size={14} />}
             </div>
             <span className="text-sm font-serif group-hover/check:opacity-100 opacity-70 transition-opacity">
-              {block.completed ? "Completed!" : "Mark complete"}
+              {block.completed ? 'Completed!' : 'Mark complete'}
             </span>
           </button>
 
-          {block.completed && (
-            <DoodleCircle size={16} className="opacity-50" />
-          )}
+          {block.completed && <DoodleCircle size={16} className="opacity-50" />}
         </div>
       </div>
     </div>

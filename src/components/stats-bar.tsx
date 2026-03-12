@@ -1,7 +1,12 @@
-"use client"
+'use client'
 
-import { SketchyDivider, DoodleStar, DoodleCircle, DoodleCheckmark } from "@/components/sketchy-elements"
-import type { Block } from "@/lib/types"
+import {
+  SketchyDivider,
+  DoodleStar,
+  DoodleCircle,
+  DoodleCheckmark,
+} from '@/components/sketchy-elements'
+import type { Block } from '@/db/types'
 
 interface StatsBarProps {
   blocks: Block[]
@@ -12,75 +17,144 @@ export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
   const totalBlocks = blocks.length
   const completedBlocks = blocks.filter((b) => b.completed).length
   const remainingBlocks = totalBlocks - completedBlocks
-  const avgProgress = totalBlocks > 0
-    ? Math.round(blocks.reduce((sum, b) => sum + b.progress, 0) / totalBlocks)
-    : 0
+  const avgProgress =
+    totalBlocks > 0
+      ? Math.round(blocks.reduce((sum, b) => sum + b.progress, 0) / totalBlocks)
+      : 0
 
   // Calculate average completion time for completed blocks
   const completedWithTime = blocks.filter((b) => b.completed && b.completedAt)
-  const avgCompletionDays = completedWithTime.length > 0
-    ? Math.round(
-        completedWithTime.reduce((sum, b) => {
-          const created = new Date(b.createdAt).getTime()
-          const completed = new Date(b.completedAt!).getTime()
-          return sum + (completed - created) / (1000 * 60 * 60 * 24)
-        }, 0) / completedWithTime.length
-      )
-    : 0
+  const avgCompletionDays =
+    completedWithTime.length > 0
+      ? Math.round(
+          completedWithTime.reduce((sum, b) => {
+            const created = new Date(b.createdAt).getTime()
+            const completed = new Date(b.completedAt!).getTime()
+            return sum + (completed - created) / (1000 * 60 * 60 * 24)
+          }, 0) / completedWithTime.length,
+        )
+      : 0
 
   const stats = [
     {
-      label: "Total Blocks",
+      label: 'Total Blocks',
       value: totalBlocks,
       icon: <DoodleStar size={22} className="text-[var(--journal-gold)]" />,
-      color: "var(--journal-gold)",
+      color: 'var(--journal-gold)',
     },
     {
-      label: "Groups",
+      label: 'Groups',
       value: groupCount,
       icon: (
-        <svg viewBox="0 0 22 22" width={22} height={22} className="text-[var(--journal-warm)]">
-          <rect x="2" y="12" width="18" height="7" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-          <rect x="4" y="7" width="14" height="5" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-          <rect x="6" y="2" width="10" height="5" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+        <svg
+          viewBox="0 0 22 22"
+          width={22}
+          height={22}
+          className="text-[var(--journal-warm)]"
+        >
+          <rect
+            x="2"
+            y="12"
+            width="18"
+            height="7"
+            rx="1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <rect
+            x="4"
+            y="7"
+            width="14"
+            height="5"
+            rx="1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <rect
+            x="6"
+            y="2"
+            width="10"
+            height="5"
+            rx="1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
         </svg>
       ),
-      color: "var(--journal-warm)",
+      color: 'var(--journal-warm)',
     },
     {
-      label: "Remaining",
+      label: 'Remaining',
       value: remainingBlocks,
       icon: <DoodleCircle size={22} className="text-[var(--journal-rust)]" />,
-      color: "var(--journal-rust)",
+      color: 'var(--journal-rust)',
     },
     {
-      label: "Completed",
+      label: 'Completed',
       value: completedBlocks,
-      icon: <DoodleCheckmark size={22} className="text-[var(--journal-sage)]" />,
-      color: "var(--journal-sage)",
+      icon: (
+        <DoodleCheckmark size={22} className="text-[var(--journal-sage)]" />
+      ),
+      color: 'var(--journal-sage)',
     },
     {
-      label: "Avg. Days",
-      value: completedWithTime.length > 0 ? avgCompletionDays : "--",
+      label: 'Avg. Days',
+      value: completedWithTime.length > 0 ? avgCompletionDays : '--',
       icon: (
-        <svg viewBox="0 0 22 22" width={22} height={22} className="text-[var(--journal-slate)]">
-          <circle cx="11" cy="11" r="9" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M11 6v6l4 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <svg
+          viewBox="0 0 22 22"
+          width={22}
+          height={22}
+          className="text-[var(--journal-slate)]"
+        >
+          <circle
+            cx="11"
+            cy="11"
+            r="9"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M11 6v6l4 3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
         </svg>
       ),
-      color: "var(--journal-slate)",
+      color: 'var(--journal-slate)',
     },
   ]
 
   return (
     <div
       className="bg-[var(--journal-cream)] sketch-border p-5 md:p-6 relative"
-      style={{ transform: "rotate(0.3deg)" }}
+      style={{ transform: 'rotate(0.3deg)' }}
     >
       {/* Title */}
       <div className="flex items-center gap-2 mb-3">
-        <svg viewBox="0 0 24 24" width={20} height={20} className="text-[var(--journal-ink)]">
-          <path d="M4 20h16 M4 20V8l4-4h8l4 4v12 M9 20v-6h6v6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <svg
+          viewBox="0 0 24 24"
+          width={20}
+          height={20}
+          className="text-[var(--journal-ink)]"
+        >
+          <path
+            d="M4 20h16 M4 20V8l4-4h8l4 4v12 M9 20v-6h6v6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
         <h2 className="text-2xl font-bold text-[var(--journal-ink)]">
           My Journal Stats
@@ -95,15 +169,12 @@ export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
             key={stat.label}
             className="flex flex-col items-center p-3 bg-[var(--journal-paper)] transition-transform hover:-translate-y-0.5"
             style={{
-              borderRadius: "3px 8px 5px 10px",
+              borderRadius: '3px 8px 5px 10px',
               border: `1.5px solid var(--journal-warm)`,
             }}
           >
             <div className="mb-1">{stat.icon}</div>
-            <span
-              className="text-3xl font-bold"
-              style={{ color: stat.color }}
-            >
+            <span className="text-3xl font-bold" style={{ color: stat.color }}>
               {stat.value}
             </span>
             <span className="text-sm text-[var(--journal-ink)] opacity-60 font-serif text-center">
@@ -124,12 +195,18 @@ export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
               {avgProgress}%
             </span>
           </div>
-          <div className="relative w-full h-5 bg-[var(--journal-paper)] overflow-hidden" style={{ borderRadius: "3px 8px 5px 10px", border: "1.5px solid var(--journal-warm)" }}>
+          <div
+            className="relative w-full h-5 bg-[var(--journal-paper)] overflow-hidden"
+            style={{
+              borderRadius: '3px 8px 5px 10px',
+              border: '1.5px solid var(--journal-warm)',
+            }}
+          >
             <div
               className="h-full bg-[var(--journal-sage)] transition-all duration-700 ease-out"
               style={{
                 width: `${avgProgress}%`,
-                borderRadius: "2px 6px 4px 8px",
+                borderRadius: '2px 6px 4px 8px',
               }}
             />
             {/* Tick marks */}
@@ -149,11 +226,11 @@ export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
                 className="h-3 transition-all"
                 style={{
                   width: `${Math.max(100 / Math.max(totalBlocks, 1) - 1, 8)}%`,
-                  minWidth: "12px",
+                  minWidth: '12px',
                   backgroundColor: block.completed
-                    ? "var(--journal-sage)"
-                    : "var(--journal-warm)",
-                  borderRadius: "1px 3px 2px 4px",
+                    ? 'var(--journal-sage)'
+                    : 'var(--journal-warm)',
+                  borderRadius: '1px 3px 2px 4px',
                   opacity: block.completed ? 1 : 0.5,
                 }}
                 title={`${block.name}: ${block.progress}%`}

@@ -1,32 +1,41 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { X } from "lucide-react"
-import { SketchyDivider, DoodleStar } from "@/components/sketchy-elements"
-import type { BlockType, BlockColor, Block } from "@/lib/types"
-import { BLOCK_TYPE_LABELS, BLOCK_COLORS } from "@/lib/types"
+import { useState } from 'react'
+import { X } from 'lucide-react'
+import { SketchyDivider, DoodleStar } from '@/components/sketchy-elements'
+import type { BlockType, BlockColor, Block } from '@/db/types'
+import { BLOCK_TYPE_LABELS, BLOCK_COLORS } from '@/db/types'
 
 interface CreateBlockModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (block: Omit<Block, "id" | "completed" | "progress" | "createdAt" | "completedAt">) => void
+  onSubmit: (
+    block: Omit<
+      Block,
+      'id' | 'completed' | 'progress' | 'createdAt' | 'completedAt'
+    >,
+  ) => void
 }
 
-export function CreateBlockModal({ isOpen, onClose, onSubmit }: CreateBlockModalProps) {
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [type, setType] = useState<BlockType>("project")
-  const [endGoal, setEndGoal] = useState("")
-  const [color, setColor] = useState<BlockColor>("sage")
+export function CreateBlockModal({
+  isOpen,
+  onClose,
+  onSubmit,
+}: CreateBlockModalProps) {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [type, setType] = useState<BlockType>('project')
+  const [endGoal, setEndGoal] = useState('')
+  const [color, setColor] = useState<BlockColor>('sage')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
-    if (!name.trim()) newErrors.name = "Give your block a name!"
+    if (!name.trim()) newErrors.name = 'Give your block a name!'
     if (!description.trim()) newErrors.description = "What's this block about?"
-    if (!endGoal.trim()) newErrors.endGoal = "What are you aiming for?"
+    if (!endGoal.trim()) newErrors.endGoal = 'What are you aiming for?'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -35,18 +44,21 @@ export function CreateBlockModal({ isOpen, onClose, onSubmit }: CreateBlockModal
     e.preventDefault()
     if (validate()) {
       onSubmit({ name, description, type, endGoal, color })
-      setName("")
-      setDescription("")
-      setType("project")
-      setEndGoal("")
-      setColor("sage")
+      setName('')
+      setDescription('')
+      setType('project')
+      setEndGoal('')
+      setColor('sage')
       setErrors({})
       onClose()
     }
   }
 
   const blockTypes = Object.entries(BLOCK_TYPE_LABELS) as [BlockType, string][]
-  const blockColors = Object.entries(BLOCK_COLORS) as [BlockColor, { bg: string; text: string; label: string }][]
+  const blockColors = Object.entries(BLOCK_COLORS) as [
+    BlockColor,
+    { bg: string; text: string; label: string },
+  ][]
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -59,7 +71,7 @@ export function CreateBlockModal({ isOpen, onClose, onSubmit }: CreateBlockModal
       {/* Modal */}
       <div
         className="relative bg-[var(--journal-cream)] sketch-border w-full max-w-lg max-h-[90vh] overflow-y-auto animate-float-in"
-        style={{ transform: "rotate(-0.5deg)" }}
+        style={{ transform: 'rotate(-0.5deg)' }}
       >
         {/* Close button */}
         <button
@@ -96,7 +108,9 @@ export function CreateBlockModal({ isOpen, onClose, onSubmit }: CreateBlockModal
                 className="w-full bg-transparent border-b-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-xl py-2 px-1 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans"
               />
               {errors.name && (
-                <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">{errors.name}</p>
+                <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">
+                  {errors.name}
+                </p>
               )}
             </div>
 
@@ -111,10 +125,12 @@ export function CreateBlockModal({ isOpen, onClose, onSubmit }: CreateBlockModal
                 placeholder="What does this block involve?"
                 rows={3}
                 className="w-full bg-[var(--journal-paper)] border-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-lg py-2 px-3 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans resize-none paper-lines"
-                style={{ borderRadius: "3px 8px 5px 10px" }}
+                style={{ borderRadius: '3px 8px 5px 10px' }}
               />
               {errors.description && (
-                <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">{errors.description}</p>
+                <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">
+                  {errors.description}
+                </p>
               )}
             </div>
 
@@ -131,10 +147,10 @@ export function CreateBlockModal({ isOpen, onClose, onSubmit }: CreateBlockModal
                     onClick={() => setType(key)}
                     className={`px-3 py-1 text-base font-serif transition-all cursor-pointer ${
                       type === key
-                        ? "bg-[var(--journal-ink)] text-[var(--journal-paper)]"
-                        : "bg-[var(--journal-paper)] text-[var(--journal-ink)] border border-[var(--journal-warm)] hover:bg-[var(--journal-tan)]"
+                        ? 'bg-[var(--journal-ink)] text-[var(--journal-paper)]'
+                        : 'bg-[var(--journal-paper)] text-[var(--journal-ink)] border border-[var(--journal-warm)] hover:bg-[var(--journal-tan)]'
                     }`}
-                    style={{ borderRadius: "2px 6px 3px 7px" }}
+                    style={{ borderRadius: '2px 6px 3px 7px' }}
                   >
                     {label}
                   </button>
@@ -155,7 +171,9 @@ export function CreateBlockModal({ isOpen, onClose, onSubmit }: CreateBlockModal
                 className="w-full bg-transparent border-b-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-xl py-2 px-1 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans"
               />
               {errors.endGoal && (
-                <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">{errors.endGoal}</p>
+                <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">
+                  {errors.endGoal}
+                </p>
               )}
             </div>
 
@@ -171,17 +189,22 @@ export function CreateBlockModal({ isOpen, onClose, onSubmit }: CreateBlockModal
                     type="button"
                     onClick={() => setColor(key)}
                     className={`w-10 h-10 transition-all cursor-pointer relative ${
-                      color === key ? "scale-110 ring-2 ring-[var(--journal-ink)] ring-offset-2 ring-offset-[var(--journal-cream)]" : "hover:scale-105"
+                      color === key
+                        ? 'scale-110 ring-2 ring-[var(--journal-ink)] ring-offset-2 ring-offset-[var(--journal-cream)]'
+                        : 'hover:scale-105'
                     }`}
                     style={{
                       backgroundColor: bg,
-                      borderRadius: "3px 8px 5px 10px",
+                      borderRadius: '3px 8px 5px 10px',
                     }}
                     title={label}
                     aria-label={label}
                   >
                     {color === key && (
-                      <svg viewBox="0 0 20 20" className="absolute inset-0 m-auto w-5 h-5">
+                      <svg
+                        viewBox="0 0 20 20"
+                        className="absolute inset-0 m-auto w-5 h-5"
+                      >
                         <path
                           d="M4 10 L8 15 L16 4"
                           fill="none"
@@ -203,7 +226,7 @@ export function CreateBlockModal({ isOpen, onClose, onSubmit }: CreateBlockModal
             <button
               type="submit"
               className="w-full bg-[var(--journal-ink)] text-[var(--journal-paper)] text-xl py-3 font-serif hover:bg-[var(--journal-ink)]/90 active:translate-y-px transition-all cursor-pointer"
-              style={{ borderRadius: "3px 8px 5px 10px" }}
+              style={{ borderRadius: '3px 8px 5px 10px' }}
             >
               Add This Block
             </button>

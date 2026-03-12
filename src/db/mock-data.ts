@@ -1,4 +1,4 @@
-import type { BlockGroup } from '@/lib/types'
+import type { BlockGroup } from '@/db/types'
 import type { NewPage, NewPixel, NewGrid } from './schema'
 
 export const SAMPLE_USER_PAGE: NewPage = {
