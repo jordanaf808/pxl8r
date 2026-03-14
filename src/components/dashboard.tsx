@@ -10,11 +10,11 @@ import { CreateGroupModal } from '@/components/create-group-modal'
 import { StatsBar } from '@/components/stats-bar'
 import type { Block, BlockType, BlockGroup } from '@/db/types'
 import { BLOCK_TYPE_LABELS } from '@/db/types'
-import type { NewPixel, User } from '@/db/schema'
+import type { NewPixel, NewUser, User } from '@/db/schema'
 import { SAMPLE_BLOCKS, SAMPLE_GROUPS } from '@/db/mock-data'
 
 interface DashboardProps {
-  user: User
+  user: NewUser
   onLogout: () => void
 }
 

@@ -31,7 +31,7 @@ const seedPixels = createServerFn({
 }).handler(async () => {
   const formattedPixels = SAMPLE_BLOCKS.map((block) => {
     return {
-      ownerId: 'BYk0o5v4s2BF72DL6eQnDw0XwPRDiAQj',
+      ownerId: 'LH3WICh0kN6sRFaHJJfCqB2EqTDB0PoT',
       name: block.name,
       description: block.description,
       type: block.type,
@@ -55,11 +55,11 @@ function RouteComponent() {
       Seed Function
       <form
         action={async () => {
-          const seedGridsResponse = await seedGrids()
-          console.log('//// seedGridsResponse: ', seedGridsResponse)
+          const seedPageResponse = await seedPage()
+          console.log('//// seedPageResponse: ', seedPageResponse)
         }}
       >
-        <button type="submit">seedGrids</button>
+        <button type="submit">seedPage</button>
       </form>
     </div>
   )

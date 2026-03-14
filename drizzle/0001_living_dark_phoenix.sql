@@ -1,0 +1,2 @@
+ALTER TABLE "db_pxl8r_users" ALTER COLUMN "theme" SET DEFAULT 'journal'::"public"."theme";--> statement-breakpoint
+ALTER TABLE "db_pxl8r_users" ALTER COLUMN "theme" SET DATA TYPE "public"."theme" USING "theme"::"public"."theme";
