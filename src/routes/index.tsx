@@ -7,16 +7,20 @@ import {
   Waves,
   Sparkles,
 } from 'lucide-react'
-import { useSession } from '@/lib/auth/auth-client'
 import { LoginPage } from '@/components/login-page'
 import { Dashboard } from '@/components/dashboard'
 
 export const Route = createFileRoute('/')({
   component: App,
+  beforeLoad: ({ context: session }) => {
+    return session
+  },
 })
 
 function App() {
-  const { data: session } = useSession()
+  const { session } = Route.useRouteContext()
+  const user = session?.user
+  console.log('//// Homepage - context: ', session)
   const features = [
     {
       icon: <Zap className="w-12 h-12 text-cyan-400" />,
@@ -76,7 +80,7 @@ function App() {
             them down into smaller more manageable pieces and have fun
             completing them.
           </p>
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-4 mb-8">
             <a
               href="/demo"
               target="_blank"
@@ -85,11 +89,11 @@ function App() {
             >
               Try It Out
             </a>
-            {!session?.user && <LoginPage onLogin={() => {}} />}
+          </div>
+          <div className="flex flex-col items-center gap-4 bg-[var(--journal-cream)]/95">
+            {user && <LoginPage onLogin={() => {}} />}
 
-            {session?.user && (
-              <Dashboard user={session.user} onLogout={() => {}} />
-            )}
+            {user && <Dashboard user={user} onLogout={() => {}} />}
           </div>
         </div>
       </section>

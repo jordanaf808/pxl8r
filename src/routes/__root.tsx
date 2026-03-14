@@ -5,6 +5,7 @@ import NotFoundComponent from '@/components/NotFoundComponent'
 import Header from '../components/Header'
 
 import appCss from '../styles.css?url'
+import { getSession } from '@/lib/auth/auth.server'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -28,6 +29,10 @@ export const Route = createRootRoute({
     ],
   }),
   shellComponent: RootDocument,
+  beforeLoad: async () => {
+    const session = await getSession()
+    return { session }
+  },
   notFoundComponent: ({ data }) => {
     return <NotFoundComponent data={new Error('error', data!)} />
   },
