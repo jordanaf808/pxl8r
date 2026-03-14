@@ -114,7 +114,7 @@ export const createManyCellsSchema = z.object({
 })
 
 export type CreateCellInput = z.infer<typeof createCellSchema>
-export type CreateManyCellsInput = z.infer<typeof createManyCellsSchema>
+export type CreateCellsInput = z.infer<typeof createManyCellsSchema>
 
 export const bulkGridPixelSchema = z.object({
   pixelId: z.uuid(),

@@ -22,12 +22,7 @@ import {
   updateUserSchema,
 } from '@/db/types'
 import type { NewPage, NewGrid, NewPixel } from './schema'
-import type {
-  CellUpdateInput,
-  DBTransaction,
-  CreateManyCellsInput,
-  bulkGridPixelsInput,
-} from '@/db/types'
+import type { CreateCellsInput, bulkGridPixelsInput } from '@/db/types'
 import { authMiddleware } from '@/lib/auth/auth-middleware'
 
 export const MUTATIONS = {
@@ -86,27 +81,9 @@ export const MUTATIONS = {
           theme: data.theme,
         })
       }),
-    createCell: createServerFn({ method: 'POST' })
+    createCells: createServerFn({ method: 'POST' })
       .middleware([authMiddleware])
-      .inputValidator((data: CreateManyCellsInput) => data)
-      .handler(async ({ data, context }) => {
-        const { user } = context
-        const { ownerId, gridId, cells: cellsData } = data
-
-        if (!user.id) throw new Error('Not Logged In')
-        if (ownerId !== user.id) throw new Error('Not Grid Owner')
-
-        const values = cellsData.map((cell) => ({
-          ownerId: user.id,
-          gridId: gridId,
-          ...cell,
-        }))
-
-        return await db.insert(cells).values(values)
-      }),
-    createManyCells: createServerFn({ method: 'POST' })
-      .middleware([authMiddleware])
-      .inputValidator((data: CreateManyCellsInput) => data)
+      .inputValidator((data: CreateCellsInput) => data)
       .handler(async ({ data, context }) => {
         const { user } = context
         const { ownerId, gridId, cells: cellsData } = data
@@ -184,7 +161,7 @@ export const MUTATIONS = {
           sortOrder: pixel.sortOrder,
         }))
 
-        await db
+        const results = await db
           .insert(gridPixels)
           .values(values)
           .onConflictDoUpdate({
@@ -199,6 +176,12 @@ export const MUTATIONS = {
             pixelId: gridPixels.pixelId,
             sortOrder: gridPixels.sortOrder,
           })
+
+        return {
+          success: true,
+          processed: results.length,
+          results,
+        }
       }),
     bulkUpsertPageGrids: createServerFn({ method: 'POST' })
       .middleware([authMiddleware])
@@ -228,7 +211,7 @@ export const MUTATIONS = {
           })
           .returning({
             gridId: pageGrids.gridId,
-            pixelId: pageGrids.pageId,
+            pageId: pageGrids.pageId,
             sortOrder: pageGrids.sortOrder,
           })
 
@@ -249,72 +232,64 @@ export const MUTATIONS = {
 
         const { data, arrayOperations } = userData
 
-        // Perform update in transaction
-        const updatedUser = await db.transaction(async (trx) => {
-          // Build base update object
-          const updateData: Record<string, any> = {}
+        // Build base update object
+        const updateData: Record<string, any> = {}
 
-          // Handle simple fields
-          if (data.name !== undefined) updateData.name = data.name
-          if (data.image !== undefined) updateData.image = data.image
-          if (data.theme !== undefined) updateData.theme = data.theme
+        // Handle simple fields
+        if (data.name !== undefined) updateData.name = data.name
+        if (data.image !== undefined) updateData.image = data.image
+        if (data.theme !== undefined) updateData.theme = data.theme
 
-          // Handle array fields with operations
-          if (data.savedPixelIds !== undefined) {
-            updateData.savedPixelIds = buildArrayUpdate(
-              'saved_pixel_ids',
-              data.savedPixelIds,
-              arrayOperations?.savedPixelIds || 'add',
-              userId,
-            )
-          }
+        // Handle array fields with operations
+        if (data.savedPixelIds !== undefined) {
+          updateData.savedPixelIds = buildArrayUpdate(
+            'saved_pixel_ids',
+            data.savedPixelIds,
+            arrayOperations?.savedPixelIds || 'add',
+          )
+        }
 
-          if (data.savedGridIds !== undefined) {
-            updateData.savedGridIds = buildArrayUpdate(
-              'saved_grid_ids',
-              data.savedGridIds,
-              arrayOperations?.savedGridIds || 'add',
-              userId,
-            )
-          }
+        if (data.savedGridIds !== undefined) {
+          updateData.savedGridIds = buildArrayUpdate(
+            'saved_grid_ids',
+            data.savedGridIds,
+            arrayOperations?.savedGridIds || 'add',
+          )
+        }
 
-          if (data.savedTemplateIds !== undefined) {
-            updateData.savedTemplateIds = buildArrayUpdate(
-              'saved_template_ids',
-              data.savedTemplateIds,
-              arrayOperations?.savedTemplateIds || 'add',
-              userId,
-            )
-          }
+        if (data.savedTemplateIds !== undefined) {
+          updateData.savedTemplateIds = buildArrayUpdate(
+            'saved_template_ids',
+            data.savedTemplateIds,
+            arrayOperations?.savedTemplateIds || 'add',
+          )
+        }
 
-          // Only update if there's something to update
-          if (Object.keys(updateData).length === 0) {
-            throw new Error('No fields provided for update')
-          }
+        // Only update if there's something to update
+        if (Object.keys(updateData).length === 0) {
+          throw new Error('No fields provided for update')
+        }
 
-          // Execute update
-          const response = await trx
-            .update(users)
-            .set(updateData)
-            .where(eq(users.id, userId))
-            .returning({
-              id: users.id,
-              name: users.name,
-              email: users.email,
-              image: users.image,
-              theme: users.theme,
-              savedPixelIds: users.savedPixelIds,
-              savedGridIds: users.savedGridIds,
-              savedTemplateIds: users.savedTemplateIds,
-              updatedAt: users.updatedAt,
-            })
+        // Execute update
+        const response = await db
+          .update(users)
+          .set(updateData)
+          .where(eq(users.id, userId))
+          .returning({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            image: users.image,
+            theme: users.theme,
+            savedPixelIds: users.savedPixelIds,
+            savedGridIds: users.savedGridIds,
+            savedTemplateIds: users.savedTemplateIds,
+            updatedAt: users.updatedAt,
+          })
 
-          const [result] = response
+        const [result] = response
 
-          return result
-        })
-
-        return updatedUser
+        return result
       }),
 
     updateGrid: createServerFn({ method: 'POST' })
@@ -425,11 +400,20 @@ export const MUTATIONS = {
 
         const results = await db
           .update(pageGrids)
-          .set({
-            sortOrder: sortOrder,
-          })
+          .set({ sortOrder })
           .where(
-            and(eq(pageGrids.pageId, pageId), eq(pageGrids.gridId, gridId)),
+            and(
+              eq(pageGrids.pageId, pageId),
+              eq(pageGrids.gridId, gridId),
+              // Join to pages to verify ownership
+              inArray(
+                pageGrids.pageId,
+                db
+                  .select({ id: pages.id })
+                  .from(pages)
+                  .where(eq(pages.ownerId, user.id)),
+              ),
+            ),
           )
           .returning({
             pageId: pageGrids.pageId,
@@ -573,9 +557,39 @@ export const QUERIES = {
     .inputValidator((data: { userId: string }) => data)
     .handler(async ({ data, context }) => {
       const { user } = context
+      const { userId } = data
       if (!user.id) throw new Error('Not Logged In')
 
-      return await db.select().from(users).where(eq(users.id, user.id))
+      let returnValues = null
+      const publicValues = {
+        name: users.name,
+        image: users.image,
+        createdAt: users.createdAt,
+      }
+      const privateValues = {
+        id: users.id,
+        name: users.name,
+        image: users.image,
+        email: users.email,
+        emailVerified: users.emailVerified,
+        theme: users.theme,
+        savedPixelIds: users.savedPixelIds,
+        savedGridIds: users.savedGridIds,
+        savedTemplateIds: users.savedTemplateIds,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      }
+
+      if (user.id !== userId) {
+        returnValues = publicValues
+      } else {
+        returnValues = privateValues
+      }
+
+      return await db
+        .select(returnValues)
+        .from(users)
+        .where(eq(users.id, userId))
     }),
   getPagesByOwnerId: createServerFn()
     .middleware([authMiddleware])
@@ -659,27 +673,30 @@ function buildArrayUpdate(
   column: 'saved_pixel_ids' | 'saved_grid_ids' | 'saved_template_ids',
   values: string[],
   operation: 'set' | 'add' | 'remove',
-  userId: string,
 ): string[] | SQL<unknown> {
   if (operation === 'set') {
     // Replace entire array
     return values
   }
 
+  // ✅ Map to actual Drizzle column references
+  const colMap = {
+    saved_pixel_ids: users.savedPixelIds,
+    saved_grid_ids: users.savedGridIds,
+    saved_template_ids: users.savedTemplateIds,
+  } as const
+  const col = colMap[column]
+
   if (operation === 'add') {
     // Merge with existing (unique only)
     return sql`ARRAY(
-      SELECT DISTINCT unnest(array_cat(${sql.raw(column)}, ARRAY[${sql.join(values)}]))
-      FROM users 
-      WHERE id = ${userId}
+      SELECT DISTINCT unnest(array_cat(${col}, ARRAY[${sql.join(values)}]))
     )`
   }
 
   // Remove specific values
   return sql`ARRAY(
-    SELECT unnest(${sql.raw(column)}) 
-    FROM users 
-    WHERE id = ${userId}
+    SELECT unnest(${col})
     EXCEPT SELECT unnest(ARRAY[${sql.join(values)}])
   )`
 }

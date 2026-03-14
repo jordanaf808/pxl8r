@@ -59,7 +59,7 @@ export const scaleTypeEnum = pgEnum('scale_type', [
   'custom',
 ])
 
-export const themeEnum = pgEnum('theme', [
+export const themeTypeEnum = pgEnum('theme', [
   'journal', // default paper/bullet journal
   'matrix', // terminal green on black
   'knightrider', // red on black, retro 80s
@@ -82,7 +82,7 @@ export const users = pgTable('users', {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-  theme: text('theme').default('journal'),
+  theme: themeTypeEnum('theme').default('journal'),
   savedPixelIds: text('saved_pixel_ids')
     .array()
     .default(sql`ARRAY[]::text[]`),
@@ -194,7 +194,7 @@ export const pixels = pgTable(
     }),
     name: text('name').notNull(),
     description: text('description'),
-    type: pixelTypeEnum('type'),
+    type: text('type'), // more like a Category than type
     unit: unitTypeEnum('unit'), // unit to measure by
     endGoal: integer('end_goal'), // short label shown in key
     color: text('color').notNull(), // hex color string
@@ -213,6 +213,27 @@ export const pixels = pgTable(
       'progress_range',
       sql`${t.progress} >= 0 AND ${t.progress} <= 100`,
     ),
+  }),
+)
+
+// ─────────────────────────────────────────────
+// SAVED_PIXELS — User saved pixels
+// Junction table: user ↔ pixels
+// ─────────────────────────────────────────────
+export const savedPixels = pgTable(
+  'saved_pixels',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    pixelId: uuid('pixel_id')
+      .notNull()
+      .references(() => pixels.id, { onDelete: 'cascade' }),
+    savedAt: timestamp('saved_at').defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.pixelId] }),
+    userIdx: index('saved_pixels_user_idx').on(t.userId),
   }),
 )
 
@@ -243,7 +264,7 @@ export const grids = pgTable(
     scaleLabel: text('scale_label'), // e.g. "lbs", "miles", "%"
 
     // Theme override (inherits user theme if null)
-    theme: themeEnum('theme'),
+    theme: themeTypeEnum('theme'),
 
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
@@ -256,8 +277,29 @@ export const grids = pgTable(
 )
 
 // ─────────────────────────────────────────────
+// SAVED_GRIDS — User saved grids
+// Junction table: user ↔ grids
+// ─────────────────────────────────────────────
+export const savedGrids = pgTable(
+  'saved_grids',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    gridId: uuid('grid_id')
+      .notNull()
+      .references(() => grids.id, { onDelete: 'cascade' }),
+    savedAt: timestamp('saved_at').defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.gridId] }),
+    userIdx: index('saved_grids_user_idx').on(t.userId),
+  }),
+)
+
+// ─────────────────────────────────────────────
 // GRID_PIXELS — which pixel types belong to a grid (the legend/key)
-// Junction table: grids ↔ pixels
+// Junction table: grid ↔ pixels
 // ─────────────────────────────────────────────
 
 export const gridPixels = pgTable(
@@ -332,7 +374,7 @@ export const pages = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     isPublic: boolean('is_public').default(false),
-    theme: themeEnum('theme'),
+    theme: themeTypeEnum('theme'),
 
     // This is already being tracked in pageGrids junction-table
     // gridIds: uuid('grid_ids').array().default([]),
@@ -348,6 +390,10 @@ export const pages = pgTable(
   }),
 )
 
+// ─────────────────────────────────────────────
+// PAGE_GRIDS — Which grids belong to which table
+// Junction table: page ↔ grids
+// ─────────────────────────────────────────────
 export const pageGrids = pgTable(
   'page_grids',
   {
@@ -367,7 +413,6 @@ export const pageGrids = pgTable(
 // ─────────────────────────────────────────────
 // TEMPLATES — saveable grid configurations (no cell data)
 // ─────────────────────────────────────────────
-
 export const templates = pgTable(
   'templates',
   {
@@ -382,7 +427,7 @@ export const templates = pgTable(
     // Snapshot of grid config + pixel definitions (no cell data)
     config: jsonb('config').notNull(), // { columns, rows, scaleType, scaleUnit, pixels[] }
     tags: text('tags').array().default([]), // e.g. ["fitness", "work", "gaming"]
-    theme: themeEnum('theme'),
+    theme: themeTypeEnum('theme'),
 
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
@@ -392,6 +437,27 @@ export const templates = pgTable(
   },
   (t) => ({
     ownerIdx: index('templates_owner_idx').on(t.ownerId),
+  }),
+)
+
+// ─────────────────────────────────────────────
+// SAVED_TEMPLATES — User saved templates
+// Junction table: user ↔ templates
+// ─────────────────────────────────────────────
+export const savedTemplates = pgTable(
+  'saved_templates',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    templateId: uuid('template_id')
+      .notNull()
+      .references(() => templates.id, { onDelete: 'cascade' }),
+    savedAt: timestamp('saved_at').defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.templateId] }),
+    userIdx: index('saved_templates_user_idx').on(t.userId),
   }),
 )
 
