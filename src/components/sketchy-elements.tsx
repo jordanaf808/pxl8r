@@ -1,6 +1,4 @@
-"use client"
-
-export function SketchyDivider({ className = "" }: { className?: string }) {
+export function SketchyDivider({ className = '' }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 400 12"
@@ -21,16 +19,19 @@ export function SketchyDivider({ className = "" }: { className?: string }) {
 
 export function SketchyBox({
   children,
-  className = "",
-  variant = "default",
+  className = '',
+  variant = 'default',
 }: {
   children: React.ReactNode
   className?: string
-  variant?: "default" | "dashed" | "double"
+  variant?: 'default' | 'dashed' | 'double'
 }) {
   const svgBorder = {
     default: (
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        preserveAspectRatio="none"
+      >
         <rect
           x="2"
           y="2"
@@ -49,14 +50,22 @@ export function SketchyBox({
         />
         <defs>
           <filter id="sketchy">
-            <feTurbulence type="turbulence" baseFrequency="0.03" numOctaves="4" seed="2" />
+            <feTurbulence
+              type="turbulence"
+              baseFrequency="0.03"
+              numOctaves="4"
+              seed="2"
+            />
             <feDisplacementMap in="SourceGraphic" scale="1.5" />
           </filter>
         </defs>
       </svg>
     ),
     dashed: (
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        preserveAspectRatio="none"
+      >
         <rect
           x="2"
           y="2"
@@ -74,7 +83,10 @@ export function SketchyBox({
     ),
     double: (
       <>
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          preserveAspectRatio="none"
+        >
           <rect
             x="4"
             y="4"
@@ -110,8 +122,14 @@ export function SketchyBox({
   )
 }
 
-export function SketchyArrow({ direction = "right", className = "" }: { direction?: "right" | "down"; className?: string }) {
-  if (direction === "down") {
+export function SketchyArrow({
+  direction = 'right',
+  className = '',
+}: {
+  direction?: 'right' | 'down'
+  className?: string
+}) {
+  if (direction === 'down') {
     return (
       <svg viewBox="0 0 20 30" className={`w-5 h-8 ${className}`}>
         <path
@@ -139,7 +157,13 @@ export function SketchyArrow({ direction = "right", className = "" }: { directio
   )
 }
 
-export function DoodleStar({ className = "", size = 24 }: { className?: string; size?: number }) {
+export function DoodleStar({
+  className = '',
+  size = 24,
+}: {
+  className?: string
+  size?: number
+}) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} className={className}>
       <path
@@ -154,7 +178,13 @@ export function DoodleStar({ className = "", size = 24 }: { className?: string; 
   )
 }
 
-export function DoodleCircle({ className = "", size = 24 }: { className?: string; size?: number }) {
+export function DoodleCircle({
+  className = '',
+  size = 24,
+}: {
+  className?: string
+  size?: number
+}) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} className={className}>
       <path
@@ -168,7 +198,13 @@ export function DoodleCircle({ className = "", size = 24 }: { className?: string
   )
 }
 
-export function DoodleCheckmark({ className = "", size = 20 }: { className?: string; size?: number }) {
+export function DoodleCheckmark({
+  className = '',
+  size = 20,
+}: {
+  className?: string
+  size?: number
+}) {
   return (
     <svg viewBox="0 0 20 20" width={size} height={size} className={className}>
       <path
@@ -183,7 +219,11 @@ export function DoodleCheckmark({ className = "", size = 20 }: { className?: str
   )
 }
 
-export function PaperClipDecoration({ className = "" }: { className?: string }) {
+export function PaperClipDecoration({
+  className = '',
+}: {
+  className?: string
+}) {
   return (
     <svg viewBox="0 0 20 40" width={20} height={40} className={className}>
       <path

@@ -1,34 +1,51 @@
-"use client"
+import { useState } from 'react'
+import {
+  SketchyDivider,
+  DoodleStar,
+  DoodleCircle,
+  PaperClipDecoration,
+} from '@/components/sketchy-elements'
 
-import { useState } from "react"
-import { SketchyDivider, DoodleStar, DoodleCircle, PaperClipDecoration } from "@/components/sketchy-elements"
+// Import SignIn and SignUp functions from BetterAuth
+import { signIn, signOut, signUp } from '@/lib/auth/auth-client'
 
 interface LoginPageProps {
   onLogin: (name: string, email: string) => void
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({})
+  const [errors, setErrors] = useState<{
+    name?: string
+    email?: string
+    password?: string
+  }>({})
 
   const validate = () => {
     const newErrors: typeof errors = {}
-    if (isSignUp && !name.trim()) newErrors.name = "What should we call you?"
-    if (!email.trim()) newErrors.email = "We need your email!"
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = "That doesn't look like an email..."
+    if (isSignUp && !name.trim()) newErrors.name = 'What should we call you?'
+    if (!email.trim()) newErrors.email = 'We need your email!'
+    else if (!/\S+@\S+\.\S+/.test(email))
+      newErrors.email = "That doesn't look like an email..."
     if (!password.trim()) newErrors.password = "Don't forget your password!"
-    else if (password.length < 6) newErrors.password = "At least 6 characters, please!"
+    else if (password.length < 6)
+      newErrors.password = 'At least 6 characters, please!'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    console.log('//// handleSubmit - email: ', email, 'password: ', password)
+
     if (validate()) {
-      onLogin(name || "Journal Keeper", email)
+      // onLogin(name || 'Journal Keeper', email)
+      const result = await signIn.email({ email, password, callbackURL: '/' })
+      console.log('//// signIn result: ', result)
     }
   }
 
@@ -82,10 +99,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 onClick={() => setIsSignUp(false)}
                 className={`px-5 py-1.5 text-lg font-serif transition-all ${
                   !isSignUp
-                    ? "bg-[var(--journal-ink)] text-[var(--journal-paper)]"
-                    : "text-[var(--journal-ink)] hover:bg-[var(--journal-tan)] hover:bg-opacity-50"
+                    ? 'bg-[var(--journal-ink)] text-[var(--journal-paper)]'
+                    : 'text-[var(--journal-ink)] hover:bg-[var(--journal-tan)] hover:bg-opacity-50'
                 }`}
-                style={{ borderRadius: "2px 6px 4px 8px" }}
+                style={{ borderRadius: '2px 6px 4px 8px' }}
               >
                 Sign In
               </button>
@@ -94,10 +111,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 onClick={() => setIsSignUp(true)}
                 className={`px-5 py-1.5 text-lg font-serif transition-all ${
                   isSignUp
-                    ? "bg-[var(--journal-ink)] text-[var(--journal-paper)]"
-                    : "text-[var(--journal-ink)] hover:bg-[var(--journal-tan)] hover:bg-opacity-50"
+                    ? 'bg-[var(--journal-ink)] text-[var(--journal-paper)]'
+                    : 'text-[var(--journal-ink)] hover:bg-[var(--journal-tan)] hover:bg-opacity-50'
                 }`}
-                style={{ borderRadius: "2px 6px 4px 8px" }}
+                style={{ borderRadius: '2px 6px 4px 8px' }}
               >
                 Sign Up
               </button>
@@ -119,7 +136,9 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   className="w-full bg-transparent border-b-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-xl py-2 px-1 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans"
                 />
                 {errors.name && (
-                  <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">{errors.name}</p>
+                  <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">
+                    {errors.name}
+                  </p>
                 )}
               </div>
             )}
@@ -136,7 +155,9 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 className="w-full bg-transparent border-b-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-xl py-2 px-1 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans"
               />
               {errors.email && (
-                <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">{errors.email}</p>
+                <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">
+                  {errors.email}
+                </p>
               )}
             </div>
 
@@ -152,16 +173,18 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 className="w-full bg-transparent border-b-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-xl py-2 px-1 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans"
               />
               {errors.password && (
-                <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">{errors.password}</p>
+                <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">
+                  {errors.password}
+                </p>
               )}
             </div>
 
             <button
               type="submit"
               className="w-full mt-4 bg-[var(--journal-ink)] text-[var(--journal-paper)] text-xl py-3 font-serif hover:bg-[var(--journal-ink)]/90 active:translate-y-px transition-all cursor-pointer"
-              style={{ borderRadius: "3px 8px 5px 10px" }}
+              style={{ borderRadius: '3px 8px 5px 10px' }}
             >
-              {isSignUp ? "Start My Journal" : "Open My Journal"}
+              {isSignUp ? 'Start My Journal' : 'Open My Journal'}
             </button>
           </form>
 
@@ -170,10 +193,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <SketchyDivider className="text-[var(--journal-warm)] mb-3" />
             <button
               type="button"
-              onClick={() => onLogin("Guest", "guest@blockjournal.app")}
+              onClick={() => onLogin('Guest', 'guest@blockjournal.app')}
               className="text-base text-[var(--journal-ink)] opacity-40 hover:opacity-70 transition-opacity font-serif underline decoration-wavy decoration-[var(--journal-warm)] underline-offset-4 cursor-pointer"
             >
-              {"or skip ahead ~ preview as guest"}
+              {'or skip ahead ~ preview as guest'}
             </button>
           </div>
         </div>

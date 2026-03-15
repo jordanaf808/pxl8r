@@ -1,7 +1,7 @@
 import {
   pixelTypeEnum,
   scaleTypeEnum,
-  themeEnum,
+  themeTypeEnum,
   unitTypeEnum,
 } from '@/db/schema'
 import type * as schema from './schema'
@@ -139,7 +139,7 @@ export type bulkGridPixelsInput = z.infer<typeof bulkGridPixelsSchema>
 export const updatableUserFields = z.object({
   name: z.string().max(66).optional(),
   image: z.url().max(500).nullable().optional(), // avatar
-  theme: z.enum(themeEnum.enumValues).optional(),
+  theme: z.enum(themeTypeEnum.enumValues).optional(),
 
   // Array operations - we'll handle these separately
   savedPixelIds: z.array(z.uuid()).optional(),
@@ -171,7 +171,7 @@ export const updatePageSchema = z.object({
   ownerId: z.uuid(),
   name: z.string().max(66).optional(),
   description: z.string().max(666).optional(),
-  theme: z.enum(themeEnum.enumValues).optional(),
+  theme: z.enum(themeTypeEnum.enumValues).optional(),
   isPublic: z.boolean().optional(),
   // gridIds: z.array(z.uuid()).optional(),
 })
@@ -189,7 +189,7 @@ export const updateGridSchema = z.object({
   scaleStart: z.int().max(10000).optional(),
   scaleEnd: z.int().max(10000).optional(),
   scaleLabel: z.string().max(66).optional(),
-  theme: z.enum(themeEnum.enumValues).optional(),
+  theme: z.enum(themeTypeEnum.enumValues).optional(),
 })
 
 export const updatePageGridSchema = z.object({

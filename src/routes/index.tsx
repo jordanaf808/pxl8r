@@ -91,7 +91,7 @@ function App() {
             </a>
           </div>
           <div className="flex flex-col items-center gap-4 bg-[var(--journal-cream)]/95">
-            {user && <LoginPage onLogin={() => {}} />}
+            {!user && <LoginPage onLogin={() => {}} />}
 
             {user && <Dashboard user={user} onLogout={() => {}} />}
           </div>
