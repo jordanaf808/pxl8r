@@ -12,15 +12,16 @@ import { Dashboard } from '@/components/dashboard'
 
 export const Route = createFileRoute('/')({
   component: App,
-  beforeLoad: ({ context: session }) => {
-    return session
+  beforeLoad: () => {
+    // if (!context) return console.log('//// homepage - session does not exist')
+    // return context
   },
 })
 
 function App() {
-  const { session } = Route.useRouteContext()
-  const user = session?.user
-  console.log('//// Homepage - context: ', session)
+  // const { session } = Route.useRouteContext()
+  // const user = session?.user
+  // console.log('//// Homepage - context: ', session)
   const features = [
     {
       icon: <Zap className="w-12 h-12 text-cyan-400" />,
@@ -91,9 +92,9 @@ function App() {
             </a>
           </div>
           <div className="flex flex-col items-center gap-4 bg-[var(--journal-cream)]/95">
-            {!user && <LoginPage onLogin={() => {}} />}
+            {/* {!user && <LoginPage onLogin={() => {}} />}
 
-            {user && <Dashboard user={user} onLogout={() => {}} />}
+            {user && <Dashboard user={user} onLogout={() => {}} />} */}
           </div>
         </div>
       </section>

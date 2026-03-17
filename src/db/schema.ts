@@ -465,7 +465,7 @@ export const savedTemplates = pgTable(
 // RELATIONS
 // ─────────────────────────────────────────────
 
-export const userRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   grids: many(grids),

@@ -44,8 +44,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
     if (validate()) {
       // onLogin(name || 'Journal Keeper', email)
-      const result = await signIn.email({ email, password, callbackURL: '/' })
-      console.log('//// signIn result: ', result)
+      // const result = await signIn.email({ email, password, callbackURL: '/' })
+      // console.log('//// signIn result: ', result)
     }
   }
 

@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { and, eq, inArray, sql } from 'drizzle-orm'
-import type { SQL } from 'drizzle-orm'
+import { authMiddleware } from '@/lib/auth/auth-middleware'
 import { db } from '.'
 import {
   users,
@@ -21,9 +21,13 @@ import {
   updatePixelSchema,
   updateUserSchema,
 } from '@/db/types'
+import type { SQL } from 'drizzle-orm'
 import type { NewPage, NewGrid, NewPixel } from './schema'
 import type { CreateCellsInput, bulkGridPixelsInput } from '@/db/types'
-import { authMiddleware } from '@/lib/auth/auth-middleware'
+
+/**
+ * CREATE
+ */
 
 export const createPage = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
@@ -40,6 +44,7 @@ export const createPage = createServerFn({ method: 'POST' })
       theme: data.theme,
     })
   })
+
 export const createPixel = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: NewPixel) => data)
@@ -54,6 +59,7 @@ export const createPixel = createServerFn({ method: 'POST' })
 
     return await db.insert(pixels).values(values)
   })
+
 export const createGrid = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: NewGrid) => data)
@@ -79,6 +85,7 @@ export const createGrid = createServerFn({ method: 'POST' })
       theme: data.theme,
     })
   })
+
 export const createCells = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: CreateCellsInput) => data)
@@ -143,6 +150,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
       results,
     }
   })
+
 export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: bulkGridPixelsInput) => data)
@@ -181,6 +189,7 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
       results,
     }
   })
+
 export const bulkUpsertPageGrids = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(updatePageGridsSchema)
@@ -218,6 +227,10 @@ export const bulkUpsertPageGrids = createServerFn({ method: 'POST' })
       results: results,
     }
   })
+
+/**
+ * UPDATE
+ */
 
 export const updateUser = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
@@ -321,6 +334,7 @@ export const updateGrid = createServerFn({ method: 'POST' })
       results: results,
     }
   })
+
 export const updatePixel = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(updatePixelSchema)
@@ -354,6 +368,7 @@ export const updatePixel = createServerFn({ method: 'POST' })
       results: results,
     }
   })
+
 export const updatePage = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(updatePageSchema)
@@ -385,6 +400,7 @@ export const updatePage = createServerFn({ method: 'POST' })
       results: results,
     }
   })
+
 export const updatePageGridSort = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(updatePageGridSchema)
@@ -466,6 +482,10 @@ export const updateCell = createServerFn({ method: 'POST' })
     }
   })
 
+/**
+ * DELETE
+ */
+
 export const deletePageById = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: { pageId: string }) => data)
@@ -477,6 +497,7 @@ export const deletePageById = createServerFn({ method: 'POST' })
       .delete(pages)
       .where(and(eq(pages.id, data.pageId), eq(pages.ownerId, user.id)))
   })
+
 export const deleteGridById = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: { gridId: string }) => data)
@@ -488,6 +509,7 @@ export const deleteGridById = createServerFn({ method: 'POST' })
       .delete(grids)
       .where(and(eq(grids.id, data.gridId), eq(grids.ownerId, user.id)))
   })
+
 export const deleteManyCellsById = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: { cellIds: string[] }) => data)
@@ -499,6 +521,7 @@ export const deleteManyCellsById = createServerFn({ method: 'POST' })
       .delete(cells)
       .where(and(inArray(cells.id, data.cellIds), eq(cells.ownerId, user.id)))
   })
+
 export const deletePixelById = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: { pixelId: string }) => data)
@@ -511,6 +534,7 @@ export const deletePixelById = createServerFn({ method: 'POST' })
       .where(and(eq(pixels.id, data.pixelId), eq(pixels.ownerId, user.id)))
       .returning()
   })
+
 export const deleteGridsFromPage = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: { pageId: string; gridIds: string[] }) => data)

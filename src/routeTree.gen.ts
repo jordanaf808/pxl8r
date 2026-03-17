@@ -13,7 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SandboxIndexRouteImport } from './routes/sandbox/index'
 import { Route as DemoDrizzleRouteImport } from './routes/demo/drizzle'
 import { Route as DemoBetterAuthRouteImport } from './routes/demo/better-auth'
-import { Route as AuthLoginIndexRouteImport } from './routes/auth/login/index'
+import { Route as AuthLoginIndexRouteImport } from './routes/_auth/login/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -37,8 +37,8 @@ const DemoBetterAuthRoute = DemoBetterAuthRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthLoginIndexRoute = AuthLoginIndexRouteImport.update({
-  id: '/auth/login/',
-  path: '/auth/login/',
+  id: '/_auth/login/',
+  path: '/login/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -53,7 +53,7 @@ export interface FileRoutesByFullPath {
   '/demo/drizzle': typeof DemoDrizzleRoute
   '/sandbox/': typeof SandboxIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/auth/login/': typeof AuthLoginIndexRoute
+  '/login/': typeof AuthLoginIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,7 +61,7 @@ export interface FileRoutesByTo {
   '/demo/drizzle': typeof DemoDrizzleRoute
   '/sandbox': typeof SandboxIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/auth/login': typeof AuthLoginIndexRoute
+  '/login': typeof AuthLoginIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,7 +70,7 @@ export interface FileRoutesById {
   '/demo/drizzle': typeof DemoDrizzleRoute
   '/sandbox/': typeof SandboxIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/auth/login/': typeof AuthLoginIndexRoute
+  '/_auth/login/': typeof AuthLoginIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -80,7 +80,7 @@ export interface FileRouteTypes {
     | '/demo/drizzle'
     | '/sandbox/'
     | '/api/auth/$'
-    | '/auth/login/'
+    | '/login/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -88,7 +88,7 @@ export interface FileRouteTypes {
     | '/demo/drizzle'
     | '/sandbox'
     | '/api/auth/$'
-    | '/auth/login'
+    | '/login'
   id:
     | '__root__'
     | '/'
@@ -96,7 +96,7 @@ export interface FileRouteTypes {
     | '/demo/drizzle'
     | '/sandbox/'
     | '/api/auth/$'
-    | '/auth/login/'
+    | '/_auth/login/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -138,10 +138,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoBetterAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/login/': {
-      id: '/auth/login/'
-      path: '/auth/login'
-      fullPath: '/auth/login/'
+    '/_auth/login/': {
+      id: '/_auth/login/'
+      path: '/login'
+      fullPath: '/login/'
       preLoaderRoute: typeof AuthLoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }

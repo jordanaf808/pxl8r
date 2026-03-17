@@ -1,11 +1,11 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
-import NotFoundComponent from '@/components/NotFoundComponent'
+// import NotFoundComponent from '@/components/NotFoundComponent'
 import Header from '../components/Header'
+import { getSession } from '@/lib/auth/auth.server'
 
 import appCss from '../styles.css?url'
-import { getSession } from '@/lib/auth/auth.server'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -30,12 +30,14 @@ export const Route = createRootRoute({
   }),
   shellComponent: RootDocument,
   beforeLoad: async () => {
-    const session = await getSession()
-    return { session }
+    // const session = await getSession()
+    // console.log('root - beforeLoad: session', session)
+    // if (!session) console.log('no session')
+    // return { session }
   },
-  notFoundComponent: ({ data }) => {
-    return <NotFoundComponent data={new Error('error', data!)} />
-  },
+  // notFoundComponent: ({ data }) => {
+  //   return <NotFoundComponent data={new Error('error', data!)} />
+  // },
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
