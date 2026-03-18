@@ -30,10 +30,10 @@ export const Route = createRootRoute({
   }),
   shellComponent: RootDocument,
   beforeLoad: async () => {
-    // const session = await getSession()
-    // console.log('root - beforeLoad: session', session)
-    // if (!session) console.log('no session')
-    // return { session }
+    const session = await getSession()
+    console.log('root - beforeLoad: session.user.id', session?.user.id)
+    if (!session) console.log('no session')
+    return { session }
   },
   // notFoundComponent: ({ data }) => {
   //   return <NotFoundComponent data={new Error('error', data!)} />

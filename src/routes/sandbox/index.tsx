@@ -31,7 +31,7 @@ const seedPixels = createServerFn({
 }).handler(async () => {
   const formattedPixels = SAMPLE_BLOCKS.map((block) => {
     return {
-      ownerId: 'LH3WICh0kN6sRFaHJJfCqB2EqTDB0PoT',
+      ownerId: 'hT4sq8Ud0i0N4lcBAI8SAIAulkewCyXr',
       name: block.name,
       description: block.description,
       type: block.type,

@@ -14,7 +14,13 @@ export function getRouter() {
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
     defaultNotFoundComponent: ({ data }) => {
-      return <NotFoundComponent data={new Error('default error', data!)} />
+      return (
+        <div className="flex items-start justify-center h-screen w-screen p-4">
+          <div className="min-h-16 min-w-1/2">
+            <NotFoundComponent data={new Error('default error', data!)} />
+          </div>
+        </div>
+      )
     },
     defaultErrorComponent: PostError,
   })
@@ -28,7 +34,13 @@ function PostError({ error, reset }: ErrorComponentProps) {
   } else {
     console.error('[CLIENT ERROR] - ErrorComponent:', error)
   }
-  return <ErrorComponent error={error} />
+  return (
+    <div className="flex items-start justify-center h-screen w-screen p-4">
+      <div className="min-h-16 min-w-1/2">
+        <ErrorComponent error={error} />
+      </div>
+    </div>
+  )
 }
 
 declare module '@tanstack/react-router' {

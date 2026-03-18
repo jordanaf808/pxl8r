@@ -11,9 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SandboxIndexRouteImport } from './routes/sandbox/index'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DemoDrizzleRouteImport } from './routes/demo/drizzle'
 import { Route as DemoBetterAuthRouteImport } from './routes/demo/better-auth'
-import { Route as AuthLoginIndexRouteImport } from './routes/_auth/login/index'
+import { Route as authLoginRouteImport } from './routes/(auth)/login'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -26,6 +27,11 @@ const SandboxIndexRoute = SandboxIndexRouteImport.update({
   path: '/sandbox/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/dashboard/',
+  path: '/dashboard/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoDrizzleRoute = DemoDrizzleRouteImport.update({
   id: '/demo/drizzle',
   path: '/demo/drizzle',
@@ -36,9 +42,9 @@ const DemoBetterAuthRoute = DemoBetterAuthRouteImport.update({
   path: '/demo/better-auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthLoginIndexRoute = AuthLoginIndexRouteImport.update({
-  id: '/_auth/login/',
-  path: '/login/',
+const authLoginRoute = authLoginRouteImport.update({
+  id: '/(auth)/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -49,63 +55,70 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof authLoginRoute
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/drizzle': typeof DemoDrizzleRoute
+  '/dashboard/': typeof DashboardIndexRoute
   '/sandbox/': typeof SandboxIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/login/': typeof AuthLoginIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof authLoginRoute
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/drizzle': typeof DemoDrizzleRoute
+  '/dashboard': typeof DashboardIndexRoute
   '/sandbox': typeof SandboxIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/login': typeof AuthLoginIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/(auth)/login': typeof authLoginRoute
   '/demo/better-auth': typeof DemoBetterAuthRoute
   '/demo/drizzle': typeof DemoDrizzleRoute
+  '/dashboard/': typeof DashboardIndexRoute
   '/sandbox/': typeof SandboxIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/_auth/login/': typeof AuthLoginIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
     | '/demo/better-auth'
     | '/demo/drizzle'
+    | '/dashboard/'
     | '/sandbox/'
     | '/api/auth/$'
-    | '/login/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/demo/better-auth'
     | '/demo/drizzle'
+    | '/dashboard'
     | '/sandbox'
     | '/api/auth/$'
-    | '/login'
   id:
     | '__root__'
     | '/'
+    | '/(auth)/login'
     | '/demo/better-auth'
     | '/demo/drizzle'
+    | '/dashboard/'
     | '/sandbox/'
     | '/api/auth/$'
-    | '/_auth/login/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  authLoginRoute: typeof authLoginRoute
   DemoBetterAuthRoute: typeof DemoBetterAuthRoute
   DemoDrizzleRoute: typeof DemoDrizzleRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
   SandboxIndexRoute: typeof SandboxIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  AuthLoginIndexRoute: typeof AuthLoginIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -124,6 +137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SandboxIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/dashboard'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/demo/drizzle': {
       id: '/demo/drizzle'
       path: '/demo/drizzle'
@@ -138,11 +158,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoBetterAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth/login/': {
-      id: '/_auth/login/'
+    '/(auth)/login': {
+      id: '/(auth)/login'
       path: '/login'
-      fullPath: '/login/'
-      preLoaderRoute: typeof AuthLoginIndexRouteImport
+      fullPath: '/login'
+      preLoaderRoute: typeof authLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -157,11 +177,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  authLoginRoute: authLoginRoute,
   DemoBetterAuthRoute: DemoBetterAuthRoute,
   DemoDrizzleRoute: DemoDrizzleRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
   SandboxIndexRoute: SandboxIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  AuthLoginIndexRoute: AuthLoginIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

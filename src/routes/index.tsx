@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
   Zap,
   Server,
@@ -8,20 +8,16 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { LoginPage } from '@/components/login-page'
-import { Dashboard } from '@/components/dashboard'
 
 export const Route = createFileRoute('/')({
   component: App,
-  beforeLoad: () => {
-    // if (!context) return console.log('//// homepage - session does not exist')
-    // return context
+  beforeLoad: ({ context }) => {
+    console.log('//// homepage - session does not exist')
+    if (context.session?.user) throw redirect({ to: '/dashboard' })
   },
 })
 
 function App() {
-  // const { session } = Route.useRouteContext()
-  // const user = session?.user
-  // console.log('//// Homepage - context: ', session)
   const features = [
     {
       icon: <Zap className="w-12 h-12 text-cyan-400" />,
@@ -92,9 +88,7 @@ function App() {
             </a>
           </div>
           <div className="flex flex-col items-center gap-4 bg-[var(--journal-cream)]/95">
-            {/* {!user && <LoginPage onLogin={() => {}} />}
-
-            {user && <Dashboard user={user} onLogout={() => {}} />} */}
+            <LoginPage onLogin={() => {}} />
           </div>
         </div>
       </section>

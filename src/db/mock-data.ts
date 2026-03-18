@@ -4,7 +4,7 @@ import type { NewPage, NewPixel, NewGrid } from './schema'
 export const SAMPLE_USER_PAGE: NewPage = {
   name: 'Jordan',
   description: "Jordan's Page",
-  ownerId: 'LH3WICh0kN6sRFaHJJfCqB2EqTDB0PoT',
+  ownerId: 'hT4sq8Ud0i0N4lcBAI8SAIAulkewCyXr',
   isPublic: true,
   theme: 'journal',
 }
@@ -12,7 +12,7 @@ export const SAMPLE_USER_PAGE: NewPage = {
 export const SAMPLE_Grid: NewGrid = {
   name: "Jordan's Completed Pixels",
   description: 'All of my completed Pixels',
-  ownerId: 'LH3WICh0kN6sRFaHJJfCqB2EqTDB0PoT',
+  ownerId: 'hT4sq8Ud0i0N4lcBAI8SAIAulkewCyXr',
   isPublic: true,
   theme: 'journal',
 }

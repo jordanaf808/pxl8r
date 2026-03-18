@@ -2,7 +2,6 @@ import { db } from '@/db'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
-// import { customSession } from 'better-auth/plugins'
 import {
   users,
   account,
@@ -26,12 +25,12 @@ const auth = betterAuth({
       sessionRelations,
     },
   }),
-  // session: {
-  //   cookieCache: {
-  //     enabled: true,
-  //     maxAge: 60 * 5, // 5min
-  //   },
-  // },
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 1, // 1min
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },
