@@ -102,7 +102,7 @@ export const SAMPLE_GROUPS: BlockGroup[] = [
     name: 'Fitness Journey',
     description: 'All my workout and fitness-related goals bundled together.',
     color: 'rust',
-    blockIds: ['1', '6'],
+    pixelIds: ['1', '6'],
     createdAt: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ]

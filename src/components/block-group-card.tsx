@@ -71,7 +71,7 @@ export function BlockGroupCard({
   const [isHovered, setIsHovered] = useState(false)
   const colorInfo = BLOCK_COLORS[group.color]
 
-  const childBlocks = blocks.filter((b) => group.blockIds.includes(b.id))
+  const childBlocks = blocks.filter((b) => group.pixelIds.includes(b.id))
   const totalProgress =
     childBlocks.length > 0
       ? Math.round(

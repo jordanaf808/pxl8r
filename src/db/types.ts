@@ -42,7 +42,7 @@ export interface BlockGroup {
   name: string
   description: string
   color: BlockColor
-  blockIds: string[]
+  pixelIds: string[]
   createdAt: string
 }
 
@@ -220,7 +220,6 @@ export const updatePageGridsSchema = z.object({
 
 export const updatePixelSchema = z.object({
   id: z.uuid(),
-  ownerId: z.uuid(),
   name: z.string().max(66).optional(),
   description: z.string().max(333).optional(),
   type: z.enum(pixelTypeEnum.enumValues).optional(),
@@ -233,6 +232,9 @@ export const updatePixelSchema = z.object({
   completed: z.boolean().optional(),
   progress: z.int().max(100).optional(),
 })
+
+// extract the inferred type
+export type UpdatePixelType = z.infer<typeof updatePixelSchema>
 
 // BulkUpsert Cells Types
 // Define which columns can be bulk-updated

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, LogOut, Search, Layers } from 'lucide-react'
 import { SketchyDivider, DoodleStar } from '@/components/sketchy-elements'
 import { BlockCard } from '@/components/block-card'
@@ -10,16 +10,28 @@ import { CreateGroupModal } from '@/components/create-group-modal'
 import { StatsBar } from '@/components/stats-bar'
 import type { Block, BlockType, BlockGroup } from '@/db/types'
 import { BLOCK_TYPE_LABELS } from '@/db/types'
-import type { NewPixel, NewUser, User } from '@/db/schema'
+import type { NewPixel, Pixel, NewUser, User, Grid, Page } from '@/db/schema'
 import { SAMPLE_BLOCKS, SAMPLE_GROUPS } from '@/db/mock-data'
+import {
+  createPixel as createPixelServerFn,
+  updatePixel as updatePixelServerFn,
+} from '@/db/mutations.server'
+import { useServerFn } from '@tanstack/react-start'
 
 interface DashboardProps {
   user: NewUser
+  userData: {
+    pixels: Pixel[]
+    grids: Grid[]
+    pages: Page[]
+  }
   onLogout: () => void
 }
 
-export function Dashboard({ user, onLogout }: DashboardProps) {
-  const [blocks, setBlocks] = useState<NewPixel[]>(SAMPLE_BLOCKS)
+export function Dashboard({ user, userData, onLogout }: DashboardProps) {
+  const createPixel = useServerFn(createPixelServerFn)
+  const updatePixel = useServerFn(updatePixelServerFn)
+  const [pixels, setPixels] = useState<Pixel[]>([])
   const [groups, setGroups] = useState<BlockGroup[]>(SAMPLE_GROUPS)
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false)
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
@@ -27,61 +39,73 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<BlockType | 'all'>('all')
 
+  useEffect(() => {
+    setPixels(userData.pixels)
+  }, [])
+
   // ---- Block CRUD ----
-  const addBlock = (
-    blockData: Omit<
-      NewPixel,
-      'id' | 'completed' | 'progress' | 'createdAt' | 'completedAt'
-    >,
+  const createPixelHandler = async (
+    // pixelData: Omit<NewPixel, 'id' | 'ownerId' | 'completed' | 'progress' | 'createdAt' | 'updatedAt'>,
+    pixelData: NewPixel,
   ) => {
-    const newBlock: NewPixel = {
-      ...blockData,
-      id: Date.now().toString(),
-      completed: false,
-      progress: 0,
-      createdAt: new Date(),
-    }
-    setBlocks((prev) => [newBlock, ...prev])
+    // could maybe have some loading animation that shows building the pixel in, like 3 stages.
+    const createdPixel = await createPixel({ data: pixelData })
+    console.log('//// createPixel response: ', createdPixel)
+    if (createdPixel.length < 1)
+      throw new Error('Error creating pixel: ', { cause: createdPixel })
+    // const newPixel: NewPixel = {
+    //   ...pixelData,
+    // }
+    setPixels((prev) => [...createdPixel, ...prev])
+
+    console.log('//// createPixel - pixels set')
   }
 
-  const toggleComplete = (id: string) => {
-    setBlocks((prev) =>
-      prev.map((b) =>
-        b.id === id
-          ? {
-              ...b,
-              completed: !b.completed,
-              progress: !b.completed ? 100 : b.progress,
-              completedAt: !b.completed ? new Date().toISOString() : undefined,
-            }
-          : b,
-      ),
+  const toggleComplete = async (id: string) => {
+    let updatedPixel
+    setPixels((prev) =>
+      prev.map((p) => {
+        if (p.id === id) {
+          updatedPixel = {
+            ...p,
+            completed: !p.completed,
+            progress: !p.completed ? 100 : p.progress,
+            // completedAt: !p.completed ? new Date().toISOString() : undefined,
+          }
+          return updatedPixel
+        } else {
+          return p
+        }
+      }),
     )
+    if (updatedPixel) {
+      const response = await updatePixel(updatedPixel)
+    }
   }
 
   const updateProgress = (id: string, progress: number) => {
-    setBlocks((prev) =>
-      prev.map((b) =>
-        b.id === id
+    setPixels((prev) =>
+      prev.map((p) =>
+        p.id === id
           ? {
-              ...b,
+              ...p,
               progress,
               completed: progress === 100,
               completedAt:
-                progress === 100 ? new Date().toISOString() : b.completedAt,
+                progress === 100 ? new Date().toISOString() : p.completed,
             }
-          : b,
+          : p,
       ),
     )
   }
 
-  const deleteBlock = (id: string) => {
-    setBlocks((prev) => prev.filter((b) => b.id !== id))
+  const deletePixel = (id: string) => {
+    setPixels((prev) => prev.filter((p) => p.id !== id))
     // Also remove from any groups
     setGroups((prev) =>
       prev.map((g) => ({
         ...g,
-        blockIds: g.blockIds.filter((bid) => bid !== id),
+        pixelIds: g.pixelIds.filter((bid) => bid !== id),
       })),
     )
   }
@@ -94,10 +118,10 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
       createdAt: new Date().toISOString(),
     }
     setGroups((prev) => [newGroup, ...prev])
-    // Mark blocks as belonging to this group
-    setBlocks((prev) =>
-      prev.map((b) =>
-        groupData.blockIds.includes(b.id) ? { ...b, groupId: newGroup.id } : b,
+    // Mark pixels as belonging to this group
+    setPixels((prev) =>
+      prev.map((p) =>
+        groupData.pixelIds.includes(p.id) ? { ...p, groupId: newGroup.id } : p,
       ),
     )
   }
@@ -106,17 +130,17 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
     const oldGroup = groups.find((g) => g.id === updated.id)
     setGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)))
 
-    // Unassign blocks that were removed
-    const removedIds = (oldGroup?.blockIds ?? []).filter(
-      (id) => !updated.blockIds.includes(id),
+    // Unassign pixels that were removed
+    const removedIds = (oldGroup?.pixelIds ?? []).filter(
+      (id) => !updated.pixelIds.includes(id),
     )
-    // Assign blocks that were added
-    setBlocks((prev) =>
-      prev.map((b) => {
-        if (updated.blockIds.includes(b.id))
-          return { ...b, groupId: updated.id }
-        if (removedIds.includes(b.id)) return { ...b, groupId: undefined }
-        return b
+    // Assign pixels that were added
+    setPixels((prev) =>
+      prev.map((p) => {
+        if (updated.pixelIds.includes(p.id))
+          return { ...p, groupId: updated.id }
+        if (removedIds.includes(p.id)) return { ...p, groupId: undefined }
+        return p
       }),
     )
   }
@@ -124,11 +148,11 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   const deleteGroup = (groupId: string) => {
     const group = groups.find((g) => g.id === groupId)
     setGroups((prev) => prev.filter((g) => g.id !== groupId))
-    // Unassign blocks
+    // Unassign pixels
     if (group) {
-      setBlocks((prev) =>
-        prev.map((b) =>
-          group.blockIds.includes(b.id) ? { ...b, groupId: undefined } : b,
+      setPixels((prev) =>
+        prev.map((p) =>
+          group.pixelIds.includes(p.id) ? { ...p, groupId: undefined } : p,
         ),
       )
     }
@@ -139,20 +163,20 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
     setGroups((prev) =>
       prev.map((g) => ({
         ...g,
-        blockIds: g.blockIds.filter((id) => id !== blockId),
+        pixelIds: g.pixelIds.filter((id) => id !== blockId),
       })),
     )
     if (groupId) {
       // Add to new group
       setGroups((prev) =>
         prev.map((g) =>
-          g.id === groupId ? { ...g, blockIds: [...g.blockIds, blockId] } : g,
+          g.id === groupId ? { ...g, pixelIds: [...g.pixelIds, blockId] } : g,
         ),
       )
     }
-    setBlocks((prev) =>
-      prev.map((b) =>
-        b.id === blockId ? { ...b, groupId: groupId ?? undefined } : b,
+    setPixels((prev) =>
+      prev.map((p) =>
+        p.id === blockId ? { ...p, groupId: groupId ?? undefined } : p,
       ),
     )
   }
@@ -162,13 +186,13 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   }
 
   // ---- Derived data ----
-  const ungroupedBlocks = blocks.filter((b) => !b.groupId)
+  const ungroupedBlocks = pixels.filter((p) => !p.groupId)
 
-  const filteredUngroupedBlocks = ungroupedBlocks.filter((b) => {
+  const filteredUngroupedBlocks = ungroupedBlocks.filter((p) => {
     const matchesSearch =
-      b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = filterType === 'all' || b.type === filterType
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesType = filterType === 'all' || p.type === filterType
     return matchesSearch && matchesType
   })
 
@@ -179,8 +203,8 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
     // If type filter is active, show group only if it contains a block of that type
     const matchesType =
       filterType === 'all' ||
-      g.blockIds.some((bid) => {
-        const block = blocks.find((b) => b.id === bid)
+      g.pixelIds.some((bid) => {
+        const block = pixels.find((p) => p.id === bid)
         return block && block.type === filterType
       })
     return matchesSearch && matchesType
@@ -188,9 +212,9 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
 
   const blockTypes = Object.entries(BLOCK_TYPE_LABELS) as [BlockType, string][]
 
-  // For the group modal: blocks available to add (ungrouped ones, or if editing, also already-in-group ones)
+  // For the group modal: pixels available to add (ungrouped ones, or if editing, also already-in-group ones)
   const blocksAvailableForGroupModal = editingGroup
-    ? blocks.filter((b) => !b.groupId || b.groupId === editingGroup.id)
+    ? pixels.filter((p) => !p.groupId || p.groupId === editingGroup.id)
     : ungroupedBlocks
 
   const groupNameMap = new Map(groups.map((g) => [g.id, g.name]))
@@ -198,7 +222,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   return (
     <div className="min-h-screen paper-dots">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[var(--journal-cream)]/95 backdrop-blur-sm border-b-2 border-[var(--journal-warm)]">
+      <header className="sticky top-0 z-40 bg-[var(--journal-cream)]/95 backdrop-blur-sm border-p-2 border-[var(--journal-warm)]">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <DoodleStar size={24} className="text-[var(--journal-gold)]" />
@@ -236,7 +260,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
 
         {/* Stats */}
         <div className="mb-8">
-          <StatsBar blocks={blocks} groupCount={groups.length} />
+          <StatsBar blocks={pixels} groupCount={groups.length} />
         </div>
 
         {/* Controls */}
@@ -253,7 +277,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
               />
               <input
                 type="text"
-                placeholder="Search blocks & groups..."
+                placeholder="Search pixels & groups..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="bg-transparent text-[var(--journal-ink)] text-lg placeholder:text-[var(--journal-warm)] outline-none w-40 md:w-56 font-sans"
@@ -319,7 +343,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
 
         <SketchyDivider className="text-[var(--journal-warm)] mb-6" />
 
-        {/* Mixed Grid: groups + ungrouped blocks */}
+        {/* Mixed Grid: groups + ungrouped pixels */}
         {filteredGroups.length > 0 || filteredUngroupedBlocks.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger-grid">
             {/* Groups first */}
@@ -327,7 +351,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
               <BlockGroupCard
                 key={group.id}
                 group={group}
-                blocks={blocks}
+                blocks={pixels}
                 onEdit={(g) => {
                   setEditingGroup(g)
                   setIsGroupModalOpen(true)
@@ -337,14 +361,14 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
               />
             ))}
 
-            {/* Ungrouped blocks */}
+            {/* Ungrouped pixels */}
             {filteredUngroupedBlocks.map((block) => (
               <BlockCard
                 key={block.id}
                 block={block}
                 onToggleComplete={toggleComplete}
                 onUpdateProgress={updateProgress}
-                onDelete={deleteBlock}
+                onDelete={deletePixel}
                 groups={groups}
                 onMoveToGroup={moveBlockToGroup}
                 groupName={
@@ -383,7 +407,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
             </svg>
             <p className="text-2xl text-[var(--journal-ink)] opacity-40 font-sans text-center text-balance">
               {searchTerm || filterType !== 'all'
-                ? 'No blocks or groups match your search'
+                ? 'No pixels or groups match your search'
                 : 'Your journal is empty'}
             </p>
             <p className="text-base text-[var(--journal-ink)] opacity-30 font-serif mt-1 text-center">
@@ -398,7 +422,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
         <div className="mt-12 text-center">
           <SketchyDivider className="text-[var(--journal-warm)] mb-3" />
           <p className="text-sm text-[var(--journal-ink)] opacity-30 font-serif">
-            {'~ stack your blocks, build your dreams ~'}
+            {'~ stack your pixels, build your dreams ~'}
           </p>
         </div>
       </main>
@@ -407,7 +431,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
       <CreateBlockModal
         isOpen={isBlockModalOpen}
         onClose={() => setIsBlockModalOpen(false)}
-        onSubmit={addBlock}
+        onSubmit={createPixelHandler}
       />
 
       {/* Create / Edit Group Modal */}

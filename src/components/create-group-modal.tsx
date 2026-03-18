@@ -28,7 +28,7 @@ export function CreateGroupModal({
   const [description, setDescription] = useState(editGroup?.description ?? '')
   const [color, setColor] = useState<BlockColor>(editGroup?.color ?? 'warm')
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>(
-    editGroup?.blockIds ?? [],
+    editGroup?.pixelIds ?? [],
   )
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -66,10 +66,10 @@ export function CreateGroupModal({
         name,
         description,
         color,
-        blockIds: selectedBlockIds,
+        pixelIds: selectedBlockIds,
       })
     } else {
-      onSubmit({ name, description, color, blockIds: selectedBlockIds })
+      onSubmit({ name, description, color, pixelIds: selectedBlockIds })
     }
 
     setName('')
