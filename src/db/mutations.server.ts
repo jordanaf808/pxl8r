@@ -36,13 +36,21 @@ export const createPage = createServerFn({ method: 'POST' })
     const { user } = context
     if (!user.id) throw new Error('Unauthorized')
 
-    return await db.insert(pages).values({
-      ownerId: user.id,
-      name: data.name,
-      description: data.description,
-      isPublic: data.isPublic,
-      theme: data.theme,
-    })
+    const results = await db
+      .insert(pages)
+      .values({
+        ownerId: user.id,
+        name: data.name,
+        description: data.description,
+        isPublic: data.isPublic,
+        theme: data.theme,
+      })
+      .returning()
+
+    return {
+      success: results.length > 0,
+      results,
+    }
   })
 
 export const createPixel = createServerFn({ method: 'POST' })
@@ -57,7 +65,12 @@ export const createPixel = createServerFn({ method: 'POST' })
       ...data,
     }
 
-    return await db.insert(pixels).values(values)
+    const results = await db.insert(pixels).values(values).returning()
+
+    return {
+      success: results.length > 0,
+      results,
+    }
   })
 
 export const createGrid = createServerFn({ method: 'POST' })
@@ -67,23 +80,31 @@ export const createGrid = createServerFn({ method: 'POST' })
     const { user } = context
     if (!user.id) throw new Error('Unauthorized')
 
-    return await db.insert(grids).values({
-      ownerId: user.id,
-      name: data.name,
-      description: data.description,
-      isPublic: data.isPublic,
-      // Grid dimensions
-      columns: data.columns,
-      rows: data.rows,
-      // Scale configuration
-      scaleType: data.scaleType,
-      scaleUnit: data.scaleUnit,
-      scaleStart: data.scaleStart,
-      scaleEnd: data.scaleEnd,
-      scaleLabel: data.scaleLabel,
-      // Theme
-      theme: data.theme,
-    })
+    const results = await db
+      .insert(grids)
+      .values({
+        ownerId: user.id,
+        name: data.name,
+        description: data.description,
+        isPublic: data.isPublic,
+        // Grid dimensions
+        columns: data.columns,
+        rows: data.rows,
+        // Scale configuration
+        scaleType: data.scaleType,
+        scaleUnit: data.scaleUnit,
+        scaleStart: data.scaleStart,
+        scaleEnd: data.scaleEnd,
+        scaleLabel: data.scaleLabel,
+        // Theme
+        theme: data.theme,
+      })
+      .returning()
+
+    return {
+      success: results.length > 0,
+      results,
+    }
   })
 
 export const createCells = createServerFn({ method: 'POST' })
@@ -102,7 +123,12 @@ export const createCells = createServerFn({ method: 'POST' })
       ...cell,
     }))
 
-    return await db.insert(cells).values(values)
+    const results = await db.insert(cells).values(values).returning()
+
+    return {
+      success: results.length > 0,
+      results,
+    }
   })
 
 export const bulkUpsertCells = createServerFn({ method: 'POST' })
@@ -145,8 +171,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
       .returning({ id: cells.id, col: cells.col, row: cells.row })
 
     return {
-      success: true,
-      processed: results.length,
+      success: results.length > 0,
       results,
     }
   })
@@ -184,8 +209,7 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
       })
 
     return {
-      success: true,
-      processed: results.length,
+      success: results.length > 0,
       results,
     }
   })
@@ -223,7 +247,7 @@ export const bulkUpsertPageGrids = createServerFn({ method: 'POST' })
       })
 
     return {
-      success: true,
+      success: results.length > 0,
       results: results,
     }
   })
@@ -297,9 +321,10 @@ export const updateUser = createServerFn({ method: 'POST' })
         updatedAt: users.updatedAt,
       })
 
-    const [result] = response
-
-    return result
+    return {
+      success: response.length > 0,
+      results: response,
+    }
   })
 
 export const updateGrid = createServerFn({ method: 'POST' })
@@ -330,7 +355,7 @@ export const updateGrid = createServerFn({ method: 'POST' })
       })
 
     return {
-      success: true,
+      success: results.length > 0,
       results: results,
     }
   })
@@ -340,9 +365,8 @@ export const updatePixel = createServerFn({ method: 'POST' })
   .inputValidator(updatePixelSchema)
   .handler(async ({ data, context }) => {
     const { user } = context
-    const { id: pixelId, ownerId, ...pixelData } = data
+    const { id: pixelId, ...pixelData } = data
     if (!user.id) throw new Error('Unauthorized')
-    if (ownerId !== user.id) throw new Error('Not Pixel Owner')
 
     const results = await db
       .update(pixels)
@@ -364,7 +388,7 @@ export const updatePixel = createServerFn({ method: 'POST' })
       })
 
     return {
-      success: true,
+      success: results.length > 0,
       results: results,
     }
   })
@@ -396,7 +420,7 @@ export const updatePage = createServerFn({ method: 'POST' })
       })
 
     return {
-      success: true,
+      success: results.length > 0,
       results: results,
     }
   })
@@ -435,7 +459,7 @@ export const updatePageGridSort = createServerFn({ method: 'POST' })
       })
 
     return {
-      success: true,
+      success: results.length > 0,
       results: results,
     }
   })
@@ -477,7 +501,7 @@ export const updateCell = createServerFn({ method: 'POST' })
       .returning({ id: cells.id, col: cells.col, row: cells.row })
 
     return {
-      success: true,
+      success: results.length > 0,
       processed: results.length,
     }
   })
@@ -529,10 +553,15 @@ export const deletePixelById = createServerFn({ method: 'POST' })
     const { user } = context
     if (!user.id) throw new Error('Not Logged In')
 
-    return await db
+    const result = await db
       .delete(pixels)
       .where(and(eq(pixels.id, data.pixelId), eq(pixels.ownerId, user.id)))
       .returning()
+
+    return {
+      success: result.length > 0,
+      result,
+    }
   })
 
 export const deleteGridsFromPage = createServerFn({ method: 'POST' })
@@ -561,7 +590,10 @@ export const deleteGridsFromPage = createServerFn({ method: 'POST' })
       )
       .returning()
 
-    return { success: true, results }
+    return {
+      success: results.length > 0,
+      results,
+    }
   })
 
 // ============================================================================

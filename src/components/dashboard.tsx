@@ -15,6 +15,7 @@ import { SAMPLE_BLOCKS, SAMPLE_GROUPS } from '@/db/mock-data'
 import {
   createPixel as createPixelServerFn,
   updatePixel as updatePixelServerFn,
+  deletePixelById as deletePixelByIdServerFn,
 } from '@/db/mutations.server'
 import { useServerFn } from '@tanstack/react-start'
 
@@ -31,6 +32,7 @@ interface DashboardProps {
 export function Dashboard({ user, userData, onLogout }: DashboardProps) {
   const createPixel = useServerFn(createPixelServerFn)
   const updatePixel = useServerFn(updatePixelServerFn)
+  const deletePixelById = useServerFn(deletePixelByIdServerFn)
   const [pixels, setPixels] = useState<Pixel[]>([])
   const [groups, setGroups] = useState<BlockGroup[]>(SAMPLE_GROUPS)
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false)
@@ -62,59 +64,119 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
   }
 
   const toggleComplete = async (id: string) => {
+    let oldPixel: Pixel | undefined
     let updatedPixel: UpdatePixelType | undefined
+
+    // update state
     setPixels((prev) =>
       prev.map((p) => {
-        if (p.id === id) {
-          updatedPixel = {
-            completed: !p.completed,
-            progress: !p.completed ? 100 : p.progress,
-            // completedAt: !p.completed ? new Date().toISOString() : undefined,
-          } as UpdatePixelType
+        if (p.id !== id) return p
 
-          const response = updatePixel({ data: updatedPixel })
-          console.log('//// updatePixel - response: ', response)
-          return {
-            ...p,
-            completed: !p.completed,
-            progress: !p.completed ? 100 : p.progress,
-            // completedAt: !p.completed ? new Date().toISOString() : undefined,
-          }
-        } else {
-          return p
+        // build db update object
+        updatedPixel = {
+          id: p.id,
+          completed: !p.completed,
+          progress: !p.completed ? 100 : p.progress,
+          // completedAt: !p.completed ? new Date().toISOString() : undefined,
+        } as UpdatePixelType
+        // backup
+        oldPixel = p
+
+        // return pixel state
+        return {
+          ...p,
+          completed: !p.completed,
+          progress: !p.completed ? 100 : p.progress,
+          // completedAt: !p.completed ? new Date().toISOString() : undefined,
         }
       }),
     )
-  }
 
-  const updateProgress = (id: string, progress: number) => {
-    setPixels(async (prev) => {
-      let updatedPixel: UpdatePixelType | undefined
-      const updateArray: Pixel[] = []
+    if (updatedPixel) {
+      // update db
+      const response = await updatePixel({ data: updatedPixel })
+      console.log('//// updatePixel - response: ', response)
 
-      for (const p of prev) {
-        if (p.id === id) {
-          updatedPixel = {
-            ...p,
-            progress,
-            completed: progress === 100,
-          } as UpdatePixelType
+      // undo state changes if update is unsuccessful
+      if (response.success !== true) {
+        setPixels((prev) =>
+          prev.map((p) => {
+            if (p.id !== id) return p
 
-          const response = await updatePixel({ data: updatedPixel })
-          console.log('//// updateProgress- updatePixel - response: ', response)
-          updateArray.push({
-            ...p,
-            progress,
-            completed: progress === 100,
-          })
-        }
+            // return oldPixel (only specific changes) because prev state is probably the state changes we just did above.
+            if (oldPixel) return {
+              ...p,
+              completed: oldPixel.completed,
+              progress: oldPixel.progress,
+            }
+              
+            // return prev state if oldPixel doesn't exist.
+            return {
+              ...p,
+              completed: !p.completed,
+              progress: !p.completed ? 100 : p.progress,
+            }
+          }),
+        )
       }
-
-      return updateArray
-    })
+    }
   }
 
-  const deletePixel = (id: string) => {
+  const updateProgress = async (id: string, progress: number) => {
+    let oldPixel: Pixel | undefined
+    let updatedPixel: UpdatePixelType | undefined
+
+    // update state
+    setPixels((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p
+
+        oldPixel = p
+        updatedPixel = {
+          id: p.id,
+          progress,
+          completed: progress === 100,
+        } as UpdatePixelType
+
+        return {
+          ...p,
+          progress,
+          completed: progress === 100,
+        }
+      }),
+    )
+
+    if (updatedPixel) {
+      // update db
+      const response = await updatePixel({ data: updatedPixel })
+      console.log('//// updateProgress- updatePixel - response: ', response)
+
+      if (response.success !== true) {
+        // undo state changes if update is unsuccessful
+        setPixels((prev) =>
+          prev.map((p) => {
+            if (p.id === id) return p
+            
+            if (oldPixel) return {
+              ...p,
+              completed: oldPixel.completed,
+              progress: oldPixel.progress,
+              // completedAt: !p.completed ? new Date().toISOString() : undefined,
+            }
+            
+            return {
+              ...p,
+              completed: !p.completed,
+              progress: !p.completed ? 100 : p.progress,
+              // completedAt: !p.completed ? new Date().toISOString() : undefined,
+            }
+          }),
+        )
+      }
+    }
+  }
+
+  const deletePixel = async (id: string) => {
     setPixels((prev) => prev.filter((p) => p.id !== id))
     // Also remove from any groups
     setGroups((prev) =>
@@ -123,6 +185,9 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
         pixelIds: g.pixelIds.filter((bid) => bid !== id),
       })),
     )
+
+    const response = await deletePixelById({data: {pixelId: id}})
+    if (response)
   }
 
   // ---- Group CRUD ----
