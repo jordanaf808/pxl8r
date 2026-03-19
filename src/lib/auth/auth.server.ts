@@ -9,7 +9,7 @@ export const getUserId = createServerFn()
     return context.user.id
   })
 
-// We recommend using the client SDK or authClient to handle authentication, rather than server actions with auth.api.
+// We recommend using the client SDK or authClient to handle authentication, rather than server actions with auth.api. see https://better-auth.com/docs/integrations/tanstack because their own examples do that in the server functions below.
 // To protect resources that require authentication, use beforeLoad with a server function. This ensures authentication is checked on every navigation, including client-side navigation via <Link> components.
 export const getSession = createServerFn({ method: 'GET' }).handler(
   async () => {

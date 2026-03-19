@@ -1,6 +1,7 @@
 import { createMiddleware } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 import { getSession } from './auth-client'
+import { redirect } from '@tanstack/react-router'
 
 export const authMiddleware = createMiddleware().server(async ({ next }) => {
   const { headers } = getRequest()
@@ -11,10 +12,12 @@ export const authMiddleware = createMiddleware().server(async ({ next }) => {
     },
   })
 
-  console.log('//// AUTH-MIDDLEWARE - session: ', session)
+  // console.log('//// AUTH-MIDDLEWARE - session: ', session)
 
-  if (!session?.user.id)
-    throw new Error('Auth-Middleware - Not Logged In', { cause: 401 })
+  if (!session?.user.id) {
+    console.log('Auth-Middleware - Not Logged In')
+    throw redirect({ to: '/' })
+  }
 
   return next({
     context: {

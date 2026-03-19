@@ -8,7 +8,7 @@ import { BlockGroupCard } from '@/components/block-group-card'
 import { CreateBlockModal } from '@/components/create-block-modal'
 import { CreateGroupModal } from '@/components/create-group-modal'
 import { StatsBar } from '@/components/stats-bar'
-import type { Block, BlockType, BlockGroup } from '@/db/types'
+import type { Block, BlockType, BlockGroup, UpdatePixelType } from '@/db/types'
 import { BLOCK_TYPE_LABELS } from '@/db/types'
 import type { NewPixel, Pixel, NewUser, User, Grid, Page } from '@/db/schema'
 import { SAMPLE_BLOCKS, SAMPLE_GROUPS } from '@/db/mock-data'
@@ -62,41 +62,56 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
   }
 
   const toggleComplete = async (id: string) => {
-    let updatedPixel
+    let updatedPixel: UpdatePixelType | undefined
     setPixels((prev) =>
       prev.map((p) => {
         if (p.id === id) {
           updatedPixel = {
+            completed: !p.completed,
+            progress: !p.completed ? 100 : p.progress,
+            // completedAt: !p.completed ? new Date().toISOString() : undefined,
+          } as UpdatePixelType
+
+          const response = updatePixel({ data: updatedPixel })
+          console.log('//// updatePixel - response: ', response)
+          return {
             ...p,
             completed: !p.completed,
             progress: !p.completed ? 100 : p.progress,
             // completedAt: !p.completed ? new Date().toISOString() : undefined,
           }
-          return updatedPixel
         } else {
           return p
         }
       }),
     )
-    if (updatedPixel) {
-      const response = await updatePixel(updatedPixel)
-    }
   }
 
   const updateProgress = (id: string, progress: number) => {
-    setPixels((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              progress,
-              completed: progress === 100,
-              completedAt:
-                progress === 100 ? new Date().toISOString() : p.completed,
-            }
-          : p,
-      ),
-    )
+    setPixels(async (prev) => {
+      let updatedPixel: UpdatePixelType | undefined
+      const updateArray: Pixel[] = []
+
+      for (const p of prev) {
+        if (p.id === id) {
+          updatedPixel = {
+            ...p,
+            progress,
+            completed: progress === 100,
+          } as UpdatePixelType
+
+          const response = await updatePixel({ data: updatedPixel })
+          console.log('//// updateProgress- updatePixel - response: ', response)
+          updateArray.push({
+            ...p,
+            progress,
+            completed: progress === 100,
+          })
+        }
+      }
+
+      return updateArray
+    })
   }
 
   const deletePixel = (id: string) => {
@@ -225,9 +240,8 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
       <header className="sticky top-0 z-40 bg-[var(--journal-cream)]/95 backdrop-blur-sm border-p-2 border-[var(--journal-warm)]">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <DoodleStar size={24} className="text-[var(--journal-gold)]" />
             <h1 className="text-2xl md:text-3xl font-bold text-[var(--journal-ink)]">
-              BlockJournal
+              PXL8
             </h1>
           </div>
           <div className="flex items-center gap-4">
@@ -240,7 +254,7 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
               className="flex items-center gap-1.5 text-[var(--journal-ink)] opacity-50 hover:opacity-100 transition-opacity font-serif cursor-pointer"
             >
               <LogOut size={18} />
-              <span className="hidden sm:inline">Close Journal</span>
+              <span className="hidden sm:inline">logout</span>
             </button>
           </div>
         </div>

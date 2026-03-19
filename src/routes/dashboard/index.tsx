@@ -1,10 +1,11 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { Dashboard } from '@/components/dashboard'
 import {
   getGridsByOwnerId,
   getPagesByOwnerId,
   getPixelsByOwnerId,
 } from '@/db/queries.server'
+import { signOut } from '@/lib/auth/auth-client'
 
 export const Route = createFileRoute('/dashboard/')({
   component: RouteComponent,
@@ -14,11 +15,11 @@ export const Route = createFileRoute('/dashboard/')({
       getPagesByOwnerId(),
       getGridsByOwnerId(),
     ])
-    if (pixels.length < 1) throw new Error('No pixels found')
-    console.log('//// /dashboard - loader - getPixels: ', pixels)
-    if (pages.length < 1) throw new Error('No pages found')
+    // if (pixels.length < 1) throw new Error('No pixels found')
+    console.log('//// /dashboard - loader - getPixels: ', pixels.length)
+    // if (pages.length < 1) throw new Error('No pages found')
     // console.log('//// /dashboard - loader - pages: ', pages)
-    if (grids.length < 1) throw new Error('No grids found')
+    // if (grids.length < 1) throw new Error('No grids found')
     // console.log('//// /dashboard - loader - grids: ', grids)
     return { pages, grids, pixels }
   },
@@ -35,6 +36,7 @@ function RouteComponent() {
   const { session } = Route.useRouteContext()
   const userData = Route.useLoaderData()
   const user = session?.user
+  const navigate = useNavigate({ from: '/dashboard/' })
   console.log('//// Dashboard - user id: ', user?.id)
   console.log('//// Dashboard - pixels count: ', userData.pixels.length)
   console.log('//// Dashboard - pages count: ', userData.pages.length)
@@ -47,7 +49,17 @@ function RouteComponent() {
           user={user}
           userData={userData}
           onLogout={() => {
-            throw redirect({ to: '/' })
+            signOut({
+              fetchOptions: {
+                onSuccess: () => {
+                  navigate({ to: '/' }) // redirect to homepage
+                },
+                onError: (ctx) => {
+                  console.log('//// onLogout error: ', ctx.error.message)
+                  throw new Error(ctx.error.error)
+                },
+              },
+            })
           }}
         />
       )}

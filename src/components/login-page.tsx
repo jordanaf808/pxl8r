@@ -9,11 +9,7 @@ import {
 // Import SignIn and SignUp functions from BetterAuth
 import { signIn, signOut, signUp } from '@/lib/auth/auth-client'
 
-interface LoginPageProps {
-  onLogin: (name: string, email: string) => void
-}
-
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -44,40 +40,26 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
     if (validate()) {
       // onLogin(name || 'Journal Keeper', email)
-      // const result = await signIn.email({ email, password, callbackURL: '/' })
-      // console.log('//// signIn result: ', result)
+      const result = await signIn.email({ email, password, callbackURL: '/' })
+      console.log('//// signIn result: ', result)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center paper-dots p-4">
-      {/* Floating decorations */}
-      <div className="fixed top-8 left-12 opacity-20 hidden md:block">
-        <DoodleStar size={40} className="text-[var(--journal-gold)]" />
-      </div>
-      <div className="fixed top-24 right-16 opacity-15 hidden md:block">
-        <DoodleCircle size={32} className="text-[var(--journal-rust)]" />
-      </div>
-      <div className="fixed bottom-16 left-20 opacity-15 hidden md:block">
-        <DoodleCircle size={28} className="text-[var(--journal-sage)]" />
-      </div>
-      <div className="fixed bottom-32 right-24 opacity-20 hidden md:block">
-        <DoodleStar size={36} className="text-[var(--journal-slate)]" />
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Notebook card */}
-        <div className="relative bg-[var(--journal-cream)] sketch-border p-8 md:p-10">
+        <div className="relative bg-[var(--journal-cream)] sketch-border p-8 md:p-10 paper-dots z-1 overflow-clip">
           {/* Paper clip decoration */}
-          <div className="absolute -top-5 right-8">
+          <div className="absolute -top-[4px] right-2">
             <PaperClipDecoration />
           </div>
 
           {/* Red margin line */}
-          <div className="absolute left-12 top-0 bottom-0 w-px bg-[var(--journal-rust)] opacity-30" />
+          <div className="absolute left-4 top-0 bottom-0 w-px bg-[var(--journal-rust)] opacity-30 z-[-1]" />
 
           {/* Header */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 z-2">
             <h1 className="text-5xl md:text-6xl font-bold text-[var(--journal-ink)] leading-tight">
               BlockJournal
             </h1>
@@ -88,11 +70,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               </p>
               <DoodleStar size={14} className="text-[var(--journal-gold)]" />
             </div>
-            <SketchyDivider className="mt-4 text-[var(--journal-warm)]" />
           </div>
 
           {/* Toggle */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-6 z-2">
             <div className="flex bg-[var(--journal-paper)] sketch-border-light p-1 gap-1">
               <button
                 type="button"
@@ -122,7 +103,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5 z-2">
             {isSignUp && (
               <div className="animate-float-in">
                 <label className="block text-lg text-[var(--journal-ink)] mb-1 font-serif">
@@ -189,8 +170,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           </form>
 
           {/* Quick access */}
-          <div className="mt-6 text-center">
-            <SketchyDivider className="text-[var(--journal-warm)] mb-3" />
+          {/* <div className="mt-6 text-center">
             <button
               type="button"
               onClick={() => onLogin('Guest', 'guest@blockjournal.app')}
@@ -198,7 +178,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             >
               {'or skip ahead ~ preview as guest'}
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

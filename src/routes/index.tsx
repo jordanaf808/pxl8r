@@ -79,7 +79,7 @@ function App() {
           </p>
           <div className="flex flex-col items-center gap-4 mb-8">
             <a
-              href="/demo"
+              href="/login"
               target="_blank"
               rel="noopener noreferrer"
               className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50"
@@ -87,9 +87,8 @@ function App() {
               Try It Out
             </a>
           </div>
-          <div className="flex flex-col items-center gap-4 bg-[var(--journal-cream)]/95">
-            <LoginPage onLogin={() => {}} />
-          </div>
+
+          {/* <LoginPage /> */}
         </div>
       </section>
 
