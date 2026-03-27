@@ -1,5 +1,5 @@
 import {
-  typeTypeEnum,
+  cellTypeEnum,
   pixelTypeEnum,
   scaleTypeEnum,
   themeTypeEnum,
@@ -249,6 +249,7 @@ export type UpdatePixelType = z.infer<typeof updatePixelSchema>
 // BulkUpsert Cells Types
 // Define which columns can be bulk-updated
 export const updatableCellFields = z.object({
+  type: z.enum(cellTypeEnum.enumValues).optional(),
   value: z.number().optional(),
   note: z.string().max(500).optional(),
   colorOverride: z

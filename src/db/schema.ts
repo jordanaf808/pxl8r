@@ -24,14 +24,14 @@ const pgTable = pgTableCreator((name) => `db_pxl8r_${name}`)
 // ─────────────────────────────────────────────
 // ENUMS
 // ─────────────────────────────────────────────
-export const pixelTypeEnum = pgEnum('pixel_type', [
+export const cellTypeEnum = pgEnum('pixel_type', [
   'boolean', // done/not done
   'numeric', // track a value
   'rating', // 1-5 stars etc
   'time', // duration based
 ])
 
-export const typeTypeEnum = pgEnum('type_type', [
+export const pixelTypeEnum = pgEnum('type_type', [
   'workout',
   'project',
   'finance',
@@ -41,6 +41,7 @@ export const typeTypeEnum = pgEnum('type_type', [
   'reading',
   'social',
   'personal',
+  'journal',
   'scale',
   'custom',
 ])
@@ -90,8 +91,10 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'), // avatar
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
@@ -183,8 +186,8 @@ export const colorPalettes = pgTable(
     // Array of hex strings, ordered: [ "#1a1a1a", "#00ff41", "#00cc33" ]
     colors: text('colors').array().notNull(),
 
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
@@ -207,15 +210,19 @@ export const pixels = pgTable(
     }),
     name: text('name').notNull(),
     description: text('description'),
-    type: typeTypeEnum('type').notNull(), // more like a Category than type
+    type: pixelTypeEnum('type').notNull(), // more like a Category than type
     unit: unitTypeEnum('unit').notNull(), // unit to measure by
     endGoal: integer('end_goal'), // short label shown in key
     color: text('color').notNull(), // hex color string
-    completedAt: timestamp('completed_at'),
+    completedAt: timestamp('completed_at', { withTimezone: true }).default(
+      sql`NULL`,
+    ),
     progress: smallint().default(0).notNull(),
 
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
@@ -242,7 +249,7 @@ export const savedPixels = pgTable(
     pixelId: uuid('pixel_id')
       .notNull()
       .references(() => pixels.id, { onDelete: 'cascade' }),
-    savedAt: timestamp('saved_at').defaultNow(),
+    savedAt: timestamp('saved_at', { withTimezone: true }).defaultNow(),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.userId, t.pixelId] }),
@@ -279,8 +286,8 @@ export const grids = pgTable(
     // Theme override (inherits user theme if null)
     theme: themeTypeEnum('theme'),
 
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
@@ -302,7 +309,7 @@ export const savedGrids = pgTable(
     gridId: uuid('grid_id')
       .notNull()
       .references(() => grids.id, { onDelete: 'cascade' }),
-    savedAt: timestamp('saved_at').defaultNow(),
+    savedAt: timestamp('saved_at', { withTimezone: true }).defaultNow(),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.userId, t.gridId] }),
@@ -358,10 +365,10 @@ export const cells = pgTable(
     value: integer('value'), // numeric value if tracking amounts
     note: text('note'), // optional text annotation
     colorOverride: text('color_override'), // if user overrides the pixel color for this cell
-    completedAt: timestamp('completed_at'), // when the user marked this cell
+    completedAt: timestamp('completed_at', { withTimezone: true }), // when the user marked this cell
 
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date()),
   },
@@ -392,8 +399,8 @@ export const pages = pgTable(
     // This is already being tracked in pageGrids junction-table
     // gridIds: uuid('grid_ids').array().default([]),
 
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
@@ -442,8 +449,8 @@ export const templates = pgTable(
     tags: text('tags').array().default([]), // e.g. ["fitness", "work", "gaming"]
     theme: themeTypeEnum('theme'),
 
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
@@ -466,7 +473,7 @@ export const savedTemplates = pgTable(
     templateId: uuid('template_id')
       .notNull()
       .references(() => templates.id, { onDelete: 'cascade' }),
-    savedAt: timestamp('saved_at').defaultNow(),
+    savedAt: timestamp('saved_at', { withTimezone: true }).defaultNow(),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.userId, t.templateId] }),

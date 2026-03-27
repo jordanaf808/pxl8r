@@ -27,7 +27,7 @@ export const SAMPLE_BLOCKS: NewPixel[] = [
     unit: 'kilometers',
     endGoal: 30, // 'Run 5km every morning for 30 days'
     color: 'rust',
-    completed: false,
+    completedAt: null,
     progress: 45,
     // groupId: 'g1',
   },
@@ -40,7 +40,7 @@ export const SAMPLE_BLOCKS: NewPixel[] = [
     unit: 'percent' as const,
     endGoal: 100, // 'Complete TypeScript deep dive course'
     color: 'slate',
-    completed: false,
+    completedAt: null,
     progress: 70,
   },
   {
@@ -52,9 +52,9 @@ export const SAMPLE_BLOCKS: NewPixel[] = [
     unit: 'dollar',
     endGoal: 5000, // 'Save $5,000 in emergency fund',
     color: 'gold',
-    completed: true,
+    // completedAt: true,
     progress: 100,
-    // completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
   },
   {
     id: '4',
@@ -64,9 +64,9 @@ export const SAMPLE_BLOCKS: NewPixel[] = [
     unit: 'books',
     endGoal: 12, // 'Finish 12 books this year',
     color: 'sage',
-    completed: false,
+    completedAt: null,
     progress: 25,
-    // createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
   },
   {
     id: '5',
@@ -76,9 +76,9 @@ export const SAMPLE_BLOCKS: NewPixel[] = [
     unit: 'day',
     endGoal: 60, // '60-day gratitude journaling streak',
     color: 'warm',
-    completed: false,
+    completedAt: null,
     progress: 55,
-    // createdAt: new Date(Date.now() - 33 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 33 * 24 * 60 * 60 * 1000),
   },
   {
     id: '6',
@@ -89,9 +89,9 @@ export const SAMPLE_BLOCKS: NewPixel[] = [
     unit: 'day',
     endGoal: 30, // 'Complete 30-day yoga challenge',
     color: 'sage',
-    completed: false,
+    completedAt: null,
     progress: 30,
-    // createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
     // groupId: 'g1',
   },
 ]
