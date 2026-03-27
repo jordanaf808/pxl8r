@@ -31,14 +31,14 @@ const seedPixels = createServerFn({
 }).handler(async () => {
   const formattedPixels = SAMPLE_BLOCKS.map((block) => {
     return {
-      ownerId: 'hT4sq8Ud0i0N4lcBAI8SAIAulkewCyXr',
+      ownerId: 'hzwnjuReifl163FzsP1TkxQLo6mOv6cp',
       name: block.name,
       description: block.description,
       type: block.type,
       unit: block.unit, // unit to measure by
       endGoal: block.endGoal, // goal in units
       color: block.color,
-      completed: block.completed,
+      completedAt: block.completedAt,
       progress: block.progress,
     }
   })

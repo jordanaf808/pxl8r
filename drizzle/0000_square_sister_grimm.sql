@@ -1,4 +1,5 @@
-CREATE TYPE "public"."pixel_type" AS ENUM('boolean', 'numeric', 'rating', 'time');--> statement-breakpoint
+CREATE TYPE "public"."cell_type" AS ENUM('boolean', 'numeric', 'rating', 'time');--> statement-breakpoint
+CREATE TYPE "public"."pixel_type" AS ENUM('workout', 'project', 'finance', 'mood', 'skill', 'habit', 'reading', 'social', 'personal', 'journal', 'scale', 'custom');--> statement-breakpoint
 CREATE TYPE "public"."scale_type" AS ENUM('daily', 'weekly', 'monthly', 'yearly', 'custom');--> statement-breakpoint
 CREATE TYPE "public"."theme" AS ENUM('journal', 'matrix', 'knightrider', 'synthwave', 'blueprint');--> statement-breakpoint
 CREATE TYPE "public"."unit_type" AS ENUM('percent', 'dollar', 'hour', 'minute', 'day', 'gram', 'lbs', 'cups', 'gallon', 'reps', 'steps', 'miles', 'kilometers', 'pages', 'books', 'rating', 'custom');--> statement-breakpoint
@@ -28,9 +29,9 @@ CREATE TABLE "db_pxl8r_cells" (
 	"value" integer,
 	"note" text,
 	"color_override" text,
-	"completed_at" timestamp,
-	"created_at" timestamp DEFAULT now(),
-	"updated_at" timestamp DEFAULT now()
+	"completed_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE "db_pxl8r_color_palettes" (
@@ -39,8 +40,8 @@ CREATE TABLE "db_pxl8r_color_palettes" (
 	"owner_id" text,
 	"is_public" boolean DEFAULT false,
 	"colors" text[] NOT NULL,
-	"created_at" timestamp DEFAULT now(),
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "db_pxl8r_grid_pixels" (
@@ -64,8 +65,8 @@ CREATE TABLE "db_pxl8r_grids" (
 	"scale_end" smallint,
 	"scale_label" text,
 	"theme" "theme",
-	"created_at" timestamp DEFAULT now(),
-	"updated_at" timestamp DEFAULT now()
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE "db_pxl8r_page_grids" (
@@ -82,8 +83,8 @@ CREATE TABLE "db_pxl8r_pages" (
 	"owner_id" text NOT NULL,
 	"is_public" boolean DEFAULT false,
 	"theme" "theme",
-	"created_at" timestamp DEFAULT now(),
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "db_pxl8r_pixels" (
@@ -91,35 +92,35 @@ CREATE TABLE "db_pxl8r_pixels" (
 	"owner_id" text,
 	"name" text NOT NULL,
 	"description" text,
-	"type" text,
-	"unit" "unit_type",
+	"type" "pixel_type" NOT NULL,
+	"unit" "unit_type" NOT NULL,
 	"end_goal" integer,
 	"color" text NOT NULL,
-	"completed" boolean DEFAULT false,
-	"progress" smallint DEFAULT 0,
-	"created_at" timestamp DEFAULT now(),
-	"updated_at" timestamp DEFAULT now(),
+	"completed_at" timestamp with time zone DEFAULT NULL,
+	"progress" smallint DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now(),
 	CONSTRAINT "progress_range" CHECK ("db_pxl8r_pixels"."progress" >= 0 AND "db_pxl8r_pixels"."progress" <= 100)
 );
 --> statement-breakpoint
 CREATE TABLE "db_pxl8r_saved_grids" (
 	"user_id" text NOT NULL,
 	"grid_id" uuid NOT NULL,
-	"saved_at" timestamp DEFAULT now(),
+	"saved_at" timestamp with time zone DEFAULT now(),
 	CONSTRAINT "db_pxl8r_saved_grids_user_id_grid_id_pk" PRIMARY KEY("user_id","grid_id")
 );
 --> statement-breakpoint
 CREATE TABLE "db_pxl8r_saved_pixels" (
 	"user_id" text NOT NULL,
 	"pixel_id" uuid NOT NULL,
-	"saved_at" timestamp DEFAULT now(),
+	"saved_at" timestamp with time zone DEFAULT now(),
 	CONSTRAINT "db_pxl8r_saved_pixels_user_id_pixel_id_pk" PRIMARY KEY("user_id","pixel_id")
 );
 --> statement-breakpoint
 CREATE TABLE "db_pxl8r_saved_templates" (
 	"user_id" text NOT NULL,
 	"template_id" uuid NOT NULL,
-	"saved_at" timestamp DEFAULT now(),
+	"saved_at" timestamp with time zone DEFAULT now(),
 	CONSTRAINT "db_pxl8r_saved_templates_user_id_template_id_pk" PRIMARY KEY("user_id","template_id")
 );
 --> statement-breakpoint
@@ -144,8 +145,8 @@ CREATE TABLE "db_pxl8r_templates" (
 	"config" jsonb NOT NULL,
 	"tags" text[] DEFAULT '{}',
 	"theme" "theme",
-	"created_at" timestamp DEFAULT now(),
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "db_pxl8r_users" (
@@ -154,9 +155,9 @@ CREATE TABLE "db_pxl8r_users" (
 	"email" text NOT NULL,
 	"email_verified" boolean DEFAULT false NOT NULL,
 	"image" text,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	"theme" text DEFAULT 'journal',
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"theme" "theme" DEFAULT 'journal',
 	"saved_pixel_ids" text[] DEFAULT ARRAY[]::text[],
 	"saved_grid_ids" text[] DEFAULT ARRAY[]::text[],
 	"saved_template_ids" text[] DEFAULT ARRAY[]::text[],

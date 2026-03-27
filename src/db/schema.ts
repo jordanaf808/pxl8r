@@ -24,14 +24,14 @@ const pgTable = pgTableCreator((name) => `db_pxl8r_${name}`)
 // ─────────────────────────────────────────────
 // ENUMS
 // ─────────────────────────────────────────────
-export const cellTypeEnum = pgEnum('pixel_type', [
+export const cellTypeEnum = pgEnum('cell_type', [
   'boolean', // done/not done
   'numeric', // track a value
   'rating', // 1-5 stars etc
   'time', // duration based
 ])
 
-export const pixelTypeEnum = pgEnum('type_type', [
+export const pixelTypeEnum = pgEnum('pixel_type', [
   'workout',
   'project',
   'finance',
