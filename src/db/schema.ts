@@ -31,6 +31,19 @@ export const pixelTypeEnum = pgEnum('pixel_type', [
   'time', // duration based
 ])
 
+export const typeTypeEnum = pgEnum('type_type', [
+  'workout',
+  'project',
+  'finance',
+  'mood',
+  'skill',
+  'habit',
+  'reading',
+  'social',
+  'personal',
+  'scale',
+  'custom',
+])
 export const unitTypeEnum = pgEnum('unit_type', [
   'percent',
   'dollar',
@@ -194,14 +207,14 @@ export const pixels = pgTable(
     }),
     name: text('name').notNull(),
     description: text('description'),
-    type: text('type'), // more like a Category than type
-    unit: unitTypeEnum('unit'), // unit to measure by
+    type: typeTypeEnum('type').notNull(), // more like a Category than type
+    unit: unitTypeEnum('unit').notNull(), // unit to measure by
     endGoal: integer('end_goal'), // short label shown in key
     color: text('color').notNull(), // hex color string
-    completed: boolean().default(false),
-    progress: smallint().default(0),
+    completedAt: timestamp('completed_at'),
+    progress: smallint().default(0).notNull(),
 
-    createdAt: timestamp('created_at').defaultNow(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date()),

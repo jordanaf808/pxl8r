@@ -6,16 +6,17 @@ import {
   DoodleCircle,
   DoodleCheckmark,
 } from '@/components/sketchy-elements'
+import type { Pixel } from '@/db/schema'
 import type { Block } from '@/db/types'
 
 interface StatsBarProps {
-  blocks: Block[]
+  blocks: Pixel[]
   groupCount?: number
 }
 
 export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
   const totalBlocks = blocks.length
-  const completedBlocks = blocks.filter((b) => b.completed).length
+  const completedBlocks = blocks.filter((b) => b.completedAt).length
   const remainingBlocks = totalBlocks - completedBlocks
   const avgProgress =
     totalBlocks > 0
@@ -23,13 +24,13 @@ export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
       : 0
 
   // Calculate average completion time for completed blocks
-  const completedWithTime = blocks.filter((b) => b.completed && b.completedAt)
+  const completedWithTime = blocks.filter((b) => b.completedAt)
   const avgCompletionDays =
     completedWithTime.length > 0
       ? Math.round(
           completedWithTime.reduce((sum, b) => {
             const created = new Date(b.createdAt).getTime()
-            const completed = new Date(b.completedAt!).getTime()
+            const completed = new Date(b.updatedAt!).getTime()
             return sum + (completed - created) / (1000 * 60 * 60 * 24)
           }, 0) / completedWithTime.length,
         )
@@ -227,11 +228,11 @@ export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
                 style={{
                   width: `${Math.max(100 / Math.max(totalBlocks, 1) - 1, 8)}%`,
                   minWidth: '12px',
-                  backgroundColor: block.completed
+                  backgroundColor: block.completedAt
                     ? 'var(--journal-sage)'
                     : 'var(--journal-warm)',
                   borderRadius: '1px 3px 2px 4px',
-                  opacity: block.completed ? 1 : 0.5,
+                  opacity: block.completedAt ? 1 : 0.5,
                 }}
                 title={`${block.name}: ${block.progress}%`}
               />

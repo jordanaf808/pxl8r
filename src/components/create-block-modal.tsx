@@ -5,13 +5,14 @@ import { X } from 'lucide-react'
 import { SketchyDivider, DoodleStar } from '@/components/sketchy-elements'
 import type { BlockType, BlockColor, Block } from '@/db/types'
 import { BLOCK_TYPE_LABELS, BLOCK_COLORS } from '@/db/types'
+import type { NewPixel } from '@/db/schema'
 
 interface CreateBlockModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (
     block: Omit<
-      Block,
+      NewPixel,
       'id' | 'completed' | 'progress' | 'createdAt' | 'completedAt'
     >,
   ) => void

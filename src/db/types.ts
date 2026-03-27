@@ -1,4 +1,5 @@
 import {
+  typeTypeEnum,
   pixelTypeEnum,
   scaleTypeEnum,
   themeTypeEnum,
@@ -18,6 +19,9 @@ export type BlockType =
   | 'skill'
   | 'habit'
   | 'reading'
+  | 'social'
+  | 'personal'
+  | 'scale'
   | 'custom'
 
 export type BlockColor = 'rust' | 'sage' | 'gold' | 'slate' | 'warm'
@@ -59,6 +63,9 @@ export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
   skill: 'Skill',
   habit: 'Habit',
   reading: 'Reading',
+  social: 'social',
+  personal: 'personal',
+  scale: 'scale',
   custom: 'Custom',
 }
 
@@ -70,6 +77,9 @@ export const BLOCK_TYPE_ICONS: Record<BlockType, string> = {
   skill: 'lightbulb',
   habit: 'repeat',
   reading: 'book',
+  social: 'social',
+  personal: 'personal',
+  scale: 'scale',
   custom: 'star',
 }
 
@@ -229,7 +239,7 @@ export const updatePixelSchema = z.object({
     .string()
     .regex(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i)
     .optional(), // hex color string
-  completed: z.boolean().optional(),
+  completedAt: z.date().nullable(),
   progress: z.int().max(100).optional(),
 })
 

@@ -53,12 +53,12 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
     // could maybe have some loading animation that shows building the pixel in, like 3 stages.
     const createdPixel = await createPixel({ data: pixelData })
     console.log('//// createPixel response: ', createdPixel)
-    if (createdPixel.length < 1)
-      throw new Error('Error creating pixel: ', { cause: createdPixel })
+    if (createdPixel.success !== true)
+      throw new Error('Error creating pixel: ', { cause: createdPixel.results })
     // const newPixel: NewPixel = {
     //   ...pixelData,
     // }
-    setPixels((prev) => [...createdPixel, ...prev])
+    setPixels((prev) => [...createdPixel.results, ...prev])
 
     console.log('//// createPixel - pixels set')
   }
@@ -72,12 +72,14 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
       prev.map((p) => {
         if (p.id !== id) return p
 
+        console.log('//// is pixel completed? ', !!p.completedAt)
+        const completed = !!p.completedAt
         // build db update object
         updatedPixel = {
           id: p.id,
-          completed: !p.completed,
-          progress: !p.completed ? 100 : p.progress,
-          // completedAt: !p.completed ? new Date().toISOString() : undefined,
+          // toggle values
+          completedAt: completed ? null : new Date(),
+          progress: !completed ? 100 : p.progress,
         } as UpdatePixelType
         // backup
         oldPixel = p
@@ -85,9 +87,8 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
         // return pixel state
         return {
           ...p,
-          completed: !p.completed,
-          progress: !p.completed ? 100 : p.progress,
-          // completedAt: !p.completed ? new Date().toISOString() : undefined,
+          completedAt: completed ? null : new Date(),
+          progress: !completed ? 100 : p.progress,
         }
       }),
     )
@@ -98,23 +99,17 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
       console.log('//// updatePixel - response: ', response)
 
       // undo state changes if update is unsuccessful
-      if (response.success !== true) {
+      if (response.success === true) return response
+
+      // return oldPixel (only specific changes) because prev state is probably the state changes we just did above.
+      if (oldPixel) {
         setPixels((prev) =>
           prev.map((p) => {
             if (p.id !== id) return p
-
-            // return oldPixel (only specific changes) because prev state is probably the state changes we just did above.
-            if (oldPixel) return {
-              ...p,
-              completed: oldPixel.completed,
-              progress: oldPixel.progress,
-            }
-              
-            // return prev state if oldPixel doesn't exist.
             return {
               ...p,
-              completed: !p.completed,
-              progress: !p.completed ? 100 : p.progress,
+              completedAt: oldPixel!.completedAt,
+              progress: oldPixel!.progress,
             }
           }),
         )
@@ -135,13 +130,13 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
         updatedPixel = {
           id: p.id,
           progress,
-          completed: progress === 100,
+          completedAt: progress === 100 ? new Date() : null,
         } as UpdatePixelType
 
         return {
           ...p,
           progress,
-          completed: progress === 100,
+          completedAt: progress === 100 ? new Date() : null,
         }
       }),
     )
@@ -151,34 +146,40 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
       const response = await updatePixel({ data: updatedPixel })
       console.log('//// updateProgress- updatePixel - response: ', response)
 
-      if (response.success !== true) {
-        // undo state changes if update is unsuccessful
-        setPixels((prev) =>
-          prev.map((p) => {
-            if (p.id === id) return p
-            
-            if (oldPixel) return {
-              ...p,
-              completed: oldPixel.completed,
-              progress: oldPixel.progress,
-              // completedAt: !p.completed ? new Date().toISOString() : undefined,
-            }
-            
+      if (response.success === true) return response
+
+      // undo state changes if update is unsuccessful
+      setPixels((prev) =>
+        prev.map((p) => {
+          if (p.id === id) return p
+
+          if (oldPixel)
             return {
               ...p,
-              completed: !p.completed,
-              progress: !p.completed ? 100 : p.progress,
-              // completedAt: !p.completed ? new Date().toISOString() : undefined,
+              completed: oldPixel.completedAt,
+              progress: oldPixel.progress,
+              // completedAt: !p.completedAt ? new Date().toISOString() : undefined,
             }
-          }),
-        )
-      }
+
+          return {
+            ...p,
+            completed: !p.completedAt,
+            progress: !p.completedAt ? 100 : p.progress,
+            // completedAt: !p.completedAt ? new Date().toISOString() : undefined,
+          }
+        }),
+      )
     }
   }
 
   const deletePixel = async (id: string) => {
-    setPixels((prev) => prev.filter((p) => p.id !== id))
+    let oldPixel: Pixel | undefined
     // Also remove from any groups
+    setPixels((prev) => {
+      oldPixel = prev.find((p) => p.id === id)
+      return prev.filter((p) => p.id !== id)
+    })
+
     setGroups((prev) =>
       prev.map((g) => ({
         ...g,
@@ -186,8 +187,20 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
       })),
     )
 
-    const response = await deletePixelById({data: {pixelId: id}})
-    if (response)
+    const response = await deletePixelById({ data: { pixelId: id } })
+    if (response.success === true) return response
+
+    console.log('//// ERROR - deletePixelById: ', response)
+
+    if (!oldPixel) throw new Error("Can't find oldPixel to put back...")
+    // undo state changes if update is unsuccessful
+    setPixels((prev) => [...prev, oldPixel!])
+    setGroups((prev) =>
+      prev.map((g) => ({
+        ...g,
+        pixelIds: [...g.pixelIds, oldPixel!.id],
+      })),
+    )
   }
 
   // ---- Group CRUD ----
@@ -271,7 +284,7 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
   const filteredUngroupedBlocks = ungroupedBlocks.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchTerm.toLowerCase())
+      p.description?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = filterType === 'all' || p.type === filterType
     return matchesSearch && matchesType
   })

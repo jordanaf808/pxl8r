@@ -5,10 +5,11 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { DoodleCircle } from '@/components/sketchy-elements'
 import type { Block, BlockGroup } from '@/db/types'
 import { BLOCK_COLORS, BLOCK_TYPE_LABELS } from '@/db/types'
+import type { Pixel } from '@/db/schema'
 
 interface BlockGroupCardProps {
   group: BlockGroup
-  blocks: Block[]
+  blocks: Pixel[]
   onEdit: (group: BlockGroup) => void
   onDelete: (groupId: string) => void
   onRemoveBlock: (blockId: string, groupId: string) => void

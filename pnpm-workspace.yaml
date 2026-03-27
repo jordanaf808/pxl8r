@@ -1,8 +1,10 @@
 onlyBuiltDependencies:
+  - '@parcel/watcher'
   - '@prisma/engines'
   - '@sentry-internal/node-cpu-profiler'
   - core-js
   - esbuild
   - msw
   - prisma
+  - sharp
   - unrs-resolver

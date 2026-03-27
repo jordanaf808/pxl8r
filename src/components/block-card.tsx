@@ -9,6 +9,7 @@ import {
 } from '@/components/sketchy-elements'
 import type { Block, BlockGroup } from '@/db/types'
 import { BLOCK_TYPE_LABELS, BLOCK_COLORS } from '@/db/types'
+import type { Pixel } from '@/db/schema'
 
 const TYPE_DOODLES: Record<string, React.ReactNode> = {
   workout: (
@@ -112,7 +113,7 @@ const TYPE_DOODLES: Record<string, React.ReactNode> = {
 }
 
 interface BlockCardProps {
-  block: Block
+  block: Pixel
   onToggleComplete: (id: string) => void
   onUpdateProgress: (id: string, progress: number) => void
   onDelete: (id: string) => void
@@ -351,18 +352,20 @@ export function BlockCard({
           >
             <div
               className={`w-5 h-5 flex items-center justify-center transition-all ${
-                block.completed ? 'bg-white/30' : 'border-2 border-white/40'
+                block.completedAt ? 'bg-white/30' : 'border-2 border-white/40'
               }`}
               style={{ borderRadius: '2px 5px 3px 6px' }}
             >
-              {block.completed && <DoodleCheckmark size={14} />}
+              {block.completedAt && <DoodleCheckmark size={14} />}
             </div>
             <span className="text-sm font-serif group-hover/check:opacity-100 opacity-70 transition-opacity">
-              {block.completed ? 'Completed!' : 'Mark complete'}
+              {block.completedAt ? 'Completed!' : 'Mark complete'}
             </span>
           </button>
 
-          {block.completed && <DoodleCircle size={16} className="opacity-50" />}
+          {block.completedAt && (
+            <DoodleCircle size={16} className="opacity-50" />
+          )}
         </div>
       </div>
     </div>
