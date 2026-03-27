@@ -4,7 +4,7 @@ import {
   getGridsByOwnerId,
   getPagesByOwnerId,
   getPixelsByOwnerId,
-} from '@/db/queries.server'
+} from '@/db/queries.functions'
 import { signOut } from '@/lib/auth/auth-client'
 
 export const Route = createFileRoute('/dashboard/')({

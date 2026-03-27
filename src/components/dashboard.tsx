@@ -16,7 +16,7 @@ import {
   createPixel as createPixelServerFn,
   updatePixel as updatePixelServerFn,
   deletePixelById as deletePixelByIdServerFn,
-} from '@/db/mutations.server'
+} from '@/db/mutations.functions'
 import { useServerFn } from '@tanstack/react-start'
 
 interface DashboardProps {
