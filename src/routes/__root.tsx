@@ -3,7 +3,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 // import NotFoundComponent from '@/components/NotFoundComponent'
 import Header from '../components/Header'
-import { getSession } from '@/lib/auth/auth.server'
+import { getSession } from '@/lib/auth/auth.functions'
 
 import appCss from '../styles.css?url'
 
