@@ -5,7 +5,7 @@ import type auth from './auth'
 export const { useSession, signIn, signOut, signUp, getSession } =
   createAuthClient({
     /** The base URL of the server (optional if you're using the same domain) */
-    baseURL: 'http://localhost:3000',
+    baseURL: `https://${process.env.DB_HOST}`,
     plugins: [inferAdditionalFields<typeof auth>()],
   })
 
