@@ -273,18 +273,18 @@ export const grids = pgTable(
     isPublic: boolean('is_public').default(false),
 
     // Grid dimensions
-    columns: smallint('columns').notNull().default(7),
-    rows: smallint('rows').notNull().default(52), // 7x52 = year tracker
+    columns: smallint('columns').notNull().default(7), // 7 days a week
+    rows: smallint('rows').notNull().default(4), // 4 weeks a month
 
     // Scale configuration
     scaleType: scaleTypeEnum('scale_type').default('daily'),
-    scaleUnit: unitTypeEnum('scale_unit'),
-    scaleStart: smallint('scale_start'), // e.g. 0 (start value)
-    scaleEnd: smallint('scale_end'), // e.g. 100 (goal value)
-    scaleLabel: text('scale_label'), // e.g. "lbs", "miles", "%"
+    scaleUnit: unitTypeEnum('scale_unit').default('percent'),
+    scaleStart: smallint('scale_start').default(0), // e.g. 0 (start value)
+    scaleEnd: smallint('scale_end').default(100), // e.g. 100 (goal value)
+    scaleLabel: text('scale_label').default('%'), // e.g. "lbs", "miles", "%"
 
     // Theme override (inherits user theme if null)
-    theme: themeTypeEnum('theme'),
+    theme: themeTypeEnum('theme').default('journal'),
 
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
