@@ -331,7 +331,7 @@ export const gridPixels = pgTable(
     pixelId: uuid('pixel_id')
       .notNull()
       .references(() => pixels.id, { onDelete: 'cascade' }),
-    sortOrder: text('sort_order').notNull().default('manual'), // display order in the legend
+    sortOrder: text('sort_order').notNull().default('alphabetic'), // display order in the legend
   },
   (t) => ({
     pk: primaryKey({ columns: [t.gridId, t.pixelId] }),
@@ -356,6 +356,7 @@ export const cells = pgTable(
     pixelId: uuid('pixel_id').references(() => pixels.id, {
       onDelete: 'set null',
     }),
+    type: cellTypeEnum('type').notNull(),
 
     // Grid position — col/row index (0-based)
     col: smallint('col').notNull(),

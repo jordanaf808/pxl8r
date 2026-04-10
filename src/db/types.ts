@@ -11,18 +11,20 @@ import type { PgTransaction } from 'drizzle-orm/pg-core'
 import type { ExtractTablesWithRelations } from 'drizzle-orm/relations'
 import z from 'zod'
 
-export type BlockType =
-  | 'workout'
-  | 'project'
-  | 'finance'
-  | 'mood'
-  | 'skill'
-  | 'habit'
-  | 'reading'
-  | 'social'
-  | 'personal'
-  | 'scale'
-  | 'custom'
+export type PixelTypeType = typeof schema.pixels.$inferSelect.type
+// export type PixelType =
+//   | 'workout'
+//   | 'project'
+//   | 'finance'
+//   | 'mood'
+//   | 'skill'
+//   | 'habit'
+//   | 'reading'
+//   | 'social'
+//   | 'personal'
+//   | 'journal'
+//   | 'scale'
+//   | 'custom'
 
 export type BlockColor = 'rust' | 'sage' | 'gold' | 'slate' | 'warm'
 
@@ -55,7 +57,7 @@ export interface User {
   email: string
 }
 
-export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
+export const PIXEL_TYPE_LABELS: Record<PixelTypeType, string> = {
   workout: 'Workout',
   project: 'Project',
   finance: 'Finance',
@@ -65,11 +67,12 @@ export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
   reading: 'Reading',
   social: 'social',
   personal: 'personal',
+  journal: 'journal',
   scale: 'scale',
   custom: 'Custom',
 }
 
-export const BLOCK_TYPE_ICONS: Record<BlockType, string> = {
+export const PIXEL_TYPE_ICONS: Record<PixelTypeType, string> = {
   workout: 'dumbbell',
   project: 'folder',
   finance: 'coins',
@@ -79,6 +82,7 @@ export const BLOCK_TYPE_ICONS: Record<BlockType, string> = {
   reading: 'book',
   social: 'social',
   personal: 'personal',
+  journal: 'journal',
   scale: 'scale',
   custom: 'star',
 }
@@ -103,10 +107,10 @@ export const BLOCK_COLORS: Record<
 
 // Schema for a single cell in the bulk operation
 export const createCellSchema = z.object({
+  pixelId: z.uuid(),
   col: z.int().min(0).max(1000),
   row: z.int().min(0).max(1000),
-  // The actual data to upsert
-  pixelId: z.uuid(),
+  type: z.enum(cellTypeEnum.enumValues),
   value: z.number(),
   note: z.string().max(500).optional(),
   colorOverride: z
@@ -126,7 +130,8 @@ export const createManyCellsSchema = z.object({
 export type CreateCellInput = z.infer<typeof createCellSchema>
 export type CreateCellsInput = z.infer<typeof createManyCellsSchema>
 
-export const bulkGridPixelSchema = z.object({
+export const gridPixelSchema = z.object({
+  gridId: z.uuid(),
   pixelId: z.uuid(),
   sortOrder: z
     .string()
@@ -138,10 +143,27 @@ export const bulkGridPixelSchema = z.object({
 export const bulkGridPixelsSchema = z.object({
   ownerId: z.uuid(), // grid owner ID
   gridId: z.uuid(),
-  pixelData: z.array(bulkGridPixelSchema).min(1).max(365),
+  pixelData: z.array(gridPixelSchema).min(1).max(365),
 })
 
+export type gridPixelInput = z.infer<typeof gridPixelSchema>
 export type bulkGridPixelsInput = z.infer<typeof bulkGridPixelsSchema>
+
+// ─────────────────────────────────────────────
+// READ
+// ─────────────────────────────────────────────
+
+export type GridPixel = {
+  gridId: string
+  sortOrder: string
+  pixel: schema.Pixel
+}
+
+export type DashboardGridDataReturn = {
+  cellsByGridId: Map<string, schema.Cell[]>
+  pixelsByGridId: Map<string, GridPixel[]>
+  ungroupedPixels: schema.Pixel[]
+}
 
 /**
  * UPDATES
@@ -249,20 +271,25 @@ export type UpdatePixelType = z.infer<typeof updatePixelSchema>
 // BulkUpsert Cells Types
 // Define which columns can be bulk-updated
 export const updatableCellFields = z.object({
-  type: z.enum(cellTypeEnum.enumValues).optional(),
-  value: z.number().optional(),
-  note: z.string().max(500).optional(),
+  pixelId: z.uuid().nullish(),
+  value: z.number().nullish(),
+  note: z.string().max(500).nullish(),
   colorOverride: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
-    .optional(), // hex color
+    .nullish(), // hex color
   updatedAt: z.nullish(z.coerce.date()),
+  completedAt: z.nullish(z.coerce.date()),
 })
 
 // Schema for a single cell in the bulk operation
 export const updateCellSchema = z.object({
-  ownerId: z.uuid(),
   id: z.uuid(),
+  ownerId: z.uuid(),
+  type: z.enum(cellTypeEnum.enumValues),
+  // Position identifiers (used for matching existing cells when id not provided)
+  col: z.int().min(0).max(1000),
+  row: z.int().min(0).max(1000),
   // The actual data to upsert
   ...updatableCellFields.shape,
 })
@@ -271,12 +298,11 @@ export const updateCellSchema = z.object({
 export const bulkCellSchema = z.object({
   // For upsert: if id provided, update; otherwise insert (or match by position)
   id: z.uuid().optional(),
+  type: z.enum(cellTypeEnum.enumValues),
   // Position identifiers (used for matching existing cells when id not provided)
   col: z.int().min(0).max(1000),
   row: z.int().min(0).max(1000),
   // The actual data to upsert
-  pixelId: z.uuid().optional(),
-  completedAt: z.nullish(z.coerce.date()),
   ...updatableCellFields.shape,
 })
 

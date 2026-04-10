@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Plus, LogOut, Search, Layers } from 'lucide-react'
-import { SketchyDivider, DoodleStar } from '@/components/sketchy-elements'
+import { useState } from 'react'
+import { Plus, Search, Layers } from 'lucide-react'
+import { SketchyDivider } from '@/components/sketchy-elements'
+import DashboardHeader from '@/components/dashboardHeader'
 import { BlockCard } from '@/components/block-card'
 import { BlockGroupCard } from '@/components/block-group-card'
 import { CreateBlockModal } from '@/components/create-block-modal'
@@ -19,16 +20,21 @@ import type {
   NewPixel,
   Pixel,
   NewUser,
-  User,
   Grid,
   Page,
   NewGrid,
+  NewCell,
 } from '@/db/schema'
 import {
   createPixel as createPixelServerFn,
   updatePixel as updatePixelServerFn,
   deletePixelById as deletePixelByIdServerFn,
   createGrid as createGridServerFn,
+  bulkUpsertCells as bulkUpsertCellsServerFn,
+  bulkUpsertGridPixels as bulkUpsertGridPixelsServerFn,
+  deleteGridPixels as deleteGridPixelsServerFn,
+  deleteManyCellsById as deleteManyCellsByIdServerFn,
+  deleteGridById as deleteGridByIdServerFn,
 } from '@/db/mutations.functions'
 import { useServerFn } from '@tanstack/react-start'
 
@@ -38,27 +44,42 @@ interface DashboardProps {
     pixels: Pixel[]
     grids: Grid[]
     pages: Page[]
+    gridData: DashboardGridDataReturn
   }
-  onLogout: () => void
 }
 
-export function Dashboard({ user, userData, onLogout }: DashboardProps) {
+export function Dashboard({ user, userData }: DashboardProps) {
   const createPixel = useServerFn(createPixelServerFn)
   const updatePixel = useServerFn(updatePixelServerFn)
   const createGrid = useServerFn(createGridServerFn)
+  const deleteGrid = useServerFn(deleteGridByIdServerFn)
+  const bulkUpsertCells = useServerFn(bulkUpsertCellsServerFn)
+  const bulkUpsertGridPixels = useServerFn(bulkUpsertGridPixelsServerFn)
+  const deleteGridPixels = useServerFn(deleteGridPixelsServerFn)
+  const deleteManyCellsById = useServerFn(deleteManyCellsByIdServerFn)
   const deletePixelById = useServerFn(deletePixelByIdServerFn)
-  const [pixels, setPixels] = useState<Pixel[]>([])
+  const [pixels, setPixels] = useState<Pixel[]>(userData.pixels)
   // groups are grids
   const [grids, setGrids] = useState<Grid[]>(userData.grids)
+  const [cellsByGridId, setCellsByGridId] = useState(
+    userData.gridData.cellsByGridId,
+  )
+  const [pixelsByGridId, setPixelsByGridId] = useState(
+    userData.gridData.pixelsByGridId,
+  )
+  const [ungroupedPixels, setUngroupedPixels] = useState(
+    userData.gridData.ungroupedPixels,
+  )
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false)
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
   const [editingGrid, setEditingGrid] = useState<NewGrid | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<BlockType | 'all'>('all')
+  const [filterType, setFilterType] = useState<PixelTypeType | 'all'>('all')
 
-  useEffect(() => {
-    setPixels(userData.pixels)
-  }, [])
+  // // update pixels state
+  // useEffect(() => {
+  //   setPixels(userData.pixels)
+  // }, [])
 
   // ---- Block CRUD ----
   const createPixelHandler = async (
@@ -187,35 +208,42 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
     }
   }
 
-  const deletePixel = async (id: string) => {
+  const deletePixel = async (pixelId: string) => {
     let oldPixel: Pixel | undefined
-    // Also remove from any groups
+    let oldPixelsByGridId: Map<string, GridPixel[]> | undefined
+
+    // remove from pixels state
     setPixels((prev) => {
-      oldPixel = prev.find((p) => p.id === id)
-      return prev.filter((p) => p.id !== id)
+      oldPixel = prev.find((p) => p.id === pixelId)
+      return prev.filter((p) => p.id !== pixelId)
     })
 
-    setGroups((prev) =>
-      prev.map((g) => ({
-        ...g,
-        pixelIds: g.pixelIds.filter((bid) => bid !== id),
-      })),
-    )
+    // remove from pixelsByGridId state
+    setPixelsByGridId((prev) => {
+      oldPixelsByGridId = new Map(prev)
+      const updatedPixelsByGridId = new Map(prev)
 
-    const response = await deletePixelById({ data: { pixelId: id } })
+      updatedPixelsByGridId.forEach((value, key, map) => {
+        const updatedGridPixels: GridPixel[] = value.filter(
+          (gridPixel) => gridPixel.pixel.id !== pixelId,
+        )
+        map.set(key, updatedGridPixels)
+      })
+
+      return updatedPixelsByGridId
+    })
+
+    const response = await deletePixelById({ data: { pixelId } })
     if (response.success === true) return response
 
     console.log('//// ERROR - deletePixelById: ', response)
 
-    if (!oldPixel) throw new Error("Can't find oldPixel to put back...")
     // undo state changes if update is unsuccessful
+    if (!oldPixel) throw new Error("Can't find oldPixel to put back...")
     setPixels((prev) => [...prev, oldPixel!])
-    setGroups((prev) =>
-      prev.map((g) => ({
-        ...g,
-        pixelIds: [...g.pixelIds, oldPixel!.id],
-      })),
-    )
+    if (!oldPixelsByGridId)
+      throw new Error("Can't find oldGridData to put back...")
+    setPixelsByGridId(() => oldPixelsByGridId!)
   }
 
   // ---- Grid CRUD ----
@@ -234,8 +262,8 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
   //   )
   // }
 
-  const createGridHandler = async (gridData: NewGrid) => {
-    const createdGrid = await createGrid({ data: gridData })
+  const createGridHandler = async (newGrid: NewGrid) => {
+    const createdGrid = await createGrid({ data: newGrid })
     console.log('//// createPixel response: ', createdGrid)
     if (createdGrid.success !== true)
       throw new Error('Error creating pixel: ', { cause: createdGrid.results })
@@ -243,72 +271,306 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
     //   ...pixelData,
     // }
 
-    setGroups((prev) => [...createdGrid.results, ...prev])
+    setGrids((prev) => [...createdGrid.results, ...prev])
   }
 
-  const updateGroup = (updated: BlockGroup) => {
-    const oldGroup = groups.find((g) => g.id === updated.id)
-    setGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)))
+  // const updateGrid = (updated: BlockGroup) => {
+  //   const oldGroup = grids.find((g) => g.id === updated.id)
+  //   setGrids((prev) => prev.map((g) => (g.id === updated.id ? updated : g)))
 
-    // Unassign pixels that were removed
-    const removedIds = (oldGroup?.pixelIds ?? []).filter(
-      (id) => !updated.pixelIds.includes(id),
-    )
-    // Assign pixels that were added
-    setPixels((prev) =>
-      prev.map((p) => {
-        if (updated.pixelIds.includes(p.id))
-          return { ...p, groupId: updated.id }
-        if (removedIds.includes(p.id)) return { ...p, groupId: undefined }
-        return p
-      }),
-    )
-  }
+  //   // Unassign pixels that were removed
+  //   const removedIds = (oldGroup?.pixelIds ?? []).filter(
+  //     (id) => !updated.pixelIds.includes(id),
+  //   )
+  //   // Assign pixels that were added
+  //   setPixels((prev) =>
+  //     prev.map((p) => {
+  //       if (updated.pixelIds.includes(p.id))
+  //         return { ...p, groupId: updated.id }
+  //       if (removedIds.includes(p.id)) return { ...p, groupId: undefined }
+  //       return p
+  //     }),
+  //   )
+  // }
 
-  const deleteGroup = (groupId: string) => {
-    const group = groups.find((g) => g.id === groupId)
-    setGroups((prev) => prev.filter((g) => g.id !== groupId))
-    // Unassign pixels
-    if (group) {
-      setPixels((prev) =>
-        prev.map((p) =>
-          group.pixelIds.includes(p.id) ? { ...p, groupId: undefined } : p,
-        ),
-      )
+  const removeGrid = async (gridId: string) => {
+    const foundGrid = grids.find((g) => g.id === gridId)
+    if (foundGrid?.ownerId !== user.id)
+      throw new Error('Unauthorized or Grid not found.')
+    let oldGridsState: Grid[]
+
+    setGrids((prev) => {
+      oldGridsState = prev
+      return prev.filter((g) => g.id !== gridId)
+    })
+
+    const results = await deleteGrid({ data: { gridId } })
+
+    if (!results.success) {
+      console.error('Error deleting Grid: ', { cause: results })
+      // revert grids state
+      setGrids(() => oldGridsState)
     }
   }
 
-  const moveBlockToGroup = (blockId: string, groupId: string | null) => {
-    // Remove from old group
-    setGroups((prev) =>
-      prev.map((g) => ({
-        ...g,
-        pixelIds: g.pixelIds.filter((id) => id !== blockId),
-      })),
-    )
-    if (groupId) {
-      // Add to new group
-      setGroups((prev) =>
-        prev.map((g) =>
-          g.id === groupId ? { ...g, pixelIds: [...g.pixelIds, blockId] } : g,
-        ),
+  // const deleteGroup = (groupId: string) => {
+  //   const grid = grids.find((g) => g.id === groupId)
+  //   setGrids((prev) => prev.filter((g) => g.id !== groupId))
+  //   // Unassign pixels
+  //   if (grid) {
+  //     setPixels((prev) =>
+  //       prev.map((p) =>
+  //         grid.pixelIds.includes(p.id) ? { ...p, groupId: undefined } : p,
+  //       ),
+  //     )
+  //   }
+  // }
+
+  const addPixelsToGridPixels = async ({
+    gridId,
+    pixelIds,
+  }: {
+    gridId: string
+    pixelIds: string[]
+  }) => {
+    const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
+    // right now only the current user's grids are shown, but maybe there's a point where grids are shared...
+    if (gridOwnerId !== user.id) throw new Error('You do not own this grid')
+
+    // build new gridPixels array
+    const gridPixels = pixelsByGridId.get(gridId)
+    const newGridPixelsState: GridPixel[] = []
+    const newGridPixelsDB: {
+      gridId: string
+      pixelId: string
+      sortOrder: string
+    }[] = []
+
+    pixelIds.forEach((pixelId) => {
+      // check pixel ownership
+      const foundPixel = pixels.find(
+        (p) => p.id === pixelId && p.ownerId === user.id,
       )
-    }
-    setPixels((prev) =>
-      prev.map((p) =>
-        p.id === blockId ? { ...p, groupId: groupId ?? undefined } : p,
-      ),
+      if (!foundPixel) {
+        console.log('Pixel not found: ' + pixelId)
+        return false
+      }
+
+      // check if it does not exist already
+      const foundGridPixel = gridPixels?.find((p) => p.pixel.id === pixelId)
+      if (foundGridPixel) return
+
+      // format data for state
+      newGridPixelsState.push({
+        gridId,
+        pixel: foundPixel,
+        sortOrder: 'manual',
+      })
+      // and for db
+      newGridPixelsDB.push({
+        gridId,
+        pixelId: foundPixel.id,
+        sortOrder: 'manual',
+      })
+    })
+
+    // update gridData state with new cells and gridPixels
+    setPixelsByGridId((oldPixelsByGridId) => {
+      const newPixelsByGridId = new Map(oldPixelsByGridId)
+
+      if (newGridPixelsState.length > 0) {
+        newPixelsByGridId.set(gridId, [
+          ...(gridPixels ?? []),
+          ...newGridPixelsState,
+        ])
+      }
+
+      return newPixelsByGridId
+    })
+
+    const results = await bulkUpsertGridPixels({
+      data: {
+        ownerId: user.id,
+        gridId,
+        pixelData: newGridPixelsDB,
+      },
+    })
+    console.log(
+      '//// addPixelsToGridCells - bulkUpsertGridPixels results: ',
+      results,
     )
+
+    return results
   }
 
-  const removeBlockFromGroup = (blockId: string, groupId: string) => {
-    moveBlockToGroup(blockId, null)
+  const removeGridPixels = async ({
+    gridId,
+    pixelIds,
+  }: {
+    gridId: string
+    pixelIds: string[]
+  }) => {
+    const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
+    if (gridOwnerId !== user.id) throw new Error('You do not own this grid')
+    let oldPixelsByGridId: Map<string, GridPixel[]>
+    // const usersPixels = pixels.filter((p) => {
+    //   if (pixelIds.includes(p.id)) {
+    //     if (p.ownerId === user.id) return p
+    //   }
+    // })
+    // if (usersPixels.length < 1) throw new Error('you dont own these pixels')
+
+    // update gridData state without removed gridPixels
+    setPixelsByGridId((prev) => {
+      // use if operation goes wrong
+      oldPixelsByGridId = new Map(prev)
+      const newPixelsByGridId = new Map(prev)
+      const oldGridPixels = oldPixelsByGridId.get(gridId)
+      let filteredGridPixels: GridPixel[] = []
+      if (!oldGridPixels) throw new Error('cant find GridPixels')
+
+      pixelIds.forEach((pixelId) => {
+        filteredGridPixels = oldGridPixels.filter(
+          (gp) => gp.pixel.id !== pixelId && gp.gridId === gridId,
+        )
+      })
+
+      newPixelsByGridId.set(gridId, filteredGridPixels)
+
+      return newPixelsByGridId
+    })
+
+    const results = await deleteGridPixels({
+      data: {
+        gridId,
+        pixelIds,
+      },
+    })
+    console.log('//// removeGridPixels - deleteGridPixels results: ', results)
+
+    return results
+  }
+
+  const updateGridCells = async ({
+    gridId,
+    cellData,
+  }: {
+    gridId: string
+    cellData: NewCell[]
+  }) => {
+    const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
+    // right now only the current user's grids are shown, but maybe there's a point where grids are shared...
+    if (gridOwnerId !== user.id) throw new Error('You do not own this grid')
+
+    // update db
+    const upsertCellsResponse = await bulkUpsertCells({
+      data: {
+        ownerId: gridOwnerId,
+        gridId: gridId,
+        cells: cellData,
+      },
+    })
+
+    if (upsertCellsResponse.success !== true)
+      throw new Error('Error upserting cells: ', {
+        cause: upsertCellsResponse.results,
+      })
+
+    // update gridData state with new cells and gridPixels
+    setCellsByGridId((oldCellsByGridId) => {
+      const newCellsByGridMap = new Map(oldCellsByGridId)
+
+      newCellsByGridMap.set(gridId, [
+        ...(oldCellsByGridId.get(gridId) ?? []),
+        ...upsertCellsResponse.results,
+      ])
+
+      return newCellsByGridMap
+    })
+
+    return upsertCellsResponse
+  }
+
+  // const moveBlockToGroup = (blockId: string, groupId: string | null) => {
+  //   // Remove from old grid
+  //   setGrids((prev) =>
+  //     prev.map((g) => ({
+  //       ...g,
+  //       pixelIds: g.pixelIds.filter((id) => id !== blockId),
+  //     })),
+  //   )
+  //   if (groupId) {
+  //     // Add to new grid
+  //     setGrids((prev) =>
+  //       prev.map((g) =>
+  //         g.id === groupId ? { ...g, pixelIds: [...g.pixelIds, blockId] } : g,
+  //       ),
+  //     )
+  //   }
+  //   setPixels((prev) =>
+  //     prev.map((p) =>
+  //       p.id === blockId ? { ...p, groupId: groupId ?? undefined } : p,
+  //     ),
+  //   )
+  // }
+
+  // const removeBlockFromGroup = (blockId: string, groupId: string) => {
+  //   moveBlockToGroup(blockId, null)
+  // }
+
+  const removeCellsFromGrid = async ({
+    gridId,
+    cellData,
+  }: {
+    gridId: string
+    cellData: { cellId: string; pixelId: string }[]
+  }) => {
+    const cellIds = cellData.map((c) => c.cellId)
+    const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
+    // right now only the current user's grids are shown, but maybe there's a point where grids are shared...
+    if (gridOwnerId !== user.id) throw new Error('You do not own this grid')
+
+    setCellsByGridId((prev) => {
+      const newCellsByGridMap = new Map(prev)
+      const gridCells = prev.get(gridId)
+
+      if (!gridCells || gridCells.length === 0) {
+        console.error('no grid cells found')
+        return prev
+      }
+      cellData.forEach(({ cellId }) => {
+        // remove from cellsByGridId
+        newCellsByGridMap.set(
+          gridId,
+          gridCells.filter((c) => c.id !== cellId),
+        )
+      })
+
+      return {
+        ...prev,
+        cellsByGridId: newCellsByGridMap,
+      }
+    })
+
+    // update db
+    const deleteCellsResponse = await deleteManyCellsById({
+      data: {
+        gridOwnerId: gridOwnerId,
+        gridId: gridId,
+        cellIds: cellIds,
+      },
+    })
+
+    console.log(
+      '//// removeCellsFromGrid - deleteCellsResponse: ',
+      deleteCellsResponse,
+    )
+
+    return deleteCellsResponse
   }
 
   // ---- Derived data ----
-  const ungroupedBlocks = pixels.filter((p) => !p.groupId)
-
-  const filteredUngroupedBlocks = ungroupedBlocks.filter((p) => {
+  const filteredUngroupedPixels = ungroupedPixels.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.description?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -316,54 +578,45 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
     return matchesSearch && matchesType
   })
 
-  const filteredGroups = groups.filter((g) => {
+  const filteredGrids = grids.filter((g) => {
+    const gridPixels = pixelsByGridId.get(g.id)
+    if (!gridPixels || gridPixels.length < 1) {
+      console.error('No gridPixels found')
+      return false
+    }
     const matchesSearch =
       g.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      g.description.toLowerCase().includes(searchTerm.toLowerCase())
-    // If type filter is active, show group only if it contains a block of that type
+      (g.description
+        ? g.description.toLowerCase().includes(searchTerm.toLowerCase())
+        : '')
+
+    // If type filter is active, show grid only if it contains a pixel of that type
     const matchesType =
       filterType === 'all' ||
-      g.pixelIds.some((bid) => {
-        const block = pixels.find((p) => p.id === bid)
-        return block && block.type === filterType
+      gridPixels.some((gp) => {
+        return gp.pixel.type === filterType
       })
     return matchesSearch && matchesType
   })
 
-  const blockTypes = Object.entries(BLOCK_TYPE_LABELS) as [BlockType, string][]
+  const blockTypes = Object.entries(PIXEL_TYPE_LABELS) as [
+    PixelTypeType,
+    string,
+  ][]
 
-  // For the group modal: pixels available to add (ungrouped ones, or if editing, also already-in-group ones)
-  const blocksAvailableForGroupModal = editingGroup
-    ? pixels.filter((p) => !p.groupId || p.groupId === editingGroup.id)
-    : ungroupedBlocks
+  // For the grid modal: pixels available to add (ungrouped ones, or if editing, also already-in-grid ones)
+  const pixelsAvailableForGridModal = editingGrid?.id
+    ? pixelsByGridId
+        .get(editingGrid.id)
+        ?.filter((gp) => gp.gridId === editingGrid.id)
+    : ungroupedPixels
 
-  const groupNameMap = new Map(groups.map((g) => [g.id, g.name]))
+  const gridNameMap = new Map(grids.map((g) => [g.id, g.name]))
 
   return (
     <div className="min-h-screen paper-dots">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[var(--journal-cream)]/95 backdrop-blur-sm border-p-2 border-[var(--journal-warm)]">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-[var(--journal-ink)]">
-              PXL8
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-base font-serif text-[var(--journal-ink)] opacity-60 hidden sm:inline">
-              {user.name}
-              {"'s journal"}
-            </span>
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-1.5 text-[var(--journal-ink)] opacity-50 hover:opacity-100 transition-opacity font-serif cursor-pointer"
-            >
-              <LogOut size={18} />
-              <span className="hidden sm:inline">logout</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Welcome */}
@@ -379,7 +632,7 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
 
         {/* Stats */}
         <div className="mb-8">
-          <StatsBar blocks={pixels} groupCount={groups.length} />
+          <StatsBar blocks={pixels} groupCount={grids.length} />
         </div>
 
         {/* Controls */}
@@ -396,7 +649,7 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
               />
               <input
                 type="text"
-                placeholder="Search pixels & groups..."
+                placeholder="Search pixels & grids..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="bg-transparent text-[var(--journal-ink)] text-lg placeholder:text-[var(--journal-warm)] outline-none w-40 md:w-56 font-sans"
@@ -437,7 +690,7 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => {
-                setEditingGroup(null)
+                setEditingGrid(null)
                 setIsGroupModalOpen(true)
               }}
               className="flex items-center gap-2 bg-[var(--journal-cream)] text-[var(--journal-ink)] px-4 py-2.5 text-lg font-serif hover:bg-[var(--journal-tan)] active:translate-y-px transition-all cursor-pointer"
@@ -462,36 +715,36 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
 
         <SketchyDivider className="text-[var(--journal-warm)] mb-6" />
 
-        {/* Mixed Grid: groups + ungrouped pixels */}
-        {filteredGroups.length > 0 || filteredUngroupedBlocks.length > 0 ? (
+        {/* Mixed Grid: grids + ungrouped pixels */}
+        {filteredGrids.length > 0 || filteredUngroupedPixels.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger-grid">
             {/* Groups first */}
-            {filteredGroups.map((group) => (
+            {filteredGrids.map((grid) => (
               <BlockGroupCard
-                key={group.id}
-                group={group}
+                key={grid.id}
+                group={grid}
                 blocks={pixels}
                 onEdit={(g) => {
-                  setEditingGroup(g)
+                  setEditingGrid(g)
                   setIsGroupModalOpen(true)
                 }}
-                onDelete={deleteGroup}
-                onRemoveBlock={removeBlockFromGroup}
+                onDelete={removeGrid}
+                onRemoveBlock={removeGridPixels}
               />
             ))}
 
             {/* Ungrouped pixels */}
-            {filteredUngroupedBlocks.map((block) => (
+            {filteredUngroupedPixels.map((pixel) => (
               <BlockCard
-                key={block.id}
-                block={block}
+                key={pixel.id}
+                block={pixel}
                 onToggleComplete={toggleComplete}
                 onUpdateProgress={updateProgress}
                 onDelete={deletePixel}
-                groups={groups}
+                grids={grids}
                 onMoveToGroup={moveBlockToGroup}
                 groupName={
-                  block.groupId ? groupNameMap.get(block.groupId) : undefined
+                  pixel.groupId ? gridNameMap.get(pixel.groupId) : undefined
                 }
               />
             ))}
@@ -526,13 +779,13 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
             </svg>
             <p className="text-2xl text-[var(--journal-ink)] opacity-40 font-sans text-center text-balance">
               {searchTerm || filterType !== 'all'
-                ? 'No pixels or groups match your search'
+                ? 'No pixels or grids match your search'
                 : 'Your journal is empty'}
             </p>
             <p className="text-base text-[var(--journal-ink)] opacity-30 font-serif mt-1 text-center">
               {searchTerm || filterType !== 'all'
                 ? 'Try a different search or filter'
-                : 'Add your first block to get started!'}
+                : 'Add your first pixel to get started!'}
             </p>
           </div>
         )}
@@ -554,16 +807,16 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
       />
 
       {/* Create / Edit Group Modal */}
-      <CreateGroupModal
+      <CreateGridModal
         isOpen={isGroupModalOpen}
         onClose={() => {
           setIsGroupModalOpen(false)
-          setEditingGroup(null)
+          setEditingGrid(null)
         }}
         onSubmit={createGridHandler}
-        ungroupedBlocks={blocksAvailableForGroupModal}
-        editGroup={editingGroup}
-        onUpdate={updateGroup}
+        ungroupedBlocks={pixelsAvailableForGridModal}
+        editGroup={editingGrid}
+        onUpdate={updateGrid}
       />
     </div>
   )
