@@ -1,10 +1,7 @@
-'use client'
-
 import { useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { DoodleCircle } from '@/components/sketchy-elements'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
-import type { PixelColor } from '@/db/types'
 import type { Grid, Pixel } from '@/db/schema'
 
 interface GridCardProps {

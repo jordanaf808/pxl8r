@@ -65,7 +65,7 @@ export const unitTypeEnum = pgEnum('unit_type', [
   'custom',
 ])
 
-export const pixelColorEnum = pgEnum('color_type', [
+export const ColorTypeEnum = pgEnum('color_type', [
   'rust',
   'sage',
   'gold',
@@ -221,7 +221,7 @@ export const pixels = pgTable(
     type: pixelTypeEnum('type').notNull(), // more like a Category than type
     unit: unitTypeEnum('unit').notNull(), // unit to measure by
     endGoal: integer('end_goal'), // short label shown in key
-    color: pixelColorEnum('color').notNull(), // hex color string
+    color: ColorTypeEnum('color').notNull(), // hex color string
     completedAt: timestamp('completed_at', { withTimezone: true }).default(
       sql`NULL`,
     ),
@@ -567,28 +567,3 @@ export const pageGridsRelations = relations(pageGrids, ({ one }) => ({
 export const templatesRelations = relations(templates, ({ one }) => ({
   owner: one(users, { fields: [templates.ownerId], references: [users.id] }),
 }))
-
-// ─────────────────────────────────────────────
-// TYPE EXPORTS (inferred from schema)
-// ─────────────────────────────────────────────
-
-export type User = typeof users.$inferSelect
-export type NewUser = typeof users.$inferInsert
-export type Session = typeof session.$inferSelect
-export type NewSession = typeof session.$inferInsert
-export type Account = typeof account.$inferSelect
-export type NewAccount = typeof account.$inferInsert
-export type Verification = typeof verification.$inferSelect
-export type NewVerification = typeof verification.$inferInsert
-export type Grid = typeof grids.$inferSelect
-export type NewGrid = typeof grids.$inferInsert
-export type Cell = typeof cells.$inferSelect
-export type NewCell = typeof cells.$inferInsert
-export type Pixel = typeof pixels.$inferSelect
-export type NewPixel = typeof pixels.$inferInsert
-export type Page = typeof pages.$inferSelect
-export type NewPage = typeof pages.$inferInsert
-export type Template = typeof templates.$inferSelect
-export type NewTemplate = typeof templates.$inferInsert
-export type ColorPalette = typeof colorPalettes.$inferSelect
-export type NewColorPalette = typeof colorPalettes.$inferInsert

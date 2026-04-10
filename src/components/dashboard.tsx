@@ -1,30 +1,26 @@
-'use client'
-
 import { useState } from 'react'
 import { Plus, Search, Layers } from 'lucide-react'
 import { SketchyDivider } from '@/components/sketchy-elements'
 import DashboardHeader from '@/components/dashboardHeader'
-import { BlockCard } from '@/components/block-card'
+import { PixelCard } from '@/components/block-card'
 import { GridCard } from '@/components/GridCard'
 import { CreateBlockModal } from '@/components/create-block-modal'
 import { CreateGridModal } from '@/components/create-group-modal'
 import { StatsBar } from '@/components/stats-bar'
 import type {
+  Pixel,
+  NewPixel,
+  NewUser,
+  Grid,
+  Page,
+  NewGrid,
+  NewCell,
   GridPixel,
   PixelTypeType,
   UpdatePixelType,
   DashboardGridDataReturn,
 } from '@/db/types'
 import { PIXEL_TYPE_LABELS } from '@/db/types'
-import type {
-  NewPixel,
-  Pixel,
-  NewUser,
-  Grid,
-  Page,
-  NewGrid,
-  NewCell,
-} from '@/db/schema'
 import {
   createPixel as createPixelServerFn,
   updatePixel as updatePixelServerFn,
@@ -76,26 +72,15 @@ export function Dashboard({ user, userData }: DashboardProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<PixelTypeType | 'all'>('all')
 
-  // // update pixels state
-  // useEffect(() => {
-  //   setPixels(userData.pixels)
-  // }, [])
-
   // ---- Block CRUD ----
-  const createPixelHandler = async (
-    // pixelData: Omit<NewPixel, 'id' | 'ownerId' | 'completed' | 'progress' | 'createdAt' | 'updatedAt'>,
-    pixelData: NewPixel,
-  ) => {
+  const createPixelHandler = async (pixelData: NewPixel) => {
     // could maybe have some loading animation that shows building the pixel in, like 3 stages.
     const createdPixel = await createPixel({ data: pixelData })
     console.log('//// createPixel response: ', createdPixel)
     if (createdPixel.success !== true)
       throw new Error('Error creating pixel: ', { cause: createdPixel.results })
-    // const newPixel: NewPixel = {
-    //   ...pixelData,
-    // }
-    setPixels((prev) => [...createdPixel.results, ...prev])
 
+    setPixels((prev) => [...createdPixel.results, ...prev])
     console.log('//// createPixel - pixels set')
   }
 
@@ -732,24 +717,25 @@ export function Dashboard({ user, userData }: DashboardProps) {
                     setIsGroupModalOpen(true)
                   }}
                   onDelete={removeGrid}
-                  onRemoveBlock={removeGridPixels}
+                  onRemovePixel={removeGridPixels}
                 />
               )
             })}
 
             {/* Ungrouped pixels */}
             {filteredUngroupedPixels.map((pixel) => (
-              <BlockCard
+              <PixelCard
                 key={pixel.id}
-                block={pixel}
+                pixel={pixel}
+                currentGrids={grids.filter((gp) => gp.pixelId === pixel.id)}
                 onToggleComplete={toggleComplete}
                 onUpdateProgress={updateProgress}
                 onDelete={deletePixel}
-                grids={grids}
-                onMoveToGroup={moveBlockToGroup}
-                groupName={
-                  pixel.groupId ? gridNameMap.get(pixel.groupId) : undefined
-                }
+                availableGrids={grids}
+                onMoveToGrid={addPixelsToGridPixels}
+                // groupName={
+                //   pixel.groupId ? gridNameMap.get(pixel.groupId) : undefined
+                // }
               />
             ))}
           </div>

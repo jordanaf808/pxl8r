@@ -1,6 +1,7 @@
 import {
   cellTypeEnum,
   pixelTypeEnum,
+  ColorTypeEnum,
   scaleTypeEnum,
   themeTypeEnum,
   unitTypeEnum,
@@ -12,19 +13,6 @@ import type { ExtractTablesWithRelations } from 'drizzle-orm/relations'
 import z from 'zod'
 
 export type PixelTypeType = typeof schema.pixels.$inferSelect.type
-// export type PixelType =
-//   | 'workout'
-//   | 'project'
-//   | 'finance'
-//   | 'mood'
-//   | 'skill'
-//   | 'habit'
-//   | 'reading'
-//   | 'social'
-//   | 'personal'
-//   | 'journal'
-//   | 'scale'
-//   | 'custom'
 
 export type PixelColor = 'rust' | 'sage' | 'gold' | 'slate' | 'warm'
 
@@ -50,11 +38,6 @@ export interface BlockGroup {
   color: PixelColor
   pixelIds: string[]
   createdAt: string
-}
-
-export interface User {
-  name: string
-  email: string
 }
 
 export const PIXEL_TYPE_LABELS: Record<PixelTypeType, string> = {
@@ -101,10 +84,31 @@ export const PIXEL_COLORS: Record<
 /**
  * Database Types
  */
+
+export type User = typeof schema.users.$inferSelect
+export type NewUser = typeof schema.users.$inferInsert
+export type Session = typeof schema.session.$inferSelect
+export type NewSession = typeof schema.session.$inferInsert
+export type Account = typeof schema.account.$inferSelect
+export type NewAccount = typeof schema.account.$inferInsert
+export type Verification = typeof schema.verification.$inferSelect
+export type NewVerification = typeof schema.verification.$inferInsert
+export type Grid = typeof schema.grids.$inferSelect
+export type NewGrid = typeof schema.grids.$inferInsert
+export type Cell = typeof schema.cells.$inferSelect
+export type NewCell = typeof schema.cells.$inferInsert
+export type Pixel = typeof schema.pixels.$inferSelect
+export type NewPixel = typeof schema.pixels.$inferInsert
+export type Page = typeof schema.pages.$inferSelect
+export type NewPage = typeof schema.pages.$inferInsert
+export type Template = typeof schema.templates.$inferSelect
+export type NewTemplate = typeof schema.templates.$inferInsert
+export type ColorPalette = typeof schema.colorPalettes.$inferSelect
+export type NewColorPalette = typeof schema.colorPalettes.$inferInsert
+
 /**
  * CREATE
  */
-
 // Schema for a single cell in the bulk operation
 export const createCellSchema = z.object({
   pixelId: z.uuid(),
@@ -156,13 +160,13 @@ export type bulkGridPixelsInput = z.infer<typeof bulkGridPixelsSchema>
 export type GridPixel = {
   gridId: string
   sortOrder: string
-  pixel: schema.Pixel
+  pixel: Pixel
 }
 
 export type DashboardGridDataReturn = {
-  cellsByGridId: Map<string, schema.Cell[]>
+  cellsByGridId: Map<string, Cell[]>
   pixelsByGridId: Map<string, GridPixel[]>
-  ungroupedPixels: schema.Pixel[]
+  ungroupedPixels: Pixel[]
 }
 
 /**
@@ -257,10 +261,7 @@ export const updatePixelSchema = z.object({
   type: z.enum(pixelTypeEnum.enumValues).optional(),
   unit: z.enum(unitTypeEnum.enumValues).optional(),
   endGoal: z.number().max(10000).optional(),
-  color: z
-    .string()
-    .regex(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i)
-    .optional(), // hex color string
+  color: z.enum(ColorTypeEnum.enumValues).optional(), // hex color string
   completedAt: z.date().nullable(),
   progress: z.int().max(100).optional(),
 })

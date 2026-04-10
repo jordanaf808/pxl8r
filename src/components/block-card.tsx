@@ -1,5 +1,3 @@
-'use client'
-
 import { useState, useRef, useEffect } from 'react'
 import { Trash2, FolderInput } from 'lucide-react'
 import {
@@ -7,9 +5,8 @@ import {
   DoodleStar,
   DoodleCircle,
 } from '@/components/sketchy-elements'
-import type { Block, BlockGroup } from '@/db/types'
+import type { Pixel, Grid } from '@/db/types'
 import { PIXEL_TYPE_LABELS, PIXEL_COLORS } from '@/db/types'
-import type { Pixel } from '@/db/schema'
 
 const TYPE_DOODLES: Record<string, React.ReactNode> = {
   workout: (
@@ -112,45 +109,60 @@ const TYPE_DOODLES: Record<string, React.ReactNode> = {
   custom: <DoodleStar size={18} />,
 }
 
-interface BlockCardProps {
-  block: Pixel
+interface PixelCardProps {
+  pixel: Pixel
+  currentGrids: Grid[]
   onToggleComplete: (id: string) => void
   onUpdateProgress: (id: string, progress: number) => void
   onDelete: (id: string) => void
-  groups?: BlockGroup[]
-  onMoveToGroup?: (blockId: string, groupId: string | null) => void
-  /** The name of the group this block currently belongs to */
-  groupName?: string
+  availableGrids?: Grid[]
+  onMoveToGrid?: ({
+    gridId,
+    pixelIds,
+  }: {
+    gridId: string
+    pixelIds: string[]
+  }) => Promise<{
+    success: boolean
+    results: {
+      gridId: string
+      pixelId: string
+      sortOrder: string
+    }[]
+  }>
+  /** The name of the grid this pixel currently belongs to */
+  gridName?: string
 }
 
-export function BlockCard({
-  block,
+export function PixelCard({
+  pixel,
+  currentGrids,
   onToggleComplete,
   onUpdateProgress,
   onDelete,
-  groups = [],
-  onMoveToGroup,
-  groupName,
-}: BlockCardProps) {
+  availableGrids = [],
+  onMoveToGrid,
+  gridName,
+}: PixelCardProps) {
   const [isHovered, setIsHovered] = useState(false)
-  const [showGroupMenu, setShowGroupMenu] = useState(false)
+  const [showGridMenu, setShowGridMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const colorInfo = PIXEL_COLORS[block.color]
+  const colorInfo = PIXEL_COLORS[pixel.color]
 
   // Close menu on outside click
   useEffect(() => {
-    if (!showGroupMenu) return
+    if (!showGridMenu) return
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowGroupMenu(false)
+        setShowGridMenu(false)
       }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [showGroupMenu])
+  }, [showGridMenu])
 
   // Generate slight rotation for hand-drawn feel
-  const rotation = ((block.id.charCodeAt(0) % 5) - 2) * 0.5
+  const rotation = ((pixel.id.charCodeAt(0) % 5) - 2) * 0.5
 
   return (
     <div
@@ -173,18 +185,18 @@ export function BlockCard({
       >
         {/* Action buttons */}
         <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-70 transition-opacity">
-          {/* Move to group */}
-          {onMoveToGroup && groups.length > 0 && (
+          {/* Move to grid */}
+          {onMoveToGrid && availableGrids.length > 0 && (
             <div className="relative" ref={menuRef}>
               <button
-                onClick={() => setShowGroupMenu((v) => !v)}
+                onClick={() => setShowGridMenu((v) => !v)}
                 className="hover:opacity-100 cursor-pointer"
-                aria-label="Move to group"
+                aria-label="Move to grid"
               >
                 <FolderInput size={16} />
               </button>
 
-              {showGroupMenu && (
+              {showGridMenu && (
                 <div
                   className="absolute right-0 top-7 z-20 bg-[var(--journal-cream)] w-44 py-1 shadow-lg animate-float-in"
                   style={{
@@ -192,52 +204,54 @@ export function BlockCard({
                     borderRadius: '3px 8px 5px 10px',
                   }}
                 >
-                  {groups.map((g) => (
+                  {/* available grids to add pixel to */}
+                  {availableGrids.map((g) => (
                     <button
                       key={g.id}
                       onClick={() => {
-                        onMoveToGroup(block.id, g.id)
-                        setShowGroupMenu(false)
+                        onMoveToGrid({ gridId: g.id, pixelIds: [pixel.id] })
+                        setShowGridMenu(false)
                       }}
                       className="w-full text-left px-3 py-1.5 text-sm font-serif text-[var(--journal-ink)] hover:bg-[var(--journal-tan)] transition-colors cursor-pointer flex items-center gap-2"
                     >
                       <div
                         className="w-2.5 h-2.5 shrink-0"
                         style={{
-                          backgroundColor: PIXEL_COLORS[g.color].bg,
+                          // backgroundColor: PIXEL_COLORS[g.color].bg,
                           borderRadius: '1px 3px 2px 4px',
                         }}
                       />
                       <span className="truncate">{g.name}</span>
                     </button>
                   ))}
-                  {block.groupId && (
+                  {/* remove from existing grids, need to update to show multiple grids. */}
+                  {currentGrids.map((grid) => (
                     <button
                       onClick={() => {
-                        onMoveToGroup(block.id, null)
-                        setShowGroupMenu(false)
+                        onMoveToGrid({ gridId: grid.id, pixelIds: [pixel.id] })
+                        setShowGridMenu(false)
                       }}
                       className="w-full text-left px-3 py-1.5 text-sm font-serif text-[var(--journal-rust)] hover:bg-[var(--journal-tan)] transition-colors cursor-pointer border-t border-[var(--journal-warm)]"
                     >
-                      Remove from group
+                      Remove from grid
                     </button>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
           )}
 
           <button
-            onClick={() => onDelete(block.id)}
+            onClick={() => onDelete(pixel.id)}
             className="hover:opacity-100 cursor-pointer"
-            aria-label="Delete block"
+            aria-label="Delete pixel"
           >
             <Trash2 size={16} />
           </button>
         </div>
 
-        {/* Group name badge (if block belongs to a group) */}
-        {groupName && (
+        {/* Grid name badge (if pixel belongs to a grid) */}
+        {gridName && (
           <div
             className="inline-flex items-center gap-1 text-xs font-serif px-2 py-0.5 mb-2 opacity-70"
             style={{
@@ -267,45 +281,45 @@ export function BlockCard({
                 strokeWidth="1"
               />
             </svg>
-            {groupName}
+            {gridName}
           </div>
         )}
 
         {/* Type badge */}
         <div className="flex items-center gap-1.5 mb-2 opacity-80">
-          {TYPE_DOODLES[block.type]}
+          {TYPE_DOODLES[pixel.type]}
           <span className="text-sm font-serif uppercase tracking-wide">
-            {PIXEL_TYPE_LABELS[block.type]}
+            {PIXEL_TYPE_LABELS[pixel.type]}
           </span>
         </div>
 
         {/* Name */}
         <h3 className="text-2xl font-bold mb-1 leading-tight pr-6">
-          {block.name}
+          {pixel.name}
         </h3>
 
         {/* Description */}
         <p className="text-sm opacity-80 mb-3 font-serif leading-relaxed line-clamp-2">
-          {block.description}
+          {pixel.description}
         </p>
 
         {/* End goal */}
         <div
-          className="text-sm font-serif px-2 py-1 mb-3 inline-block"
+          className="text-sm font-serif px-2 py-1 mb-3 inline-pixel"
           style={{
             backgroundColor: 'rgba(255,255,255,0.15)',
             borderRadius: '2px 5px 3px 6px',
           }}
         >
           {'Goal: '}
-          {block.endGoal}
+          {pixel.endGoal}
         </div>
 
         {/* Progress bar */}
         <div className="mt-2">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-serif opacity-70">Progress</span>
-            <span className="text-sm font-bold">{block.progress}%</span>
+            <span className="text-sm font-bold">{pixel.progress}%</span>
           </div>
           <div
             className="w-full h-3 relative overflow-hidden"
@@ -317,7 +331,7 @@ export function BlockCard({
             <div
               className="h-full transition-all duration-500 ease-out"
               style={{
-                width: `${block.progress}%`,
+                width: `${pixel.progress}%`,
                 backgroundColor: 'rgba(255,255,255,0.5)',
                 borderRadius: '2px 4px 3px 5px',
               }}
@@ -337,33 +351,33 @@ export function BlockCard({
             min="0"
             max="100"
             step="5"
-            value={block.progress}
-            onChange={(e) => onUpdateProgress(block.id, Number(e.target.value))}
+            value={pixel.progress}
+            onChange={(e) => onUpdateProgress(pixel.id, Number(e.target.value))}
             className="w-full mt-1 accent-white opacity-60 hover:opacity-100 transition-opacity cursor-pointer h-1"
-            aria-label={`Progress for ${block.name}`}
+            aria-label={`Progress for ${pixel.name}`}
           />
         </div>
 
         {/* Complete toggle */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/20">
           <button
-            onClick={() => onToggleComplete(block.id)}
+            onClick={() => onToggleComplete(pixel.id)}
             className="flex items-center gap-2 cursor-pointer group/check"
           >
             <div
               className={`w-5 h-5 flex items-center justify-center transition-all ${
-                block.completedAt ? 'bg-white/30' : 'border-2 border-white/40'
+                pixel.completedAt ? 'bg-white/30' : 'border-2 border-white/40'
               }`}
               style={{ borderRadius: '2px 5px 3px 6px' }}
             >
-              {block.completedAt && <DoodleCheckmark size={14} />}
+              {pixel.completedAt && <DoodleCheckmark size={14} />}
             </div>
             <span className="text-sm font-serif group-hover/check:opacity-100 opacity-70 transition-opacity">
-              {block.completedAt ? 'Completed!' : 'Mark complete'}
+              {pixel.completedAt ? 'Completed!' : 'Mark complete'}
             </span>
           </button>
 
-          {block.completedAt && (
+          {pixel.completedAt && (
             <DoodleCircle size={16} className="opacity-50" />
           )}
         </div>
