@@ -8,7 +8,7 @@ import {
   DoodleCircle,
 } from '@/components/sketchy-elements'
 import type { Block, BlockGroup } from '@/db/types'
-import { PIXEL_TYPE_LABELS, BLOCK_COLORS } from '@/db/types'
+import { PIXEL_TYPE_LABELS, PIXEL_COLORS } from '@/db/types'
 import type { Pixel } from '@/db/schema'
 
 const TYPE_DOODLES: Record<string, React.ReactNode> = {
@@ -135,7 +135,7 @@ export function BlockCard({
   const [isHovered, setIsHovered] = useState(false)
   const [showGroupMenu, setShowGroupMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const colorInfo = BLOCK_COLORS[block.color]
+  const colorInfo = PIXEL_COLORS[block.color]
 
   // Close menu on outside click
   useEffect(() => {
@@ -204,7 +204,7 @@ export function BlockCard({
                       <div
                         className="w-2.5 h-2.5 shrink-0"
                         style={{
-                          backgroundColor: BLOCK_COLORS[g.color].bg,
+                          backgroundColor: PIXEL_COLORS[g.color].bg,
                           borderRadius: '1px 3px 2px 4px',
                         }}
                       />

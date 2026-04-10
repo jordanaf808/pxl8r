@@ -3,15 +3,22 @@
 import { useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { DoodleCircle } from '@/components/sketchy-elements'
-import { BLOCK_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
+import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
+import type { PixelColor } from '@/db/types'
 import type { Grid, Pixel } from '@/db/schema'
 
-interface BlockGroupCardProps {
-  group: Grid
-  blocks: Pixel[]
-  onEdit: (group: Grid) => void
-  onDelete: (groupId: string) => void
-  onRemoveBlock: (blockId: string, groupId: string) => void
+interface GridCardProps {
+  grid: Grid
+  pixels: Pixel[] | []
+  onEdit: (grid: Grid) => void
+  onDelete: (gridId: string) => void
+  onRemovePixel: ({
+    gridId,
+    pixelIds,
+  }: {
+    gridId: string
+    pixelIds: string[]
+  }) => Promise<{ success: boolean; result: any[] }>
 }
 
 /** Sketchy stack / folder doodle icon */
@@ -61,27 +68,27 @@ function StackDoodle({
   )
 }
 
-export function BlockGroupCard({
-  group,
-  blocks,
+export function GridCard({
+  grid,
+  pixels,
   onEdit,
   onDelete,
-  onRemoveBlock,
-}: BlockGroupCardProps) {
+  onRemovePixel,
+}: GridCardProps) {
   const [isHovered, setIsHovered] = useState(false)
-  const colorInfo = BLOCK_COLORS['sage']
+  const colorInfo = PIXEL_COLORS['sage']
 
-  const childBlocks = blocks.filter((b) => group.pixelIds.includes(b.id))
+  // const childBlocks = pixels.filter((p) => grid.pixelIds.includes(p.id))
   const totalProgress =
-    childBlocks.length > 0
+    pixels.length > 0
       ? Math.round(
-          childBlocks.reduce((s, b) => s + b.progress, 0) / childBlocks.length,
+          pixels.reduce((acc, p) => acc + p.progress, 0) / pixels.length,
         )
       : 0
-  const completedCount = childBlocks.filter((b) => b.completed).length
+  const completedCount = pixels.filter((p) => !!p.completedAt).length
 
   // Slight random rotation for hand-placed feel
-  const rotation = ((group.id.charCodeAt(0) % 5) - 2) * 0.4
+  const rotation = ((grid.id.charCodeAt(0) % 5) - 2) * 0.4
 
   return (
     <div
@@ -99,21 +106,21 @@ export function BlockGroupCard({
           boxShadow: isHovered
             ? '4px 4px 0px var(--journal-warm), 6px 6px 0px rgba(0,0,0,0.07)'
             : '2px 3px 0px var(--journal-warm)',
-          /* Double-line left border to distinguish from single blocks */
+          /* Double-line left border to distinguish from single pixels */
           borderLeft: `5px double rgba(255,255,255,0.35)`,
         }}
       >
         {/* Action buttons */}
         <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover/card:opacity-70 transition-opacity">
           <button
-            onClick={() => onEdit(group)}
+            onClick={() => onEdit(grid)}
             className="hover:opacity-100 cursor-pointer"
             aria-label="Edit group"
           >
             <Pencil size={15} />
           </button>
           <button
-            onClick={() => onDelete(group.id)}
+            onClick={() => onDelete(grid.id)}
             className="hover:opacity-100 cursor-pointer"
             aria-label="Delete group"
           >
@@ -134,40 +141,41 @@ export function BlockGroupCard({
               borderRadius: '2px 5px 3px 6px',
             }}
           >
-            {childBlocks.length}
-            {' block'}
-            {childBlocks.length !== 1 ? 's' : ''}
+            {pixels.length}
+            {' pixel'}
+            {pixels.length !== 1 ? 's' : ''}
           </span>
         </div>
 
         {/* Name */}
         <h3 className="text-2xl font-bold mb-1 leading-tight pr-8">
-          {group.name}
+          {grid.name}
         </h3>
 
         {/* Description */}
-        {group.description && (
+        {grid.description && (
           <p className="text-sm opacity-80 mb-3 font-serif leading-relaxed line-clamp-2">
-            {group.description}
+            {grid.description}
           </p>
         )}
 
-        {/* ---- Mini-grid of child blocks ---- */}
-        {childBlocks.length > 0 ? (
+        {/* ---- Mini-grid of child pixels ---- */}
+        {pixels.length > 0 ? (
           <div
             className="grid gap-1.5 mb-3 p-2"
             style={{
               gridTemplateColumns:
-                childBlocks.length <= 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                pixels.length <= 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
               backgroundColor: 'rgba(255,255,255,0.1)',
               borderRadius: '3px 7px 4px 9px',
             }}
           >
-            {childBlocks.map((block) => {
-              const childColor = BLOCK_COLORS[block.color]
+            {pixels.map((pixel) => {
+              const childColor: { bg: string; text: string; label: string } =
+                PIXEL_COLORS[pixel.color]
               return (
                 <div
-                  key={block.id}
+                  key={pixel.id}
                   className="relative flex flex-col items-start p-1.5 transition-transform hover:scale-105 group/mini"
                   style={{
                     backgroundColor: childColor.bg,
@@ -180,10 +188,10 @@ export function BlockGroupCard({
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      onRemoveBlock(block.id, group.id)
+                      onRemovePixel({ gridId: grid.id, pixelIds: [pixel.id] })
                     }}
                     className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center opacity-0 group-hover/mini:opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
-                    aria-label={`Remove ${block.name} from group`}
+                    aria-label={`Remove ${pixel.name} from group`}
                   >
                     <svg viewBox="0 0 10 10" width={8} height={8}>
                       <path
@@ -196,10 +204,10 @@ export function BlockGroupCard({
                   </button>
 
                   <span className="text-xs font-bold leading-tight truncate w-full pr-3">
-                    {block.name}
+                    {pixel.name}
                   </span>
                   <span className="text-[10px] opacity-70 font-serif mt-auto">
-                    {PIXEL_TYPE_LABELS[block.type]}
+                    {PIXEL_TYPE_LABELS[pixel.type]}
                   </span>
 
                   {/* Tiny progress bar */}
@@ -213,7 +221,7 @@ export function BlockGroupCard({
                     <div
                       className="h-full"
                       style={{
-                        width: `${block.progress}%`,
+                        width: `${pixel.progress}%`,
                         backgroundColor: 'rgba(255,255,255,0.5)',
                         borderRadius: '1px 2px 1px 2px',
                       }}
@@ -232,7 +240,7 @@ export function BlockGroupCard({
               border: '1.5px dashed rgba(255,255,255,0.25)',
             }}
           >
-            {'no blocks yet -- edit to add some!'}
+            {'no pixels yet -- edit to add some!'}
           </div>
         )}
 
@@ -274,10 +282,10 @@ export function BlockGroupCard({
           <span className="text-sm font-serif opacity-70">
             {completedCount}
             {' / '}
-            {childBlocks.length}
+            {pixels.length}
             {' completed'}
           </span>
-          {completedCount === childBlocks.length && childBlocks.length > 0 && (
+          {completedCount === pixels.length && pixels.length > 0 && (
             <DoodleCircle size={16} className="opacity-50" />
           )}
         </div>

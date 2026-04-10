@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { X, Check } from 'lucide-react'
 import { SketchyDivider } from '@/components/sketchy-elements'
-import type { BlockColor } from '@/db/types'
-import { BLOCK_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
+import type { PixelColor } from '@/db/types'
+import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 import type { Pixel, Grid, NewGrid } from '@/db/schema'
 
 interface CreateGridModalProps {
@@ -27,7 +27,7 @@ export function CreateGridModal({
 }: CreateGridModalProps) {
   const [name, setName] = useState(editGrid?.name ?? '')
   const [description, setDescription] = useState(editGrid?.description ?? '')
-  // const [color, setColor] = useState<BlockColor>(editGrid?.color ?? 'warm')
+  // const [color, setColor] = useState<PixelColor>(editGrid?.color ?? 'warm')
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>(
     editGrid?.pixelIds ?? [],
   )
@@ -81,8 +81,8 @@ export function CreateGridModal({
     onClose()
   }
 
-  const blockColors = Object.entries(BLOCK_COLORS) as [
-    BlockColor,
+  const blockColors = Object.entries(PIXEL_COLORS) as [
+    PixelColor,
     { bg: string; text: string; label: string },
   ][]
 
@@ -256,7 +256,7 @@ export function CreateGridModal({
                 >
                   {ungridedBlocks.map((block) => {
                     const isSelected = selectedBlockIds.includes(block.id)
-                    const blockColor = BLOCK_COLORS[block.color]
+                    const PixelColor = PIXEL_COLORS[block.color]
                     return (
                       <button
                         key={block.id}
@@ -290,7 +290,7 @@ export function CreateGridModal({
                         <div
                           className="w-3 h-3 shrink-0"
                           style={{
-                            backgroundColor: blockColor.bg,
+                            backgroundColor: PixelColor.bg,
                             borderRadius: '1px 3px 2px 4px',
                           }}
                         />

@@ -65,6 +65,14 @@ export const unitTypeEnum = pgEnum('unit_type', [
   'custom',
 ])
 
+export const pixelColorEnum = pgEnum('color_type', [
+  'rust',
+  'sage',
+  'gold',
+  'slate',
+  'warm',
+])
+
 export const scaleTypeEnum = pgEnum('scale_type', [
   'daily',
   'weekly',
@@ -213,7 +221,7 @@ export const pixels = pgTable(
     type: pixelTypeEnum('type').notNull(), // more like a Category than type
     unit: unitTypeEnum('unit').notNull(), // unit to measure by
     endGoal: integer('end_goal'), // short label shown in key
-    color: text('color').notNull(), // hex color string
+    color: pixelColorEnum('color').notNull(), // hex color string
     completedAt: timestamp('completed_at', { withTimezone: true }).default(
       sql`NULL`,
     ),

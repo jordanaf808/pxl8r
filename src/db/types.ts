@@ -26,7 +26,7 @@ export type PixelTypeType = typeof schema.pixels.$inferSelect.type
 //   | 'scale'
 //   | 'custom'
 
-export type BlockColor = 'rust' | 'sage' | 'gold' | 'slate' | 'warm'
+export type PixelColor = 'rust' | 'sage' | 'gold' | 'slate' | 'warm'
 
 export interface Block {
   id: string
@@ -47,7 +47,7 @@ export interface BlockGroup {
   id: string
   name: string
   description: string
-  color: BlockColor
+  color: PixelColor
   pixelIds: string[]
   createdAt: string
 }
@@ -87,8 +87,8 @@ export const PIXEL_TYPE_ICONS: Record<PixelTypeType, string> = {
   custom: 'star',
 }
 
-export const BLOCK_COLORS: Record<
-  BlockColor,
+export const PIXEL_COLORS: Record<
+  PixelColor,
   { bg: string; text: string; label: string }
 > = {
   rust: { bg: '#c75c4a', text: '#faf6f0', label: 'Rust Red' },

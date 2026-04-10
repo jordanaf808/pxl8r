@@ -5,7 +5,7 @@ import { Plus, Search, Layers } from 'lucide-react'
 import { SketchyDivider } from '@/components/sketchy-elements'
 import DashboardHeader from '@/components/dashboardHeader'
 import { BlockCard } from '@/components/block-card'
-import { BlockGroupCard } from '@/components/block-group-card'
+import { GridCard } from '@/components/GridCard'
 import { CreateBlockModal } from '@/components/create-block-modal'
 import { CreateGridModal } from '@/components/create-group-modal'
 import { StatsBar } from '@/components/stats-bar'
@@ -616,7 +616,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
   return (
     <div className="min-h-screen paper-dots">
       {/* Header */}
-      <DashboardHeader />
+      <DashboardHeader user={user} />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Welcome */}
@@ -719,19 +719,23 @@ export function Dashboard({ user, userData }: DashboardProps) {
         {filteredGrids.length > 0 || filteredUngroupedPixels.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger-grid">
             {/* Groups first */}
-            {filteredGrids.map((grid) => (
-              <BlockGroupCard
-                key={grid.id}
-                group={grid}
-                blocks={pixels}
-                onEdit={(g) => {
-                  setEditingGrid(g)
-                  setIsGroupModalOpen(true)
-                }}
-                onDelete={removeGrid}
-                onRemoveBlock={removeGridPixels}
-              />
-            ))}
+            {filteredGrids.map((grid) => {
+              const gridPixels = pixelsByGridId.get(grid.id)
+              const pixels = gridPixels?.map((gp) => gp.pixel)
+              return (
+                <GridCard
+                  key={grid.id}
+                  grid={grid}
+                  pixels={pixels || []}
+                  onEdit={(g) => {
+                    setEditingGrid(g)
+                    setIsGroupModalOpen(true)
+                  }}
+                  onDelete={removeGrid}
+                  onRemoveBlock={removeGridPixels}
+                />
+              )
+            })}
 
             {/* Ungrouped pixels */}
             {filteredUngroupedPixels.map((pixel) => (
