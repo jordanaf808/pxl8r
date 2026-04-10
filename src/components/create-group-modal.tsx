@@ -3,41 +3,42 @@
 import { useState } from 'react'
 import { X, Check } from 'lucide-react'
 import { SketchyDivider } from '@/components/sketchy-elements'
-import type { BlockColor, Block, BlockGroup } from '@/db/types'
-import { BLOCK_COLORS, BLOCK_TYPE_LABELS } from '@/db/types'
+import type { BlockColor } from '@/db/types'
+import { BLOCK_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
+import type { Pixel, Grid, NewGrid } from '@/db/schema'
 
-interface CreateGroupModalProps {
+interface CreateGridModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (group: Omit<BlockGroup, 'id' | 'createdAt'>) => void
-  ungroupedBlocks: Block[]
-  /** When set, the modal opens in edit mode pre-populated with the group */
-  editGroup?: BlockGroup | null
-  onUpdate?: (group: BlockGroup) => void
+  onSubmit: (grid: NewGrid) => void
+  ungridedBlocks: Pixel[]
+  /** When set, the modal opens in edit mode pre-populated with the grid */
+  editGrid?: Grid | null
+  onUpdate?: (grid: Grid) => void
 }
 
-export function CreateGroupModal({
+export function CreateGridModal({
   isOpen,
   onClose,
   onSubmit,
-  ungroupedBlocks,
-  editGroup,
+  ungridedBlocks,
+  editGrid,
   onUpdate,
-}: CreateGroupModalProps) {
-  const [name, setName] = useState(editGroup?.name ?? '')
-  const [description, setDescription] = useState(editGroup?.description ?? '')
-  const [color, setColor] = useState<BlockColor>(editGroup?.color ?? 'warm')
+}: CreateGridModalProps) {
+  const [name, setName] = useState(editGrid?.name ?? '')
+  const [description, setDescription] = useState(editGrid?.description ?? '')
+  // const [color, setColor] = useState<BlockColor>(editGrid?.color ?? 'warm')
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>(
-    editGroup?.pixelIds ?? [],
+    editGrid?.pixelIds ?? [],
   )
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Reset state when modal opens/closes or editGroup changes
-  const isEdit = !!editGroup
-  // Blocks available for selection: ungrouped + already in this group (if editing)
+  // Reset state when modal opens/closes or editGrid changes
+  const isEdit = !!editGrid
+  // Blocks available for selection: ungrided + already in this grid (if editing)
   const availableBlocks = isEdit
-    ? [...ungroupedBlocks, ...ungroupedBlocks] // placeholder replaced below
-    : ungroupedBlocks
+    ? [...ungridedBlocks, ...ungridedBlocks] // placeholder replaced below
+    : ungridedBlocks
 
   if (!isOpen) return null
 
@@ -51,7 +52,7 @@ export function CreateGroupModal({
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
-    if (!name.trim()) newErrors.name = 'Name your group!'
+    if (!name.trim()) newErrors.name = 'Name your grid!'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -60,21 +61,21 @@ export function CreateGroupModal({
     e.preventDefault()
     if (!validate()) return
 
-    if (isEdit && onUpdate && editGroup) {
+    if (isEdit && onUpdate && editGrid) {
       onUpdate({
-        ...editGroup,
+        ...editGrid,
         name,
         description,
-        color,
+        // color,
         pixelIds: selectedBlockIds,
       })
     } else {
-      onSubmit({ name, description, color, pixelIds: selectedBlockIds })
+      onSubmit({ name, description, pixelIds: selectedBlockIds })
     }
 
     setName('')
     setDescription('')
-    setColor('warm')
+    // setColor('warm')
     setSelectedBlockIds([])
     setErrors({})
     onClose()
@@ -150,11 +151,11 @@ export function CreateGroupModal({
               />
             </svg>
             <h2 className="text-3xl md:text-4xl font-bold text-[var(--journal-ink)]">
-              {isEdit ? 'Edit Group' : 'New Group'}
+              {isEdit ? 'Edit Grid' : 'New Grid'}
             </h2>
           </div>
           <p className="text-[var(--journal-ink)] opacity-50 font-serif mb-4">
-            {isEdit ? 'update your block group' : 'bundle blocks together'}
+            {isEdit ? 'update your block grid' : 'bundle blocks together'}
           </p>
           <SketchyDivider className="text-[var(--journal-warm)] mb-6" />
 
@@ -162,7 +163,7 @@ export function CreateGroupModal({
             {/* Name */}
             <div>
               <label className="block text-lg text-[var(--journal-ink)] mb-1 font-serif">
-                Group Name
+                Grid Name
               </label>
               <input
                 type="text"
@@ -194,9 +195,9 @@ export function CreateGroupModal({
             </div>
 
             {/* Color */}
-            <div>
+            {/* <div>
               <label className="block text-lg text-[var(--journal-ink)] mb-2 font-serif">
-                Group Color
+                Grid Color
               </label>
               <div className="flex gap-3">
                 {blockColors.map(([key, { bg, label }]) => (
@@ -234,16 +235,16 @@ export function CreateGroupModal({
                   </button>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             {/* Block selection */}
             <div>
               <label className="block text-lg text-[var(--journal-ink)] mb-2 font-serif">
                 Include Blocks
               </label>
-              {ungroupedBlocks.length === 0 && !isEdit ? (
+              {ungridedBlocks.length === 0 && !isEdit ? (
                 <p className="text-base text-[var(--journal-ink)] opacity-40 font-serif py-3 text-center">
-                  {'No ungrouped blocks yet -- create some first!'}
+                  {'No ungrided blocks yet -- create some first!'}
                 </p>
               ) : (
                 <div
@@ -253,7 +254,7 @@ export function CreateGroupModal({
                     border: '1.5px solid var(--journal-warm)',
                   }}
                 >
-                  {ungroupedBlocks.map((block) => {
+                  {ungridedBlocks.map((block) => {
                     const isSelected = selectedBlockIds.includes(block.id)
                     const blockColor = BLOCK_COLORS[block.color]
                     return (
@@ -306,7 +307,7 @@ export function CreateGroupModal({
                           className="text-xs text-[var(--journal-ink)] opacity-50 font-serif shrink-0 px-1.5 py-0.5 bg-[var(--journal-paper)]"
                           style={{ borderRadius: '1px 4px 2px 5px' }}
                         >
-                          {BLOCK_TYPE_LABELS[block.type]}
+                          {PIXEL_TYPE_LABELS[block.type]}
                         </span>
                       </button>
                     )
@@ -331,7 +332,7 @@ export function CreateGroupModal({
               className="w-full bg-[var(--journal-ink)] text-[var(--journal-paper)] text-xl py-3 font-serif hover:bg-[var(--journal-ink)]/90 active:translate-y-px transition-all cursor-pointer"
               style={{ borderRadius: '3px 8px 5px 10px' }}
             >
-              {isEdit ? 'Update Group' : 'Create Group'}
+              {isEdit ? 'Update Grid' : 'Create Grid'}
             </button>
           </form>
         </div>

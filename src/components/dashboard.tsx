@@ -6,16 +6,29 @@ import { SketchyDivider, DoodleStar } from '@/components/sketchy-elements'
 import { BlockCard } from '@/components/block-card'
 import { BlockGroupCard } from '@/components/block-group-card'
 import { CreateBlockModal } from '@/components/create-block-modal'
-import { CreateGroupModal } from '@/components/create-group-modal'
+import { CreateGridModal } from '@/components/create-group-modal'
 import { StatsBar } from '@/components/stats-bar'
-import type { Block, BlockType, BlockGroup, UpdatePixelType } from '@/db/types'
-import { BLOCK_TYPE_LABELS } from '@/db/types'
-import type { NewPixel, Pixel, NewUser, User, Grid, Page } from '@/db/schema'
-import { SAMPLE_BLOCKS, SAMPLE_GROUPS } from '@/db/mock-data'
+import type {
+  GridPixel,
+  PixelTypeType,
+  UpdatePixelType,
+  DashboardGridDataReturn,
+} from '@/db/types'
+import { PIXEL_TYPE_LABELS } from '@/db/types'
+import type {
+  NewPixel,
+  Pixel,
+  NewUser,
+  User,
+  Grid,
+  Page,
+  NewGrid,
+} from '@/db/schema'
 import {
   createPixel as createPixelServerFn,
   updatePixel as updatePixelServerFn,
   deletePixelById as deletePixelByIdServerFn,
+  createGrid as createGridServerFn,
 } from '@/db/mutations.functions'
 import { useServerFn } from '@tanstack/react-start'
 
@@ -32,12 +45,14 @@ interface DashboardProps {
 export function Dashboard({ user, userData, onLogout }: DashboardProps) {
   const createPixel = useServerFn(createPixelServerFn)
   const updatePixel = useServerFn(updatePixelServerFn)
+  const createGrid = useServerFn(createGridServerFn)
   const deletePixelById = useServerFn(deletePixelByIdServerFn)
   const [pixels, setPixels] = useState<Pixel[]>([])
-  const [groups, setGroups] = useState<BlockGroup[]>(SAMPLE_GROUPS)
+  // groups are grids
+  const [grids, setGrids] = useState<Grid[]>(userData.grids)
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false)
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
-  const [editingGroup, setEditingGroup] = useState<BlockGroup | null>(null)
+  const [editingGrid, setEditingGrid] = useState<NewGrid | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<BlockType | 'all'>('all')
 
@@ -203,20 +218,32 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
     )
   }
 
-  // ---- Group CRUD ----
-  const addGroup = (groupData: Omit<BlockGroup, 'id' | 'createdAt'>) => {
-    const newGroup: BlockGroup = {
-      ...groupData,
-      id: 'g' + Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    }
-    setGroups((prev) => [newGroup, ...prev])
-    // Mark pixels as belonging to this group
-    setPixels((prev) =>
-      prev.map((p) =>
-        groupData.pixelIds.includes(p.id) ? { ...p, groupId: newGroup.id } : p,
-      ),
-    )
+  // ---- Grid CRUD ----
+  // const addGroup = (groupData: Omit<BlockGroup, 'id' | 'createdAt'>) => {
+  //   const newGroup: BlockGroup = {
+  //     ...groupData,
+  //     id: 'g' + Date.now().toString(),
+  //     createdAt: new Date().toISOString(),
+  //   }
+  //   setGrids((prev) => [newGroup, ...prev])
+  //   // Mark pixels as belonging to this grid
+  //   setPixels((prev) =>
+  //     prev.map((p) =>
+  //       groupData.pixelIds.includes(p.id) ? { ...p, groupId: newGroup.id } : p,
+  //     ),
+  //   )
+  // }
+
+  const createGridHandler = async (gridData: NewGrid) => {
+    const createdGrid = await createGrid({ data: gridData })
+    console.log('//// createPixel response: ', createdGrid)
+    if (createdGrid.success !== true)
+      throw new Error('Error creating pixel: ', { cause: createdGrid.results })
+    // const newPixel: NewPixel = {
+    //   ...pixelData,
+    // }
+
+    setGroups((prev) => [...createdGrid.results, ...prev])
   }
 
   const updateGroup = (updated: BlockGroup) => {
@@ -533,7 +560,7 @@ export function Dashboard({ user, userData, onLogout }: DashboardProps) {
           setIsGroupModalOpen(false)
           setEditingGroup(null)
         }}
-        onSubmit={addGroup}
+        onSubmit={createGridHandler}
         ungroupedBlocks={blocksAvailableForGroupModal}
         editGroup={editingGroup}
         onUpdate={updateGroup}

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { SketchyDivider, DoodleStar } from '@/components/sketchy-elements'
 import type { BlockType, BlockColor, Block } from '@/db/types'
-import { BLOCK_TYPE_LABELS, BLOCK_COLORS } from '@/db/types'
+import { PIXEL_TYPE_LABELS, BLOCK_COLORS } from '@/db/types'
 import type { NewPixel } from '@/db/schema'
 
 interface CreateBlockModalProps {
@@ -55,7 +55,7 @@ export function CreateBlockModal({
     }
   }
 
-  const blockTypes = Object.entries(BLOCK_TYPE_LABELS) as [BlockType, string][]
+  const blockTypes = Object.entries(PIXEL_TYPE_LABELS) as [BlockType, string][]
   const blockColors = Object.entries(BLOCK_COLORS) as [
     BlockColor,
     { bg: string; text: string; label: string },

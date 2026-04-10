@@ -8,7 +8,7 @@ import {
   DoodleCircle,
 } from '@/components/sketchy-elements'
 import type { Block, BlockGroup } from '@/db/types'
-import { BLOCK_TYPE_LABELS, BLOCK_COLORS } from '@/db/types'
+import { PIXEL_TYPE_LABELS, BLOCK_COLORS } from '@/db/types'
 import type { Pixel } from '@/db/schema'
 
 const TYPE_DOODLES: Record<string, React.ReactNode> = {
@@ -275,7 +275,7 @@ export function BlockCard({
         <div className="flex items-center gap-1.5 mb-2 opacity-80">
           {TYPE_DOODLES[block.type]}
           <span className="text-sm font-serif uppercase tracking-wide">
-            {BLOCK_TYPE_LABELS[block.type]}
+            {PIXEL_TYPE_LABELS[block.type]}
           </span>
         </div>
 

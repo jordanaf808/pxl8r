@@ -3,14 +3,13 @@
 import { useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { DoodleCircle } from '@/components/sketchy-elements'
-import type { Block, BlockGroup } from '@/db/types'
-import { BLOCK_COLORS, BLOCK_TYPE_LABELS } from '@/db/types'
-import type { Pixel } from '@/db/schema'
+import { BLOCK_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
+import type { Grid, Pixel } from '@/db/schema'
 
 interface BlockGroupCardProps {
-  group: BlockGroup
+  group: Grid
   blocks: Pixel[]
-  onEdit: (group: BlockGroup) => void
+  onEdit: (group: Grid) => void
   onDelete: (groupId: string) => void
   onRemoveBlock: (blockId: string, groupId: string) => void
 }
@@ -70,7 +69,7 @@ export function BlockGroupCard({
   onRemoveBlock,
 }: BlockGroupCardProps) {
   const [isHovered, setIsHovered] = useState(false)
-  const colorInfo = BLOCK_COLORS[group.color]
+  const colorInfo = BLOCK_COLORS['sage']
 
   const childBlocks = blocks.filter((b) => group.pixelIds.includes(b.id))
   const totalProgress =
@@ -200,7 +199,7 @@ export function BlockGroupCard({
                     {block.name}
                   </span>
                   <span className="text-[10px] opacity-70 font-serif mt-auto">
-                    {BLOCK_TYPE_LABELS[block.type]}
+                    {PIXEL_TYPE_LABELS[block.type]}
                   </span>
 
                   {/* Tiny progress bar */}
