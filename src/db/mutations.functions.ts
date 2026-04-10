@@ -145,6 +145,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
       gridId,
       ownerId: user.id, // not needed in onConflictDoUpdate(), because we don't change that value
       pixelId: cell.pixelId ?? null,
+      type: cell.type,
       col: cell.col,
       row: cell.row,
       value: cell.value ?? null,
@@ -168,7 +169,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
           updatedAt: sql`NOW()`,
         },
       })
-      .returning({ id: cells.id, col: cells.col, row: cells.row })
+      .returning()
 
     return {
       success: results.length > 0,
@@ -186,15 +187,9 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
     if (!user.id) throw new Error('Unauthorized')
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
 
-    const values = pixelData.map((pixel) => ({
-      gridId: gridId,
-      pixelId: pixel.pixelId,
-      sortOrder: pixel.sortOrder,
-    }))
-
     const results = await db
       .insert(gridPixels)
-      .values(values)
+      .values(pixelData)
       .onConflictDoUpdate({
         target: [gridPixels.gridId, gridPixels.pixelId],
         set: {
@@ -529,14 +524,26 @@ export const deleteGridById = createServerFn({ method: 'POST' })
     const { user } = context
     if (!user.id) throw new Error('Not Logged In')
 
-    return await db
+    let success = false
+    const response = await db
       .delete(grids)
       .where(and(eq(grids.id, data.gridId), eq(grids.ownerId, user.id)))
+      .returning({ deletedGridId: grids.id })
+
+    if (response.length > 0) {
+      success = true
+    }
+    return {
+      success,
+      response,
+    }
   })
 
 export const deleteManyCellsById = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator((data: { cellIds: string[] }) => data)
+  .inputValidator(
+    (data: { gridId: string; gridOwnerId: string; cellIds: string[] }) => data,
+  )
   .handler(async ({ data, context }) => {
     const { user } = context
     if (!user.id) throw new Error('Not Logged In')
@@ -593,6 +600,29 @@ export const deleteGridsFromPage = createServerFn({ method: 'POST' })
     return {
       success: results.length > 0,
       results,
+    }
+  })
+
+export const deleteGridPixels = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator((data: { gridId: string; pixelIds: string[] }) => data)
+  .handler(async ({ data, context }) => {
+    const { user } = context
+    if (!user.id) throw new Error('Unauthorized')
+
+    const result = await db
+      .delete(gridPixels)
+      .where(
+        and(
+          inArray(gridPixels.pixelId, data.pixelIds),
+          eq(gridPixels.gridId, data.gridId),
+        ),
+      )
+      .returning()
+
+    return {
+      success: result.length > 0,
+      result,
     }
   })
 
