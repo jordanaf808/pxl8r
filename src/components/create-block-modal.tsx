@@ -3,30 +3,31 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { SketchyDivider, DoodleStar } from '@/components/sketchy-elements'
-import type { BlockType, PixelColor, Block } from '@/db/types'
+import type {
+  PixelUnitType,
+  PixelTypeType,
+  NewPixel,
+  PixelColor,
+} from '@/db/types'
 import { PIXEL_TYPE_LABELS, PIXEL_COLORS } from '@/db/types'
-import type { NewPixel } from '@/db/schema'
+import { pixels } from '@/db/schema'
 
-interface CreateBlockModalProps {
+interface CreatePixelModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (
-    block: Omit<
-      NewPixel,
-      'id' | 'completed' | 'progress' | 'createdAt' | 'completedAt'
-    >,
-  ) => void
+  onSubmit: (pixel: NewPixel) => void
 }
 
-export function CreateBlockModal({
+export function CreatePixelModal({
   isOpen,
   onClose,
   onSubmit,
-}: CreateBlockModalProps) {
+}: CreatePixelModalProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [type, setType] = useState<BlockType>('project')
-  const [endGoal, setEndGoal] = useState('')
+  const [type, setType] = useState<PixelTypeType>('skill')
+  const [unit, setUnit] = useState<PixelUnitType>('minute')
+  const [endGoal, setEndGoal] = useState(30)
   const [color, setColor] = useState<PixelColor>('sage')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -34,9 +35,9 @@ export function CreateBlockModal({
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
-    if (!name.trim()) newErrors.name = 'Give your block a name!'
-    if (!description.trim()) newErrors.description = "What's this block about?"
-    if (!endGoal.trim()) newErrors.endGoal = 'What are you aiming for?'
+    if (!name.trim()) newErrors.name = 'Give your pixel a name!'
+    if (!description.trim()) newErrors.description = "What's this pixel about?"
+    if (!endGoal) newErrors.endGoal = 'What are you aiming for?'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -44,19 +45,26 @@ export function CreateBlockModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (validate()) {
-      onSubmit({ name, description, type, endGoal, color })
+      onSubmit({ name, description, type, endGoal, unit, color })
       setName('')
       setDescription('')
       setType('project')
-      setEndGoal('')
+      setEndGoal(100)
       setColor('sage')
       setErrors({})
       onClose()
     }
   }
 
-  const blockTypes = Object.entries(PIXEL_TYPE_LABELS) as [BlockType, string][]
-  const blockColors = Object.entries(PIXEL_COLORS) as [
+  const pixelUnits = Object.entries(pixels.$inferSelect.unit) as [
+    PixelUnitType,
+    string,
+  ][]
+  const pixelTypes = Object.entries(pixels.$inferSelect.type) as [
+    PixelTypeType,
+    string,
+  ][]
+  const pixelColors = Object.entries(PIXEL_COLORS) as [
     PixelColor,
     { bg: string; text: string; label: string },
   ][]
@@ -87,7 +95,7 @@ export function CreateBlockModal({
           <div className="flex items-center gap-2 mb-1">
             <DoodleStar size={20} className="text-[var(--journal-gold)]" />
             <h2 className="text-3xl md:text-4xl font-bold text-[var(--journal-ink)]">
-              New Block
+              New Pixel
             </h2>
           </div>
           <p className="text-[var(--journal-ink)] opacity-50 font-serif mb-4">
@@ -98,8 +106,8 @@ export function CreateBlockModal({
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name */}
             <div>
-              <label className="block text-lg text-[var(--journal-ink)] mb-1 font-serif">
-                Block Name
+              <label className="pixel text-lg text-[var(--journal-ink)] mb-1 font-serif">
+                Pixel Name
               </label>
               <input
                 type="text"
@@ -117,13 +125,13 @@ export function CreateBlockModal({
 
             {/* Description */}
             <div>
-              <label className="block text-lg text-[var(--journal-ink)] mb-1 font-serif">
+              <label className="pixel text-lg text-[var(--journal-ink)] mb-1 font-serif">
                 Description
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="What does this block involve?"
+                placeholder="What does this pixel involve?"
                 rows={3}
                 className="w-full bg-[var(--journal-paper)] border-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-lg py-2 px-3 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans resize-none paper-lines"
                 style={{ borderRadius: '3px 8px 5px 10px' }}
@@ -137,11 +145,11 @@ export function CreateBlockModal({
 
             {/* Type */}
             <div>
-              <label className="block text-lg text-[var(--journal-ink)] mb-2 font-serif">
+              <label className="pixel text-lg text-[var(--journal-ink)] mb-2 font-serif">
                 Type
               </label>
               <div className="flex flex-wrap gap-2">
-                {blockTypes.map(([key, label]) => (
+                {pixelTypes.map(([key, label]) => (
                   <button
                     key={key}
                     type="button"
@@ -159,16 +167,42 @@ export function CreateBlockModal({
               </div>
             </div>
 
+            {/* Unit */}
+            <div>
+              <label className="pixel text-lg text-[var(--journal-ink)] mb-2 font-serif">
+                Type
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {pixelUnits.map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setUnit(key)}
+                    className={`px-3 py-1 text-base font-serif transition-all cursor-pointer ${
+                      unit === key
+                        ? 'bg-[var(--journal-ink)] text-[var(--journal-paper)]'
+                        : 'bg-[var(--journal-paper)] text-[var(--journal-ink)] border border-[var(--journal-warm)] hover:bg-[var(--journal-tan)]'
+                    }`}
+                    style={{ borderRadius: '2px 6px 3px 7px' }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* End Goal */}
             <div>
-              <label className="block text-lg text-[var(--journal-ink)] mb-1 font-serif">
+              <label className="pixel text-lg text-[var(--journal-ink)] mb-1 font-serif">
                 End Goal
               </label>
               <input
-                type="text"
+                type="number"
                 value={endGoal}
-                onChange={(e) => setEndGoal(e.target.value)}
-                placeholder={'e.g. "Complete 42km in under 4 hours"'}
+                min={0}
+                max={10000}
+                onChange={(e) => setEndGoal(parseInt(e.target.value))}
+                placeholder={'e.g. "Complete 100 reps"'}
                 className="w-full bg-transparent border-b-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-xl py-2 px-1 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans"
               />
               {errors.endGoal && (
@@ -180,11 +214,11 @@ export function CreateBlockModal({
 
             {/* Color */}
             <div>
-              <label className="block text-lg text-[var(--journal-ink)] mb-2 font-serif">
-                Block Color
+              <label className="pixel text-lg text-[var(--journal-ink)] mb-2 font-serif">
+                Pixel Color
               </label>
               <div className="flex gap-3">
-                {blockColors.map(([key, { bg, label }]) => (
+                {pixelColors.map(([key, { bg, label }]) => (
                   <button
                     key={key}
                     type="button"
@@ -229,7 +263,7 @@ export function CreateBlockModal({
               className="w-full bg-[var(--journal-ink)] text-[var(--journal-paper)] text-xl py-3 font-serif hover:bg-[var(--journal-ink)]/90 active:translate-y-px transition-all cursor-pointer"
               style={{ borderRadius: '3px 8px 5px 10px' }}
             >
-              Add This Block
+              Add This Pixel
             </button>
           </form>
         </div>

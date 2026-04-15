@@ -5,7 +5,7 @@ import {
   DoodleStar,
   DoodleCircle,
 } from '@/components/sketchy-elements'
-import type { Pixel, Grid } from '@/db/types'
+import type { Pixel, Grid, GridByGridIdMap } from '@/db/types'
 import { PIXEL_TYPE_LABELS, PIXEL_COLORS } from '@/db/types'
 
 const TYPE_DOODLES: Record<string, React.ReactNode> = {
@@ -111,7 +111,7 @@ const TYPE_DOODLES: Record<string, React.ReactNode> = {
 
 interface PixelCardProps {
   pixel: Pixel
-  currentGrids: Grid[]
+  currentGrids: Grid[] | undefined
   onToggleComplete: (id: string) => void
   onUpdateProgress: (id: string, progress: number) => void
   onDelete: (id: string) => void
@@ -225,17 +225,22 @@ export function PixelCard({
                     </button>
                   ))}
                   {/* remove from existing grids, need to update to show multiple grids. */}
-                  {currentGrids.map((grid) => (
-                    <button
-                      onClick={() => {
-                        onMoveToGrid({ gridId: grid.id, pixelIds: [pixel.id] })
-                        setShowGridMenu(false)
-                      }}
-                      className="w-full text-left px-3 py-1.5 text-sm font-serif text-[var(--journal-rust)] hover:bg-[var(--journal-tan)] transition-colors cursor-pointer border-t border-[var(--journal-warm)]"
-                    >
-                      Remove from grid
-                    </button>
-                  ))}
+                  {currentGrids &&
+                    currentGrids.map((grid) => (
+                      <button
+                        key={grid.id}
+                        onClick={() => {
+                          onMoveToGrid({
+                            gridId: grid.id,
+                            pixelIds: [pixel.id],
+                          })
+                          setShowGridMenu(false)
+                        }}
+                        className="w-full text-left px-3 py-1.5 text-sm font-serif text-[var(--journal-rust)] hover:bg-[var(--journal-tan)] transition-colors cursor-pointer border-t border-[var(--journal-warm)]"
+                      >
+                        Remove from grid
+                      </button>
+                    ))}
                 </div>
               )}
             </div>

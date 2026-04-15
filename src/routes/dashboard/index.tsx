@@ -10,7 +10,7 @@ import {
 export const Route = createFileRoute('/dashboard/')({
   component: RouteComponent,
   loader: async () => {
-    const [pixels, pages, grids, gridData] = await Promise.all([
+    const [pixels, pages, grids, gridsData] = await Promise.all([
       getPixelsByOwnerId(),
       getPagesByOwnerId(),
       getGridsByOwnerId(),
@@ -21,8 +21,8 @@ export const Route = createFileRoute('/dashboard/')({
     // if (pages.length < 1) throw new Error('No pages found')
     // console.log('//// /dashboard - loader - pages: ', pages)
     // if (grids.length < 1) throw new Error('No grids found')
-    console.log('//// /dashboard - loader - gridData: ', gridData)
-    return { pages, grids, pixels, gridData }
+    console.log('//// /dashboard - loader - gridData: ', gridsData)
+    return { pages, grids, pixels, gridsData }
   },
   pendingMs: 300,
   pendingMinMs: 300,

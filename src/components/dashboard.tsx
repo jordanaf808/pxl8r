@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Search, Layers } from 'lucide-react'
 import { SketchyDivider } from '@/components/sketchy-elements'
 import DashboardHeader from '@/components/dashboardHeader'
 import { PixelCard } from '@/components/block-card'
 import { GridCard } from '@/components/GridCard'
-import { CreateBlockModal } from '@/components/create-block-modal'
+import { CreatePixelModal } from '@/components/create-block-modal'
 import { CreateGridModal } from '@/components/create-group-modal'
 import { StatsBar } from '@/components/stats-bar'
 import type {
@@ -16,9 +16,12 @@ import type {
   NewGrid,
   NewCell,
   GridPixel,
+  GridData,
   PixelTypeType,
   UpdatePixelType,
   DashboardGridDataReturn,
+  GridByGridIdMap,
+  GridsByPixelIdMap,
 } from '@/db/types'
 import { PIXEL_TYPE_LABELS } from '@/db/types'
 import {
@@ -26,6 +29,7 @@ import {
   updatePixel as updatePixelServerFn,
   deletePixelById as deletePixelByIdServerFn,
   createGrid as createGridServerFn,
+  updateGrid as updateGridServerFn,
   bulkUpsertCells as bulkUpsertCellsServerFn,
   bulkUpsertGridPixels as bulkUpsertGridPixelsServerFn,
   deleteGridPixels as deleteGridPixelsServerFn,
@@ -33,6 +37,7 @@ import {
   deleteGridById as deleteGridByIdServerFn,
 } from '@/db/mutations.functions'
 import { useServerFn } from '@tanstack/react-start'
+import { Value } from '@radix-ui/react-select'
 
 interface DashboardProps {
   user: NewUser
@@ -40,7 +45,7 @@ interface DashboardProps {
     pixels: Pixel[]
     grids: Grid[]
     pages: Page[]
-    gridData: DashboardGridDataReturn
+    gridsData: DashboardGridDataReturn
   }
 }
 
@@ -48,6 +53,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
   const createPixel = useServerFn(createPixelServerFn)
   const updatePixel = useServerFn(updatePixelServerFn)
   const createGrid = useServerFn(createGridServerFn)
+  const updateGrid = useServerFn(updateGridServerFn)
   const deleteGrid = useServerFn(deleteGridByIdServerFn)
   const bulkUpsertCells = useServerFn(bulkUpsertCellsServerFn)
   const bulkUpsertGridPixels = useServerFn(bulkUpsertGridPixelsServerFn)
@@ -58,21 +64,56 @@ export function Dashboard({ user, userData }: DashboardProps) {
   // groups are grids
   const [grids, setGrids] = useState<Grid[]>(userData.grids)
   const [cellsByGridId, setCellsByGridId] = useState(
-    userData.gridData.cellsByGridId,
+    userData.gridsData.cellsByGridId,
   )
   const [pixelsByGridId, setPixelsByGridId] = useState(
-    userData.gridData.pixelsByGridId,
+    userData.gridsData.pixelsByGridId,
   )
   const [ungroupedPixels, setUngroupedPixels] = useState(
-    userData.gridData.ungroupedPixels,
+    userData.gridsData.ungroupedPixels,
   )
-  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false)
+  const [gridsByPixelId, setGridsByPixelId] = useState<GridsByPixelIdMap>(
+    new Map(),
+  )
+  const [isPixelModalOpen, setIsPixelModalOpen] = useState(false)
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
-  const [editingGrid, setEditingGrid] = useState<NewGrid | null>(null)
+  const [selectedGrid, setSelectedGrid] = useState<GridData | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<PixelTypeType | 'all'>('all')
 
-  // ---- Block CRUD ----
+  useEffect(() => {
+    setGridsByPixelId((prev) => {
+      const newGridsByPixelId = new Map(prev)
+      pixelsByGridId.forEach((value, key) => {
+        value.forEach((gp: GridPixel) => {
+          // if Map of grids for pixelID exists and grid is not found in it add grid data to map.
+          const existingGrids: GridByGridIdMap | undefined =
+            newGridsByPixelId.get(gp.pixel.id)
+
+          if (existingGrids && !existingGrids.get(gp.gridId)) {
+            const gridData = grids.find((g) => g.id === gp.gridId)
+            if (gridData) {
+              existingGrids.set(gp.gridId, gridData)
+              newGridsByPixelId.set(gp.pixel.id, existingGrids)
+            } else {
+              console.error('no grid with that ID found.')
+            }
+          } else {
+            // create a new Map of grids for pixelID.
+            const newGridMap = new Map()
+            const gridData = grids.find((g) => g.id === gp.gridId)
+            if (gridData) {
+              newGridMap.set(gp.gridId, gridData)
+              newGridsByPixelId.set(gp.pixel.id, newGridMap)
+            }
+          }
+        })
+      })
+      return newGridsByPixelId
+    })
+  }, [pixelsByGridId])
+
+  // ---- Pixel CRUD ----
   const createPixelHandler = async (pixelData: NewPixel) => {
     // could maybe have some loading animation that shows building the pixel in, like 3 stages.
     const createdPixel = await createPixel({ data: pixelData })
@@ -247,16 +288,73 @@ export function Dashboard({ user, userData }: DashboardProps) {
   //   )
   // }
 
-  const createGridHandler = async (newGrid: NewGrid) => {
+  const createGridHandler = async (gridData: GridData) => {
+    const gridOwnerId = user.id
+    const { grid: newGrid, cells, pixels } = gridData
+
+    // I should consolidate this into a Promise.all(), but handle appropriately when one of these fail.
     const createdGrid = await createGrid({ data: newGrid })
+
     console.log('//// createPixel response: ', createdGrid)
     if (createdGrid.success !== true)
       throw new Error('Error creating pixel: ', { cause: createdGrid.results })
-    // const newPixel: NewPixel = {
-    //   ...pixelData,
-    // }
-
     setGrids((prev) => [...createdGrid.results, ...prev])
+
+    const [createdCells, createdGridPixels] = await Promise.all([
+      bulkUpsertCells({
+        data: {
+          ownerId: gridOwnerId,
+          gridId: createdGrid.results[0].id,
+          cells: cells,
+        },
+      }),
+      addPixelsToGridPixels({
+        gridId: createdGrid.results[0].id,
+        pixelIds: gridData.pixels.map((p) => p.id),
+      }),
+    ])
+
+    if (createdCells.success !== true)
+      throw new Error('Error creating Cells for Grid', {
+        cause: createdCells.results,
+      })
+    if (createdGridPixels.success !== true)
+      throw new Error('Error creating GridPixels for Grid', {
+        cause: createdGridPixels.results,
+      })
+  }
+
+  async function updateGridHandler(gridData: GridData) {
+    const gridId = gridData.grid.id
+
+    // Update GridPixels
+    const pixelData = gridData.pixels.map((p) => ({
+      gridId,
+      pixelId: p.id,
+      sortOrder: 'alphabetic',
+    }))
+
+    const [updatedGrid, updatedGridCells, updatedGridPixels] =
+      await Promise.all([
+        updateGrid({ data: gridData.grid }),
+        updateGridCells({
+          gridId,
+          cellData: gridData.cells,
+        }),
+        bulkUpsertGridPixels({
+          data: { ownerId: gridData.grid.ownerId, gridId, pixelData },
+        }),
+      ])
+    if (updatedGrid.success !== true)
+      throw new Error('Error updating grid', { cause: updatedGrid.results })
+    if (updatedGridCells.success !== true)
+      throw new Error('Error updating grid cells', {
+        cause: updatedGridCells.results,
+      })
+    if (updatedGridPixels.success !== true)
+      throw new Error('Error updating grid pixels', {
+        cause: updatedGridPixels.results,
+      })
   }
 
   // const updateGrid = (updated: BlockGroup) => {
@@ -311,19 +409,19 @@ export function Dashboard({ user, userData }: DashboardProps) {
   //   }
   // }
 
-  const addPixelsToGridPixels = async ({
+  async function addPixelsToGridPixels({
     gridId,
     pixelIds,
   }: {
     gridId: string
     pixelIds: string[]
-  }) => {
+  }) {
     const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
     // right now only the current user's grids are shown, but maybe there's a point where grids are shared...
     if (gridOwnerId !== user.id) throw new Error('You do not own this grid')
+    const existingGridPixels = pixelsByGridId.get(gridId)
 
     // build new gridPixels array
-    const gridPixels = pixelsByGridId.get(gridId)
     const newGridPixelsState: GridPixel[] = []
     const newGridPixelsDB: {
       gridId: string
@@ -342,7 +440,9 @@ export function Dashboard({ user, userData }: DashboardProps) {
       }
 
       // check if it does not exist already
-      const foundGridPixel = gridPixels?.find((p) => p.pixel.id === pixelId)
+      const foundGridPixel = existingGridPixels?.find(
+        (p) => p.pixel.id === pixelId,
+      )
       if (foundGridPixel) return
 
       // format data for state
@@ -359,13 +459,13 @@ export function Dashboard({ user, userData }: DashboardProps) {
       })
     })
 
-    // update gridData state with new cells and gridPixels
+    // update gridData state with new cells and existingGridPixels
     setPixelsByGridId((oldPixelsByGridId) => {
       const newPixelsByGridId = new Map(oldPixelsByGridId)
 
       if (newGridPixelsState.length > 0) {
         newPixelsByGridId.set(gridId, [
-          ...(gridPixels ?? []),
+          ...(existingGridPixels ?? []),
           ...newGridPixelsState,
         ])
       }
@@ -584,17 +684,18 @@ export function Dashboard({ user, userData }: DashboardProps) {
     return matchesSearch && matchesType
   })
 
-  const blockTypes = Object.entries(PIXEL_TYPE_LABELS) as [
+  const pixelTypes = Object.entries(PIXEL_TYPE_LABELS) as [
     PixelTypeType,
     string,
   ][]
 
   // For the grid modal: pixels available to add (ungrouped ones, or if editing, also already-in-grid ones)
-  const pixelsAvailableForGridModal = editingGrid?.id
-    ? pixelsByGridId
-        .get(editingGrid.id)
-        ?.filter((gp) => gp.gridId === editingGrid.id)
-    : ungroupedPixels
+  // All pixels should be available to add to a grid, there's no limit...
+  // const pixelsAvailableForGridModal = selectedGrid?.grid.id
+  //   ? pixelsByGridId
+  //       .get(selectedGrid.grid.id)
+  //       ?.filter((gp) => gp.gridId === selectedGrid.grid.id)
+  //   : ungroupedPixels
 
   const gridNameMap = new Map(grids.map((g) => [g.id, g.name]))
 
@@ -617,7 +718,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
 
         {/* Stats */}
         <div className="mb-8">
-          <StatsBar blocks={pixels} groupCount={grids.length} />
+          <StatsBar pixels={pixels} groupCount={grids.length} />
         </div>
 
         {/* Controls */}
@@ -654,7 +755,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
               >
                 All
               </button>
-              {blockTypes.map(([key, label]) => (
+              {pixelTypes.map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setFilterType(key)}
@@ -675,7 +776,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => {
-                setEditingGrid(null)
+                setSelectedGrid(null)
                 setIsGroupModalOpen(true)
               }}
               className="flex items-center gap-2 bg-[var(--journal-cream)] text-[var(--journal-ink)] px-4 py-2.5 text-lg font-serif hover:bg-[var(--journal-tan)] active:translate-y-px transition-all cursor-pointer"
@@ -688,12 +789,12 @@ export function Dashboard({ user, userData }: DashboardProps) {
               New Group
             </button>
             <button
-              onClick={() => setIsBlockModalOpen(true)}
+              onClick={() => setIsPixelModalOpen(true)}
               className="flex items-center gap-2 bg-[var(--journal-ink)] text-[var(--journal-paper)] px-5 py-2.5 text-lg font-serif hover:bg-[var(--journal-ink)]/90 active:translate-y-px transition-all cursor-pointer"
               style={{ borderRadius: '3px 8px 5px 10px' }}
             >
               <Plus size={20} />
-              New Block
+              New Pixel
             </button>
           </div>
         </div>
@@ -713,7 +814,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
                   grid={grid}
                   pixels={pixels || []}
                   onEdit={(g) => {
-                    setEditingGrid(g)
+                    setSelectedGrid(g)
                     setIsGroupModalOpen(true)
                   }}
                   onDelete={removeGrid}
@@ -723,21 +824,24 @@ export function Dashboard({ user, userData }: DashboardProps) {
             })}
 
             {/* Ungrouped pixels */}
-            {filteredUngroupedPixels.map((pixel) => (
-              <PixelCard
-                key={pixel.id}
-                pixel={pixel}
-                currentGrids={grids.filter((gp) => gp.pixelId === pixel.id)}
-                onToggleComplete={toggleComplete}
-                onUpdateProgress={updateProgress}
-                onDelete={deletePixel}
-                availableGrids={grids}
-                onMoveToGrid={addPixelsToGridPixels}
-                // groupName={
-                //   pixel.groupId ? gridNameMap.get(pixel.groupId) : undefined
-                // }
-              />
-            ))}
+            {filteredUngroupedPixels.map((pixel) => {
+              const gridData = gridsByPixelId.get(pixel.id)?.values()
+              return (
+                <PixelCard
+                  key={pixel.id}
+                  pixel={pixel}
+                  currentGrids={gridData && Array.from(gridData)}
+                  onToggleComplete={toggleComplete}
+                  onUpdateProgress={updateProgress}
+                  onDelete={deletePixel}
+                  availableGrids={grids}
+                  onMoveToGrid={addPixelsToGridPixels}
+                  // groupName={
+                  //   pixel.groupId ? gridNameMap.get(pixel.groupId) : undefined
+                  // }
+                />
+              )
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20">
@@ -789,10 +893,10 @@ export function Dashboard({ user, userData }: DashboardProps) {
         </div>
       </main>
 
-      {/* Create Block Modal */}
-      <CreateBlockModal
-        isOpen={isBlockModalOpen}
-        onClose={() => setIsBlockModalOpen(false)}
+      {/* Create Pixel Modal */}
+      <CreatePixelModal
+        isOpen={isPixelModalOpen}
+        onClose={() => setIsPixelModalOpen(false)}
         onSubmit={createPixelHandler}
       />
 
@@ -801,12 +905,12 @@ export function Dashboard({ user, userData }: DashboardProps) {
         isOpen={isGroupModalOpen}
         onClose={() => {
           setIsGroupModalOpen(false)
-          setEditingGrid(null)
+          setSelectedGrid(null)
         }}
         onSubmit={createGridHandler}
-        ungroupedBlocks={pixelsAvailableForGridModal}
-        editGroup={editingGrid}
-        onUpdate={updateGrid}
+        ungroupedPixels={pixels}
+        selectedGrid={selectedGrid}
+        onUpdate={updateGridHandler}
       />
     </div>
   )

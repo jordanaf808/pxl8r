@@ -1,36 +1,33 @@
-'use client'
-
 import {
   SketchyDivider,
   DoodleStar,
   DoodleCircle,
   DoodleCheckmark,
 } from '@/components/sketchy-elements'
-import type { Pixel } from '@/db/schema'
-import type { Block } from '@/db/types'
+import type { Pixel } from '@/db/types'
 
 interface StatsBarProps {
-  blocks: Pixel[]
+  pixels: Pixel[]
   groupCount?: number
 }
 
-export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
-  const totalBlocks = blocks.length
-  const completedBlocks = blocks.filter((b) => b.completedAt).length
-  const remainingBlocks = totalBlocks - completedBlocks
+export function StatsBar({ pixels, groupCount = 0 }: StatsBarProps) {
+  const totalPixels = pixels.length
+  const completedPixels = pixels.filter((p) => p.completedAt).length
+  const remainingPixels = totalPixels - completedPixels
   const avgProgress =
-    totalBlocks > 0
-      ? Math.round(blocks.reduce((sum, b) => sum + b.progress, 0) / totalBlocks)
+    totalPixels > 0
+      ? Math.round(pixels.reduce((sum, p) => sum + p.progress, 0) / totalPixels)
       : 0
 
-  // Calculate average completion time for completed blocks
-  const completedWithTime = blocks.filter((b) => b.completedAt)
+  // Calculate average completion time for completed pixels
+  const completedWithTime = pixels.filter((p) => p.completedAt)
   const avgCompletionDays =
     completedWithTime.length > 0
       ? Math.round(
-          completedWithTime.reduce((sum, b) => {
-            const created = new Date(b.createdAt).getTime()
-            const completed = new Date(b.updatedAt!).getTime()
+          completedWithTime.reduce((sum, p) => {
+            const created = new Date(p.createdAt).getTime()
+            const completed = new Date(p.updatedAt!).getTime()
             return sum + (completed - created) / (1000 * 60 * 60 * 24)
           }, 0) / completedWithTime.length,
         )
@@ -38,8 +35,8 @@ export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
 
   const stats = [
     {
-      label: 'Total Blocks',
-      value: totalBlocks,
+      label: 'Total Pixels',
+      value: totalPixels,
       icon: <DoodleStar size={22} className="text-[var(--journal-gold)]" />,
       color: 'var(--journal-gold)',
     },
@@ -92,13 +89,13 @@ export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
     },
     {
       label: 'Remaining',
-      value: remainingBlocks,
+      value: remainingPixels,
       icon: <DoodleCircle size={22} className="text-[var(--journal-rust)]" />,
       color: 'var(--journal-rust)',
     },
     {
       label: 'Completed',
-      value: completedBlocks,
+      value: completedPixels,
       icon: (
         <DoodleCheckmark size={22} className="text-[var(--journal-sage)]" />
       ),
@@ -186,7 +183,7 @@ export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
       </div>
 
       {/* Overall progress visualization */}
-      {totalBlocks > 0 && (
+      {totalPixels > 0 && (
         <div className="mt-5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-base font-serif text-[var(--journal-ink)] opacity-70">
@@ -219,14 +216,14 @@ export function StatsBar({ blocks, groupCount = 0 }: StatsBarProps) {
               />
             ))}
           </div>
-          {/* Block visualization row */}
+          {/* Pixel visualization row */}
           <div className="flex gap-1 mt-3 flex-wrap">
-            {blocks.map((block) => (
+            {pixels.map((block) => (
               <div
                 key={block.id}
                 className="h-3 transition-all"
                 style={{
-                  width: `${Math.max(100 / Math.max(totalBlocks, 1) - 1, 8)}%`,
+                  width: `${Math.max(100 / Math.max(totalPixels, 1) - 1, 8)}%`,
                   minWidth: '12px',
                   backgroundColor: block.completedAt
                     ? 'var(--journal-sage)'

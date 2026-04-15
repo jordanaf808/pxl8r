@@ -1,44 +1,43 @@
-'use client'
-
 import { useState } from 'react'
 import { X, Check } from 'lucide-react'
 import { SketchyDivider } from '@/components/sketchy-elements'
-import type { PixelColor } from '@/db/types'
+import type { Pixel, PixelColor, GridData } from '@/db/types'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
-import type { Pixel, Grid, NewGrid } from '@/db/schema'
 
 interface CreateGridModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (grid: NewGrid) => void
-  ungridedBlocks: Pixel[]
+  onSubmit: (gridData: GridData) => void
+  ungroupedPixels: Pixel[]
   /** When set, the modal opens in edit mode pre-populated with the grid */
-  editGrid?: Grid | null
-  onUpdate?: (grid: Grid) => void
+  selectedGrid?: GridData | null
+  onUpdate?: (gridData: GridData) => void
 }
 
 export function CreateGridModal({
   isOpen,
   onClose,
   onSubmit,
-  ungridedBlocks,
-  editGrid,
+  ungroupedPixels,
+  selectedGrid,
   onUpdate,
 }: CreateGridModalProps) {
-  const [name, setName] = useState(editGrid?.name ?? '')
-  const [description, setDescription] = useState(editGrid?.description ?? '')
-  // const [color, setColor] = useState<PixelColor>(editGrid?.color ?? 'warm')
+  const [name, setName] = useState(selectedGrid?.grid.name ?? '')
+  const [description, setDescription] = useState(
+    selectedGrid?.grid.description ?? '',
+  )
+  // const [color, setColor] = useState<PixelColor>(selectedGrid?.color ?? 'warm')
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>(
-    editGrid?.pixelIds ?? [],
+    selectedGrid?.pixels.map((p) => p.id) ?? [],
   )
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Reset state when modal opens/closes or editGrid changes
-  const isEdit = !!editGrid
+  // Reset state when modal opens/closes or selectedGrid changes
+  const isEdit = !!selectedGrid
   // Blocks available for selection: ungrided + already in this grid (if editing)
   const availableBlocks = isEdit
-    ? [...ungridedBlocks, ...ungridedBlocks] // placeholder replaced below
-    : ungridedBlocks
+    ? [...ungroupedPixels, ...ungroupedPixels] // placeholder replaced below
+    : ungroupedPixels
 
   if (!isOpen) return null
 
@@ -61,16 +60,10 @@ export function CreateGridModal({
     e.preventDefault()
     if (!validate()) return
 
-    if (isEdit && onUpdate && editGrid) {
-      onUpdate({
-        ...editGrid,
-        name,
-        description,
-        // color,
-        pixelIds: selectedBlockIds,
-      })
-    } else {
-      onSubmit({ name, description, pixelIds: selectedBlockIds })
+    if (isEdit && onUpdate && selectedGrid) {
+      onUpdate(selectedGrid)
+    } else if (selectedGrid) {
+      onSubmit(selectedGrid)
     }
 
     setName('')
@@ -242,7 +235,7 @@ export function CreateGridModal({
               <label className="block text-lg text-[var(--journal-ink)] mb-2 font-serif">
                 Include Blocks
               </label>
-              {ungridedBlocks.length === 0 && !isEdit ? (
+              {ungroupedPixels.length === 0 && !isEdit ? (
                 <p className="text-base text-[var(--journal-ink)] opacity-40 font-serif py-3 text-center">
                   {'No ungrided blocks yet -- create some first!'}
                 </p>
@@ -254,7 +247,7 @@ export function CreateGridModal({
                     border: '1.5px solid var(--journal-warm)',
                   }}
                 >
-                  {ungridedBlocks.map((block) => {
+                  {ungroupedPixels.map((block) => {
                     const isSelected = selectedBlockIds.includes(block.id)
                     const PixelColor = PIXEL_COLORS[block.color]
                     return (

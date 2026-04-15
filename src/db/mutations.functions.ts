@@ -22,8 +22,13 @@ import {
   updateUserSchema,
 } from '@/db/types'
 import type { SQL } from 'drizzle-orm'
-import type { NewPage, NewGrid, NewPixel } from './schema'
-import type { CreateCellsInput, bulkGridPixelsInput } from '@/db/types'
+import type {
+  NewPage,
+  NewGrid,
+  NewPixel,
+  CreateCellsInput,
+  bulkGridPixelsInput,
+} from '@/db/types'
 
 /**
  * CREATE

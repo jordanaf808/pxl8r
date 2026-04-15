@@ -13,6 +13,7 @@ import type { ExtractTablesWithRelations } from 'drizzle-orm/relations'
 import z from 'zod'
 
 export type PixelTypeType = typeof schema.pixels.$inferSelect.type
+export type PixelUnitType = typeof schema.pixels.$inferSelect.unit
 
 export type PixelColor = 'rust' | 'sage' | 'gold' | 'slate' | 'warm'
 
@@ -163,6 +164,17 @@ export type GridPixel = {
   pixel: Pixel
 }
 
+export type GridData = {
+  grid: Grid
+  pixels: Pixel[]
+  cells: Cell[]
+}
+export type NewGridData = {
+  grid: NewGrid
+  pixels: NewPixel[]
+  cells: NewCell[]
+}
+
 export type DashboardGridDataReturn = {
   cellsByGridId: Map<string, Cell[]>
   pixelsByGridId: Map<string, GridPixel[]>
@@ -216,16 +228,16 @@ export const updateGridSchema = z.object({
   id: z.uuid(),
   ownerId: z.uuid(),
   name: z.string().max(66).optional(),
-  description: z.string().max(333).optional(),
-  isPublic: z.boolean().optional(),
+  description: z.string().max(333).nullable(),
+  isPublic: z.boolean().nullable(),
   columns: z.int().min(0).max(1000).optional(),
   rows: z.int().min(0).max(1000).optional(),
-  scaleType: z.enum(scaleTypeEnum.enumValues).optional(),
-  scaleUnit: z.enum(unitTypeEnum.enumValues).optional(),
-  scaleStart: z.int().max(10000).optional(),
-  scaleEnd: z.int().max(10000).optional(),
-  scaleLabel: z.string().max(66).optional(),
-  theme: z.enum(themeTypeEnum.enumValues).optional(),
+  scaleType: z.enum(scaleTypeEnum.enumValues).nullable(),
+  scaleUnit: z.enum(unitTypeEnum.enumValues).nullable(),
+  scaleStart: z.int().max(10000).nullable(),
+  scaleEnd: z.int().max(10000).nullable(),
+  scaleLabel: z.string().max(66).nullable(),
+  theme: z.enum(themeTypeEnum.enumValues).nullable(),
 })
 
 export const updatePageGridSchema = z.object({
@@ -319,8 +331,13 @@ export type BulkUpsertCellsInput = z.infer<typeof bulkUpsertCellsSchema>
 export type CellUpdateInput = z.infer<typeof bulkCellSchema>
 
 /**
- * Transaction
+ * misc.
  */
+type pixelId = string
+type gridId = string
+export type GridByGridIdMap = Map<gridId, Grid>
+export type GridsByPixelIdMap = Map<pixelId, Map<gridId, Grid>>
+
 export type DBTransaction = PgTransaction<
   NodePgQueryResultHKT,
   typeof schema,
