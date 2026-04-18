@@ -222,10 +222,6 @@ export const pixels = pgTable(
     unit: unitTypeEnum('unit').notNull(), // unit to measure by
     endGoal: integer('end_goal'), // short label shown in key
     color: ColorTypeEnum('color').notNull(), // hex color string
-    completedAt: timestamp('completed_at', { withTimezone: true }).default(
-      sql`NULL`,
-    ),
-    progress: smallint().default(0).notNull(),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
@@ -236,11 +232,6 @@ export const pixels = pgTable(
   },
   (t) => ({
     ownerIdx: index('pixels_owner_idx').on(t.ownerId),
-    // Add check constraint for 0-100 range
-    progressRange: check(
-      'progress_range',
-      sql`${t.progress} >= 0 AND ${t.progress} <= 100`,
-    ),
   }),
 )
 
@@ -373,8 +364,11 @@ export const cells = pgTable(
     // Optional metadata per cell
     value: integer('value'), // numeric value if tracking amounts
     note: text('note'), // optional text annotation
+    progress: smallint().default(0).notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }).default(
+      sql`NULL`,
+    ),
     colorOverride: text('color_override'), // if user overrides the pixel color for this cell
-    completedAt: timestamp('completed_at', { withTimezone: true }), // when the user marked this cell
 
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
@@ -386,6 +380,11 @@ export const cells = pgTable(
     gridIdx: index('cells_grid_idx').on(t.gridId),
     // Unique constraint: only one cell per grid position per grid
     positionIdx: uniqueIndex('cells_position_idx').on(t.gridId, t.col, t.row),
+    // Add check constraint for 0-100 range
+    progressRange: check(
+      'progress_range',
+      sql`${t.progress} >= 0 AND ${t.progress} <= 100`,
+    ),
   }),
 )
 

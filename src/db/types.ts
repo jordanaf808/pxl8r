@@ -274,8 +274,6 @@ export const updatePixelSchema = z.object({
   unit: z.enum(unitTypeEnum.enumValues).optional(),
   endGoal: z.number().max(10000).optional(),
   color: z.enum(ColorTypeEnum.enumValues).optional(), // hex color string
-  completedAt: z.date().nullable(),
-  progress: z.int().max(100).optional(),
 })
 
 // extract the inferred type
@@ -287,6 +285,7 @@ export const updatableCellFields = z.object({
   pixelId: z.uuid().nullish(),
   value: z.number().nullish(),
   note: z.string().max(500).nullish(),
+  progress: z.int().max(100).optional(),
   colorOverride: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -294,6 +293,8 @@ export const updatableCellFields = z.object({
   updatedAt: z.nullish(z.coerce.date()),
   completedAt: z.nullish(z.coerce.date()),
 })
+
+export type UpdateCellType = z.infer<typeof updatableCellFields>
 
 // Schema for a single cell in the bulk operation
 export const updateCellSchema = z.object({

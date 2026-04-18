@@ -19,9 +19,11 @@ import type {
   GridData,
   PixelTypeType,
   UpdatePixelType,
+  UpdateCellType,
   DashboardGridDataReturn,
   GridByGridIdMap,
   GridsByPixelIdMap,
+  Cell,
 } from '@/db/types'
 import { PIXEL_TYPE_LABELS } from '@/db/types'
 import {
@@ -37,7 +39,6 @@ import {
   deleteGridById as deleteGridByIdServerFn,
 } from '@/db/mutations.functions'
 import { useServerFn } from '@tanstack/react-start'
-import { Value } from '@radix-ui/react-select'
 
 interface DashboardProps {
   user: NewUser
@@ -111,7 +112,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
       })
       return newGridsByPixelId
     })
-  }, [pixelsByGridId])
+  }, [pixelsByGridId, grids])
 
   // ---- Pixel CRUD ----
   const createPixelHandler = async (pixelData: NewPixel) => {
@@ -125,151 +126,138 @@ export function Dashboard({ user, userData }: DashboardProps) {
     console.log('//// createPixel - pixels set')
   }
 
-  const toggleComplete = async (id: string) => {
-    let oldPixel: Pixel | undefined
-    let updatedPixel: UpdatePixelType | undefined
+  const toggleComplete = async (gridId: string, cellId: string) => {
+    // Capture the cell to update BEFORE setState
+    const oldCellsByGridId = new Map(cellsByGridId)
+    const gridCells = oldCellsByGridId.get(gridId)
+    const cellToUpdate = gridCells?.find((c) => c.id === cellId)
+    if (!gridCells || !cellToUpdate) throw new Error('Grid or Cell not found')
 
-    // update state
-    setPixels((prev) =>
-      prev.map((p) => {
-        if (p.id !== id) return p
+    console.log('//// is cell completed? ', !!cellToUpdate.completedAt)
+    const completed = !!cellToUpdate.completedAt
 
-        console.log('//// is pixel completed? ', !!p.completedAt)
-        const completed = !!p.completedAt
-        // build db update object
-        updatedPixel = {
-          id: p.id,
-          // toggle values
-          completedAt: completed ? null : new Date(),
-          progress: !completed ? 100 : p.progress,
-        } as UpdatePixelType
-        // backup
-        oldPixel = p
-
-        // return pixel state
-        return {
-          ...p,
-          completedAt: completed ? null : new Date(),
-          progress: !completed ? 100 : p.progress,
-        }
-      }),
+    // Build update object outside of setState
+    const updatedCell: Cell = {
+      ...cellToUpdate,
+      completedAt: completed ? null : new Date(),
+      progress: !completed ? 100 : cellToUpdate.progress,
+    }
+    // const updatedCell: UpdateCellType = {
+    //   completedAt: completed ? null : new Date(),
+    //   progress: !completed ? 100 : cellToUpdate.progress,
+    // }
+    const updatedCells = gridCells.map((c) =>
+      c.id === cellId ? updatedCell : c,
     )
 
-    if (updatedPixel) {
-      // update db
-      const response = await updatePixel({ data: updatedPixel })
-      console.log('//// updatePixel - response: ', response)
+    // Update state with computed values
+    setCellsByGridId((prev) => {
+      const newCellsByGridId = prev
+      newCellsByGridId.set(gridId, updatedCells)
+      return newCellsByGridId
+      // prev.map((p) =>
+      //   p.id === id
+      //     ? {
+      //         ...p,
+      //         completedAt: updatedCell.completedAt,
+      //         progress: updatedCell.progress!,
+      //       }
+      //     : p,
+      // ),
+    })
 
-      // undo state changes if update is unsuccessful
-      if (response.success === true) return response
+    // Use captured data for DB update
+    const response = await updateGridCells({ gridId, cellData: [updatedCell] })
+    console.log('//// updateGridCells - response: ', response)
 
-      // return oldPixel (only specific changes) because prev state is probably the state changes we just did above.
-      if (oldPixel) {
-        setPixels((prev) =>
-          prev.map((p) => {
-            if (p.id !== id) return p
-            return {
-              ...p,
-              completedAt: oldPixel!.completedAt,
-              progress: oldPixel!.progress,
-            }
-          }),
-        )
-      }
+    if (response.success !== true) {
+      // Rollback with the captured old cell
+      setCellsByGridId(() => oldCellsByGridId)
     }
+
+    return response
   }
 
   const updateProgress = async (id: string, progress: number) => {
-    let oldPixel: Pixel | undefined
-    let updatedPixel: UpdatePixelType | undefined
+    // Capture the pixel to update BEFORE setState
+    const pixelToUpdate = pixels.find((p) => p.id === id)
+    if (!pixelToUpdate) throw new Error('Pixel not found')
 
-    // update state
+    // Build update object outside of setState
+    const updatedPixel: UpdatePixelType = {
+      id: pixelToUpdate.id,
+      progress,
+      completedAt: progress === 100 ? new Date() : null,
+    }
+
+    // Update state with computed values
     setPixels((prev) =>
-      prev.map((p) => {
-        if (p.id !== id) return p
-
-        oldPixel = p
-        updatedPixel = {
-          id: p.id,
-          progress,
-          completedAt: progress === 100 ? new Date() : null,
-        } as UpdatePixelType
-
-        return {
-          ...p,
-          progress,
-          completedAt: progress === 100 ? new Date() : null,
-        }
-      }),
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              progress: updatedPixel.progress!,
+              completedAt: updatedPixel.completedAt,
+            }
+          : p,
+      ),
     )
 
-    if (updatedPixel) {
-      // update db
-      const response = await updatePixel({ data: updatedPixel })
-      console.log('//// updateProgress- updatePixel - response: ', response)
+    // Use captured data for DB update
+    const response = await updatePixel({ data: updatedPixel })
+    console.log('//// updateProgress- updatePixel - response: ', response)
 
-      if (response.success === true) return response
-
-      // undo state changes if update is unsuccessful
+    if (response.success !== true) {
+      // Rollback with the captured old pixel
       setPixels((prev) =>
-        prev.map((p) => {
-          if (p.id === id) return p
-
-          if (oldPixel)
-            return {
-              ...p,
-              completed: oldPixel.completedAt,
-              progress: oldPixel.progress,
-              // completedAt: !p.completedAt ? new Date().toISOString() : undefined,
-            }
-
-          return {
-            ...p,
-            completed: !p.completedAt,
-            progress: !p.completedAt ? 100 : p.progress,
-            // completedAt: !p.completedAt ? new Date().toISOString() : undefined,
-          }
-        }),
+        prev.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                progress: pixelToUpdate.progress,
+                completedAt: pixelToUpdate.completedAt,
+              }
+            : p,
+        ),
       )
     }
+
+    return response
   }
 
   const deletePixel = async (pixelId: string) => {
-    let oldPixel: Pixel | undefined
-    let oldPixelsByGridId: Map<string, GridPixel[]> | undefined
+    // Capture old state BEFORE modifying
+    const oldPixel = pixels.find((p) => p.id === pixelId)
+    const oldPixelsByGridId = new Map(pixelsByGridId)
 
-    // remove from pixels state
-    setPixels((prev) => {
-      oldPixel = prev.find((p) => p.id === pixelId)
-      return prev.filter((p) => p.id !== pixelId)
-    })
+    if (!oldPixel) throw new Error('Pixel not found')
 
-    // remove from pixelsByGridId state
+    // Update pixels state
+    setPixels((prev) => prev.filter((p) => p.id !== pixelId))
+
+    // Update pixelsByGridId state
     setPixelsByGridId((prev) => {
-      oldPixelsByGridId = new Map(prev)
-      const updatedPixelsByGridId = new Map(prev)
-
-      updatedPixelsByGridId.forEach((value, key, map) => {
-        const updatedGridPixels: GridPixel[] = value.filter(
+      const updated = new Map(prev)
+      updated.forEach((value, key) => {
+        const filtered = value.filter(
           (gridPixel) => gridPixel.pixel.id !== pixelId,
         )
-        map.set(key, updatedGridPixels)
+        updated.set(key, filtered)
       })
-
-      return updatedPixelsByGridId
+      return updated
     })
 
+    // Perform DB operation
     const response = await deletePixelById({ data: { pixelId } })
-    if (response.success === true) return response
 
-    console.log('//// ERROR - deletePixelById: ', response)
+    if (response.success !== true) {
+      console.log('//// ERROR - deletePixelById: ', response)
+      // Rollback using captured state
+      setPixels((prev) => [...prev, oldPixel])
+      setPixelsByGridId(() => oldPixelsByGridId)
+    }
 
-    // undo state changes if update is unsuccessful
-    if (!oldPixel) throw new Error("Can't find oldPixel to put back...")
-    setPixels((prev) => [...prev, oldPixel!])
-    if (!oldPixelsByGridId)
-      throw new Error("Can't find oldGridData to put back...")
-    setPixelsByGridId(() => oldPixelsByGridId!)
+    return response
   }
 
   // ---- Grid CRUD ----
@@ -292,7 +280,6 @@ export function Dashboard({ user, userData }: DashboardProps) {
     const gridOwnerId = user.id
     const { grid: newGrid, cells, pixels } = gridData
 
-    // I should consolidate this into a Promise.all(), but handle appropriately when one of these fail.
     const createdGrid = await createGrid({ data: newGrid })
 
     console.log('//// createPixel response: ', createdGrid)
@@ -435,8 +422,8 @@ export function Dashboard({ user, userData }: DashboardProps) {
         (p) => p.id === pixelId && p.ownerId === user.id,
       )
       if (!foundPixel) {
-        console.log('Pixel not found: ' + pixelId)
-        return false
+        console.warn('Pixel not found: ' + pixelId)
+        return
       }
 
       // check if it does not exist already
@@ -514,11 +501,9 @@ export function Dashboard({ user, userData }: DashboardProps) {
       let filteredGridPixels: GridPixel[] = []
       if (!oldGridPixels) throw new Error('cant find GridPixels')
 
-      pixelIds.forEach((pixelId) => {
-        filteredGridPixels = oldGridPixels.filter(
-          (gp) => gp.pixel.id !== pixelId && gp.gridId === gridId,
-        )
-      })
+      filteredGridPixels = oldGridPixels.filter(
+        (gp) => !pixelIds.includes(gp.pixel.id) && gp.gridId === gridId,
+      )
 
       newPixelsByGridId.set(gridId, filteredGridPixels)
 
@@ -617,7 +602,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
 
     setCellsByGridId((prev) => {
       const newCellsByGridMap = new Map(prev)
-      const gridCells = prev.get(gridId)
+      const gridCells = newCellsByGridMap.get(gridId)
 
       if (!gridCells || gridCells.length === 0) {
         console.error('no grid cells found')
@@ -631,10 +616,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
         )
       })
 
-      return {
-        ...prev,
-        cellsByGridId: newCellsByGridMap,
-      }
+      return newCellsByGridMap
     })
 
     // update db
