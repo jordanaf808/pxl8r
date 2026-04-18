@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { DoodleCircle } from '@/components/sketchy-elements'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
-import type { Grid, Pixel } from '@/db/schema'
+import type { Grid, Pixel } from '@/db/types'
 
 interface GridCardProps {
   grid: Grid
@@ -75,14 +75,17 @@ export function GridCard({
   const [isHovered, setIsHovered] = useState(false)
   const colorInfo = PIXEL_COLORS['sage']
 
-  // const childBlocks = pixels.filter((p) => grid.pixelIds.includes(p.id))
-  const totalProgress =
-    pixels.length > 0
-      ? Math.round(
-          pixels.reduce((acc, p) => acc + p.progress, 0) / pixels.length,
-        )
-      : 0
-  const completedCount = pixels.filter((p) => !!p.completedAt).length
+  // TODO: totalProgress and completedCount should derive from cells data, not pixels.
+  // pixels don't have progress/completedAt — those live on cells. Wire in cell data when building the grid detail view.
+  // const totalProgress =
+  //   pixels.length > 0
+  //     ? Math.round(
+  //         pixels.reduce((acc, p) => acc + p.progress, 0) / pixels.length,
+  //       )
+  //     : 0
+  // const completedCount = pixels.filter((p) => !!p.completedAt).length
+  const totalProgress = 0
+  const completedCount = 0
 
   // Slight random rotation for hand-placed feel
   const rotation = ((grid.id.charCodeAt(0) % 5) - 2) * 0.4
@@ -207,7 +210,7 @@ export function GridCard({
                     {PIXEL_TYPE_LABELS[pixel.type]}
                   </span>
 
-                  {/* Tiny progress bar */}
+                  {/* TODO: tiny progress bar — needs cell data, not pixel data
                   <div
                     className="w-full h-1 mt-1"
                     style={{
@@ -218,12 +221,12 @@ export function GridCard({
                     <div
                       className="h-full"
                       style={{
-                        width: `${pixel.progress}%`,
+                        width: `${cell.progress}%`,
                         backgroundColor: 'rgba(255,255,255,0.5)',
                         borderRadius: '1px 2px 1px 2px',
                       }}
                     />
-                  </div>
+                  </div> */}
                 </div>
               )
             })}
@@ -282,9 +285,10 @@ export function GridCard({
             {pixels.length}
             {' completed'}
           </span>
+          {/* TODO: re-enable once completedCount derives from cell data
           {completedCount === pixels.length && pixels.length > 0 && (
             <DoodleCircle size={16} className="opacity-50" />
-          )}
+          )} */}
         </div>
       </div>
     </div>

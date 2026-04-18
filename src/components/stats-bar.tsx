@@ -1,33 +1,33 @@
 import {
-  SketchyDivider,
   DoodleStar,
   DoodleCircle,
   DoodleCheckmark,
 } from '@/components/sketchy-elements'
-import type { Pixel } from '@/db/types'
+import type { Cell, Pixel } from '@/db/types'
 
 interface StatsBarProps {
   pixels: Pixel[]
-  groupCount?: number
+  cells: Cell[]
+  gridCount?: number
 }
 
-export function StatsBar({ pixels, groupCount = 0 }: StatsBarProps) {
-  const totalPixels = pixels.length
-  const completedPixels = pixels.filter((p) => p.completedAt).length
-  const remainingPixels = totalPixels - completedPixels
+export function StatsBar({ pixels, cells, gridCount = 0 }: StatsBarProps) {
+  const totalCells = cells.length > 0 ? cells.length : pixels.length
+  const completedCells = cells.filter((c) => c.completedAt).length
+  const remainingCells = totalCells - completedCells
   const avgProgress =
-    totalPixels > 0
-      ? Math.round(pixels.reduce((sum, p) => sum + p.progress, 0) / totalPixels)
+    totalCells > 0
+      ? Math.round(cells.reduce((sum, c) => sum + c.progress, 0) / totalCells)
       : 0
 
-  // Calculate average completion time for completed pixels
-  const completedWithTime = pixels.filter((p) => p.completedAt)
+  // Calculate average completion time for completed cells
+  const completedWithTime = cells.filter((c) => c.completedAt)
   const avgCompletionDays =
     completedWithTime.length > 0
       ? Math.round(
-          completedWithTime.reduce((sum, p) => {
-            const created = new Date(p.createdAt).getTime()
-            const completed = new Date(p.updatedAt!).getTime()
+          completedWithTime.reduce((sum, c) => {
+            const created = new Date(c.createdAt!).getTime()
+            const completed = new Date(c.updatedAt!).getTime()
             return sum + (completed - created) / (1000 * 60 * 60 * 24)
           }, 0) / completedWithTime.length,
         )
@@ -36,13 +36,13 @@ export function StatsBar({ pixels, groupCount = 0 }: StatsBarProps) {
   const stats = [
     {
       label: 'Total Pixels',
-      value: totalPixels,
+      value: totalCells,
       icon: <DoodleStar size={22} className="text-[var(--journal-gold)]" />,
       color: 'var(--journal-gold)',
     },
     {
-      label: 'Groups',
-      value: groupCount,
+      label: 'Grids',
+      value: gridCount,
       icon: (
         <svg
           viewBox="0 0 22 22"
@@ -89,13 +89,13 @@ export function StatsBar({ pixels, groupCount = 0 }: StatsBarProps) {
     },
     {
       label: 'Remaining',
-      value: remainingPixels,
+      value: remainingCells,
       icon: <DoodleCircle size={22} className="text-[var(--journal-rust)]" />,
       color: 'var(--journal-rust)',
     },
     {
       label: 'Completed',
-      value: completedPixels,
+      value: completedCells,
       icon: (
         <DoodleCheckmark size={22} className="text-[var(--journal-sage)]" />
       ),
@@ -158,7 +158,6 @@ export function StatsBar({ pixels, groupCount = 0 }: StatsBarProps) {
           My Journal Stats
         </h2>
       </div>
-      <SketchyDivider className="text-[var(--journal-warm)] mb-4" />
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -183,7 +182,7 @@ export function StatsBar({ pixels, groupCount = 0 }: StatsBarProps) {
       </div>
 
       {/* Overall progress visualization */}
-      {totalPixels > 0 && (
+      {totalCells > 0 && (
         <div className="mt-5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-base font-serif text-[var(--journal-ink)] opacity-70">
@@ -218,20 +217,17 @@ export function StatsBar({ pixels, groupCount = 0 }: StatsBarProps) {
           </div>
           {/* Pixel visualization row */}
           <div className="flex gap-1 mt-3 flex-wrap">
-            {pixels.map((block) => (
+            {pixels.map((pixel) => (
               <div
-                key={block.id}
+                key={pixel.id}
                 className="h-3 transition-all"
                 style={{
-                  width: `${Math.max(100 / Math.max(totalPixels, 1) - 1, 8)}%`,
+                  width: `${Math.max(100 / Math.max(totalCells, 1) - 1, 8)}%`,
                   minWidth: '12px',
-                  backgroundColor: block.completedAt
-                    ? 'var(--journal-sage)'
-                    : 'var(--journal-warm)',
+                  backgroundColor: `var(--journal-${pixel.color})`,
                   borderRadius: '1px 3px 2px 4px',
-                  opacity: block.completedAt ? 1 : 0.5,
                 }}
-                title={`${block.name}: ${block.progress}%`}
+                title={`${pixel.name}`}
               />
             ))}
           </div>

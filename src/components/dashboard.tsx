@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Plus, Search, Layers } from 'lucide-react'
-import { SketchyDivider } from '@/components/sketchy-elements'
 import DashboardHeader from '@/components/dashboardHeader'
 import { PixelCard } from '@/components/block-card'
 import { GridCard } from '@/components/GridCard'
 import { CreatePixelModal } from '@/components/create-block-modal'
-import { CreateGridModal } from '@/components/create-group-modal'
+import { CreateGridModal } from '@/components/CreateGridModal'
 import { StatsBar } from '@/components/stats-bar'
 import type {
   Pixel,
@@ -13,13 +12,10 @@ import type {
   NewUser,
   Grid,
   Page,
-  NewGrid,
   NewCell,
   GridPixel,
   GridData,
   PixelTypeType,
-  UpdatePixelType,
-  UpdateCellType,
   DashboardGridDataReturn,
   GridByGridIdMap,
   GridsByPixelIdMap,
@@ -62,6 +58,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
   const deleteManyCellsById = useServerFn(deleteManyCellsByIdServerFn)
   const deletePixelById = useServerFn(deletePixelByIdServerFn)
   const [pixels, setPixels] = useState<Pixel[]>(userData.pixels)
+  const [pixelsMap, setPixelsMap] = useState<Map<string, Pixel>>(new Map())
   // groups are grids
   const [grids, setGrids] = useState<Grid[]>(userData.grids)
   const [cellsByGridId, setCellsByGridId] = useState(
@@ -81,6 +78,21 @@ export function Dashboard({ user, userData }: DashboardProps) {
   const [selectedGrid, setSelectedGrid] = useState<GridData | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<PixelTypeType | 'all'>('all')
+  const [allCells, setAllCells] = useState<Cell[]>([])
+
+  useEffect(() => {
+    const newAllCells: Cell[] = []
+    cellsByGridId.forEach((cells) => allCells.push(...cells))
+    setAllCells(newAllCells)
+  }, [cellsByGridId])
+
+  useEffect(() => {
+    const newPixelsMap = new Map()
+    pixels.forEach((p) => {
+      newPixelsMap.get(p.id) ? null : newPixelsMap.set(p.id, p)
+    })
+    if (newPixelsMap.size > 0) setPixelsMap(newPixelsMap)
+  }, [pixels])
 
   useEffect(() => {
     setGridsByPixelId((prev) => {
@@ -115,7 +127,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
   }, [pixelsByGridId, grids])
 
   // ---- Pixel CRUD ----
-  const createPixelHandler = async (pixelData: NewPixel) => {
+  async function createPixelHandler(pixelData: NewPixel) {
     // could maybe have some loading animation that shows building the pixel in, like 3 stages.
     const createdPixel = await createPixel({ data: pixelData })
     console.log('//// createPixel response: ', createdPixel)
@@ -123,109 +135,11 @@ export function Dashboard({ user, userData }: DashboardProps) {
       throw new Error('Error creating pixel: ', { cause: createdPixel.results })
 
     setPixels((prev) => [...createdPixel.results, ...prev])
+    setUngroupedPixels((prev) => [...createdPixel.results, ...prev])
     console.log('//// createPixel - pixels set')
   }
 
-  const toggleComplete = async (gridId: string, cellId: string) => {
-    // Capture the cell to update BEFORE setState
-    const oldCellsByGridId = new Map(cellsByGridId)
-    const gridCells = oldCellsByGridId.get(gridId)
-    const cellToUpdate = gridCells?.find((c) => c.id === cellId)
-    if (!gridCells || !cellToUpdate) throw new Error('Grid or Cell not found')
-
-    console.log('//// is cell completed? ', !!cellToUpdate.completedAt)
-    const completed = !!cellToUpdate.completedAt
-
-    // Build update object outside of setState
-    const updatedCell: Cell = {
-      ...cellToUpdate,
-      completedAt: completed ? null : new Date(),
-      progress: !completed ? 100 : cellToUpdate.progress,
-    }
-    // const updatedCell: UpdateCellType = {
-    //   completedAt: completed ? null : new Date(),
-    //   progress: !completed ? 100 : cellToUpdate.progress,
-    // }
-    const updatedCells = gridCells.map((c) =>
-      c.id === cellId ? updatedCell : c,
-    )
-
-    // Update state with computed values
-    setCellsByGridId((prev) => {
-      const newCellsByGridId = prev
-      newCellsByGridId.set(gridId, updatedCells)
-      return newCellsByGridId
-      // prev.map((p) =>
-      //   p.id === id
-      //     ? {
-      //         ...p,
-      //         completedAt: updatedCell.completedAt,
-      //         progress: updatedCell.progress!,
-      //       }
-      //     : p,
-      // ),
-    })
-
-    // Use captured data for DB update
-    const response = await updateGridCells({ gridId, cellData: [updatedCell] })
-    console.log('//// updateGridCells - response: ', response)
-
-    if (response.success !== true) {
-      // Rollback with the captured old cell
-      setCellsByGridId(() => oldCellsByGridId)
-    }
-
-    return response
-  }
-
-  const updateProgress = async (id: string, progress: number) => {
-    // Capture the pixel to update BEFORE setState
-    const pixelToUpdate = pixels.find((p) => p.id === id)
-    if (!pixelToUpdate) throw new Error('Pixel not found')
-
-    // Build update object outside of setState
-    const updatedPixel: UpdatePixelType = {
-      id: pixelToUpdate.id,
-      progress,
-      completedAt: progress === 100 ? new Date() : null,
-    }
-
-    // Update state with computed values
-    setPixels((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              progress: updatedPixel.progress!,
-              completedAt: updatedPixel.completedAt,
-            }
-          : p,
-      ),
-    )
-
-    // Use captured data for DB update
-    const response = await updatePixel({ data: updatedPixel })
-    console.log('//// updateProgress- updatePixel - response: ', response)
-
-    if (response.success !== true) {
-      // Rollback with the captured old pixel
-      setPixels((prev) =>
-        prev.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                progress: pixelToUpdate.progress,
-                completedAt: pixelToUpdate.completedAt,
-              }
-            : p,
-        ),
-      )
-    }
-
-    return response
-  }
-
-  const deletePixel = async (pixelId: string) => {
+  async function deletePixel(pixelId: string) {
     // Capture old state BEFORE modifying
     const oldPixel = pixels.find((p) => p.id === pixelId)
     const oldPixelsByGridId = new Map(pixelsByGridId)
@@ -261,30 +175,15 @@ export function Dashboard({ user, userData }: DashboardProps) {
   }
 
   // ---- Grid CRUD ----
-  // const addGroup = (groupData: Omit<BlockGroup, 'id' | 'createdAt'>) => {
-  //   const newGroup: BlockGroup = {
-  //     ...groupData,
-  //     id: 'g' + Date.now().toString(),
-  //     createdAt: new Date().toISOString(),
-  //   }
-  //   setGrids((prev) => [newGroup, ...prev])
-  //   // Mark pixels as belonging to this grid
-  //   setPixels((prev) =>
-  //     prev.map((p) =>
-  //       groupData.pixelIds.includes(p.id) ? { ...p, groupId: newGroup.id } : p,
-  //     ),
-  //   )
-  // }
-
-  const createGridHandler = async (gridData: GridData) => {
+  async function createGridHandler(gridData: GridData) {
     const gridOwnerId = user.id
-    const { grid: newGrid, cells, pixels } = gridData
+    const { grid: newGrid, cells: cellsData, pixels: pixelsData } = gridData
 
     const createdGrid = await createGrid({ data: newGrid })
 
-    console.log('//// createPixel response: ', createdGrid)
+    console.log('//// createGrid response: ', createdGrid)
     if (createdGrid.success !== true)
-      throw new Error('Error creating pixel: ', { cause: createdGrid.results })
+      throw new Error('Error creating Grid: ', { cause: createdGrid.results })
     setGrids((prev) => [...createdGrid.results, ...prev])
 
     const [createdCells, createdGridPixels] = await Promise.all([
@@ -292,12 +191,12 @@ export function Dashboard({ user, userData }: DashboardProps) {
         data: {
           ownerId: gridOwnerId,
           gridId: createdGrid.results[0].id,
-          cells: cells,
+          cells: cellsData,
         },
       }),
-      addPixelsToGridPixels({
+      addGridPixels({
         gridId: createdGrid.results[0].id,
-        pixelIds: gridData.pixels.map((p) => p.id),
+        pixelIds: pixelsData.map((p) => p.id),
       }),
     ])
 
@@ -324,7 +223,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
     const [updatedGrid, updatedGridCells, updatedGridPixels] =
       await Promise.all([
         updateGrid({ data: gridData.grid }),
-        updateGridCells({
+        upsertGridCells({
           gridId,
           cellData: gridData.cells,
         }),
@@ -344,26 +243,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
       })
   }
 
-  // const updateGrid = (updated: BlockGroup) => {
-  //   const oldGroup = grids.find((g) => g.id === updated.id)
-  //   setGrids((prev) => prev.map((g) => (g.id === updated.id ? updated : g)))
-
-  //   // Unassign pixels that were removed
-  //   const removedIds = (oldGroup?.pixelIds ?? []).filter(
-  //     (id) => !updated.pixelIds.includes(id),
-  //   )
-  //   // Assign pixels that were added
-  //   setPixels((prev) =>
-  //     prev.map((p) => {
-  //       if (updated.pixelIds.includes(p.id))
-  //         return { ...p, groupId: updated.id }
-  //       if (removedIds.includes(p.id)) return { ...p, groupId: undefined }
-  //       return p
-  //     }),
-  //   )
-  // }
-
-  const removeGrid = async (gridId: string) => {
+  async function removeGrid(gridId: string) {
     const foundGrid = grids.find((g) => g.id === gridId)
     if (foundGrid?.ownerId !== user.id)
       throw new Error('Unauthorized or Grid not found.')
@@ -383,20 +263,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
     }
   }
 
-  // const deleteGroup = (groupId: string) => {
-  //   const grid = grids.find((g) => g.id === groupId)
-  //   setGrids((prev) => prev.filter((g) => g.id !== groupId))
-  //   // Unassign pixels
-  //   if (grid) {
-  //     setPixels((prev) =>
-  //       prev.map((p) =>
-  //         grid.pixelIds.includes(p.id) ? { ...p, groupId: undefined } : p,
-  //       ),
-  //     )
-  //   }
-  // }
-
-  async function addPixelsToGridPixels({
+  async function addGridPixels({
     gridId,
     pixelIds,
   }: {
@@ -428,7 +295,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
 
       // check if it does not exist already
       const foundGridPixel = existingGridPixels?.find(
-        (p) => p.pixel.id === pixelId,
+        (gp) => gp.pixel.id === pixelId,
       )
       if (foundGridPixel) return
 
@@ -475,13 +342,13 @@ export function Dashboard({ user, userData }: DashboardProps) {
     return results
   }
 
-  const removeGridPixels = async ({
+  async function removeGridPixels({
     gridId,
     pixelIds,
   }: {
     gridId: string
     pixelIds: string[]
-  }) => {
+  }) {
     const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
     if (gridOwnerId !== user.id) throw new Error('You do not own this grid')
     let oldPixelsByGridId: Map<string, GridPixel[]>
@@ -502,7 +369,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
       if (!oldGridPixels) throw new Error('cant find GridPixels')
 
       filteredGridPixels = oldGridPixels.filter(
-        (gp) => !pixelIds.includes(gp.pixel.id) && gp.gridId === gridId,
+        (gp) => !pixelIds.includes(gp.pixel.id),
       )
 
       newPixelsByGridId.set(gridId, filteredGridPixels)
@@ -521,13 +388,13 @@ export function Dashboard({ user, userData }: DashboardProps) {
     return results
   }
 
-  const updateGridCells = async ({
+  async function upsertGridCells({
     gridId,
     cellData,
   }: {
     gridId: string
     cellData: NewCell[]
-  }) => {
+  }) {
     const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
     // right now only the current user's grids are shown, but maybe there's a point where grids are shared...
     if (gridOwnerId !== user.id) throw new Error('You do not own this grid')
@@ -546,49 +413,25 @@ export function Dashboard({ user, userData }: DashboardProps) {
         cause: upsertCellsResponse.results,
       })
 
-    // update gridData state with new cells and gridPixels
+    // Merge updated cells into state, replacing any existing cell at the same col+row position
     setCellsByGridId((oldCellsByGridId) => {
       const newCellsByGridMap = new Map(oldCellsByGridId)
-
-      newCellsByGridMap.set(gridId, [
-        ...(oldCellsByGridId.get(gridId) ?? []),
-        ...upsertCellsResponse.results,
-      ])
-
+      const existing = oldCellsByGridId.get(gridId) ?? []
+      const updated = upsertCellsResponse.results
+      const merged = [
+        ...existing.filter(
+          (c) => !updated.some((u) => u.col === c.col && u.row === c.row),
+        ),
+        ...updated,
+      ]
+      newCellsByGridMap.set(gridId, merged)
       return newCellsByGridMap
     })
 
     return upsertCellsResponse
   }
 
-  // const moveBlockToGroup = (blockId: string, groupId: string | null) => {
-  //   // Remove from old grid
-  //   setGrids((prev) =>
-  //     prev.map((g) => ({
-  //       ...g,
-  //       pixelIds: g.pixelIds.filter((id) => id !== blockId),
-  //     })),
-  //   )
-  //   if (groupId) {
-  //     // Add to new grid
-  //     setGrids((prev) =>
-  //       prev.map((g) =>
-  //         g.id === groupId ? { ...g, pixelIds: [...g.pixelIds, blockId] } : g,
-  //       ),
-  //     )
-  //   }
-  //   setPixels((prev) =>
-  //     prev.map((p) =>
-  //       p.id === blockId ? { ...p, groupId: groupId ?? undefined } : p,
-  //     ),
-  //   )
-  // }
-
-  // const removeBlockFromGroup = (blockId: string, groupId: string) => {
-  //   moveBlockToGroup(blockId, null)
-  // }
-
-  const removeCellsFromGrid = async ({
+  const removeGridCells = async ({
     gridId,
     cellData,
   }: {
@@ -629,11 +472,103 @@ export function Dashboard({ user, userData }: DashboardProps) {
     })
 
     console.log(
-      '//// removeCellsFromGrid - deleteCellsResponse: ',
+      '//// removeGridCells - deleteCellsResponse: ',
       deleteCellsResponse,
     )
 
     return deleteCellsResponse
+  }
+
+  const toggleCellComplete = async (gridId: string, cellId: string) => {
+    // Capture the cell to update BEFORE setState
+    const oldCellsByGridId = new Map(cellsByGridId)
+    const gridCells = oldCellsByGridId.get(gridId)
+    const cellToUpdate = gridCells?.find((c) => c.id === cellId)
+    if (!gridCells || !cellToUpdate) throw new Error('Grid or Cell not found')
+
+    console.log('//// is cell completed? ', !!cellToUpdate.completedAt)
+    const completed = !!cellToUpdate.completedAt
+
+    // Build update object outside of setState
+    const updatedCell: Cell = {
+      ...cellToUpdate,
+      completedAt: completed ? null : new Date(),
+      progress: !completed ? 100 : cellToUpdate.progress,
+    }
+    // const updatedCell: UpdateCellType = {
+    //   completedAt: completed ? null : new Date(),
+    //   progress: !completed ? 100 : cellToUpdate.progress,
+    // }
+    const updatedCells = gridCells.map((c) =>
+      c.id === cellId ? updatedCell : c,
+    )
+
+    // Update state with computed values
+    setCellsByGridId((prev) => {
+      const newCellsByGridId = new Map(prev)
+      newCellsByGridId.set(gridId, updatedCells)
+      return newCellsByGridId
+    })
+
+    // Use captured data for DB update
+    const response = await bulkUpsertCells({
+      data: {
+        ownerId: user.id,
+        gridId,
+        cells: [updatedCell],
+      },
+    })
+    console.log('//// updateGridCells - response: ', response)
+
+    if (response.success !== true) {
+      // Rollback with the captured old cell
+      setCellsByGridId(() => oldCellsByGridId)
+    }
+
+    return response
+  }
+
+  const updateCellProgress = async (
+    gridId: string,
+    cellId: string,
+    progress: number,
+  ) => {
+    // Capture the Cell to update BEFORE setState
+    let updatedCell: Cell | undefined
+    const newCellsByGridId = new Map(cellsByGridId)
+    const cells = newCellsByGridId.get(gridId)
+    const updatedCells = cells?.map((c) => {
+      if (c.id !== cellId) return c
+      updatedCell = {
+        ...c,
+        progress,
+        completedAt: progress === 100 ? new Date() : null,
+      }
+      return updatedCell
+    })
+    if (!updatedCells || !updatedCell) throw new Error('Cell not found')
+    newCellsByGridId.set(gridId, updatedCells)
+
+    // Update state with computed values
+    const oldCellsByGridId = new Map(cellsByGridId)
+    setCellsByGridId(() => newCellsByGridId)
+
+    // Use captured data for DB update
+    const response = await bulkUpsertCells({
+      data: {
+        ownerId: user.id,
+        gridId: gridId,
+        cells: [updatedCell],
+      },
+    })
+    console.log('//// updateCellProgress- updatePixel - response: ', response)
+
+    if (response.success !== true) {
+      // Rollback with the captured old pixel
+      setCellsByGridId(() => oldCellsByGridId)
+    }
+
+    return response
   }
 
   // ---- Derived data ----
@@ -646,11 +581,6 @@ export function Dashboard({ user, userData }: DashboardProps) {
   })
 
   const filteredGrids = grids.filter((g) => {
-    const gridPixels = pixelsByGridId.get(g.id)
-    if (!gridPixels || gridPixels.length < 1) {
-      console.error('No gridPixels found')
-      return false
-    }
     const matchesSearch =
       g.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (g.description
@@ -658,9 +588,10 @@ export function Dashboard({ user, userData }: DashboardProps) {
         : '')
 
     // If type filter is active, show grid only if it contains a pixel of that type
+    const gridPixels = pixelsByGridId.get(g.id)
     const matchesType =
       filterType === 'all' ||
-      gridPixels.some((gp) => {
+      gridPixels?.some((gp) => {
         return gp.pixel.type === filterType
       })
     return matchesSearch && matchesType
@@ -700,7 +631,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
 
         {/* Stats */}
         <div className="mb-8">
-          <StatsBar pixels={pixels} groupCount={grids.length} />
+          <StatsBar pixels={pixels} cells={allCells} gridCount={grids.length} />
         </div>
 
         {/* Controls */}
@@ -781,22 +712,25 @@ export function Dashboard({ user, userData }: DashboardProps) {
           </div>
         </div>
 
-        <SketchyDivider className="text-[var(--journal-warm)] mb-6" />
-
         {/* Mixed Grid: grids + ungrouped pixels */}
         {filteredGrids.length > 0 || filteredUngroupedPixels.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger-grid">
             {/* Groups first */}
             {filteredGrids.map((grid) => {
               const gridPixels = pixelsByGridId.get(grid.id)
-              const pixels = gridPixels?.map((gp) => gp.pixel)
+              const pixelsData = gridPixels?.map((gp) => gp.pixel) ?? []
+              const cellsData = cellsByGridId.get(grid.id) ?? []
               return (
                 <GridCard
                   key={grid.id}
                   grid={grid}
-                  pixels={pixels || []}
+                  pixels={pixelsData}
                   onEdit={(g) => {
-                    setSelectedGrid(g)
+                    setSelectedGrid({
+                      grid: g,
+                      pixels: pixelsData,
+                      cells: cellsData,
+                    })
                     setIsGroupModalOpen(true)
                   }}
                   onDelete={removeGrid}
@@ -813,11 +747,11 @@ export function Dashboard({ user, userData }: DashboardProps) {
                   key={pixel.id}
                   pixel={pixel}
                   currentGrids={gridData && Array.from(gridData)}
-                  onToggleComplete={toggleComplete}
-                  onUpdateProgress={updateProgress}
+                  // onToggleComplete={toggleCellComplete}
+                  // onUpdateProgress={updateCellProgress}
                   onDelete={deletePixel}
                   availableGrids={grids}
-                  onMoveToGrid={addPixelsToGridPixels}
+                  onMoveToGrid={addGridPixels}
                   // groupName={
                   //   pixel.groupId ? gridNameMap.get(pixel.groupId) : undefined
                   // }
@@ -868,7 +802,6 @@ export function Dashboard({ user, userData }: DashboardProps) {
 
         {/* Bottom decoration */}
         <div className="mt-12 text-center">
-          <SketchyDivider className="text-[var(--journal-warm)] mb-3" />
           <p className="text-sm text-[var(--journal-ink)] opacity-30 font-serif">
             {'~ stack your pixels, build your dreams ~'}
           </p>
@@ -890,7 +823,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
           setSelectedGrid(null)
         }}
         onSubmit={createGridHandler}
-        ungroupedPixels={pixels}
+        ungridedPixels={pixels}
         selectedGrid={selectedGrid}
         onUpdate={updateGridHandler}
       />

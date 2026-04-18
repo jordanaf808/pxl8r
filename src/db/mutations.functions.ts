@@ -383,8 +383,7 @@ export const updatePixel = createServerFn({ method: 'POST' })
         type: pixels.type,
         unit: pixels.unit,
         endGoal: pixels.endGoal,
-        completedAt: pixels.completedAt,
-        progress: pixels.progress,
+        color: pixels.color,
       })
 
     return {

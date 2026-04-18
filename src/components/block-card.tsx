@@ -1,11 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Trash2, FolderInput } from 'lucide-react'
-import {
-  DoodleCheckmark,
-  DoodleStar,
-  DoodleCircle,
-} from '@/components/sketchy-elements'
-import type { Pixel, Grid, GridByGridIdMap } from '@/db/types'
+import { DoodleStar } from '@/components/sketchy-elements'
+import type { Pixel, Grid } from '@/db/types'
 import { PIXEL_TYPE_LABELS, PIXEL_COLORS } from '@/db/types'
 
 const TYPE_DOODLES: Record<string, React.ReactNode> = {
@@ -112,8 +108,10 @@ const TYPE_DOODLES: Record<string, React.ReactNode> = {
 interface PixelCardProps {
   pixel: Pixel
   currentGrids: Grid[] | undefined
-  onToggleComplete: (id: string) => void
-  onUpdateProgress: (id: string, progress: number) => void
+  // progress and completedAt live on cells, not pixels.
+  // These are optional until cell data is wired into ungrouped PixelCards.
+  // onToggleComplete?: (id: string) => void
+  // onUpdateProgress?: (id: string, progress: number) => void
   onDelete: (id: string) => void
   availableGrids?: Grid[]
   onMoveToGrid?: ({
@@ -137,8 +135,8 @@ interface PixelCardProps {
 export function PixelCard({
   pixel,
   currentGrids,
-  onToggleComplete,
-  onUpdateProgress,
+  // onToggleComplete,
+  // onUpdateProgress,
   onDelete,
   availableGrids = [],
   onMoveToGrid,
@@ -320,11 +318,11 @@ export function PixelCard({
           {pixel.endGoal}
         </div>
 
-        {/* Progress bar */}
+        {/* TODO: move to CellCard — progress/completedAt live on cells, not pixels
         <div className="mt-2">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-serif opacity-70">Progress</span>
-            <span className="text-sm font-bold">{pixel.progress}%</span>
+            <span className="text-sm font-bold">{cell.progress}%</span>
           </div>
           <div
             className="w-full h-3 relative overflow-hidden"
@@ -336,12 +334,11 @@ export function PixelCard({
             <div
               className="h-full transition-all duration-500 ease-out"
               style={{
-                width: `${pixel.progress}%`,
+                width: `${cell.progress}%`,
                 backgroundColor: 'rgba(255,255,255,0.5)',
                 borderRadius: '2px 4px 3px 5px',
               }}
             />
-            {/* Sketch marks on the bar */}
             {[25, 50, 75].map((mark) => (
               <div
                 key={mark}
@@ -350,42 +347,40 @@ export function PixelCard({
               />
             ))}
           </div>
-          {/* Progress slider */}
           <input
             type="range"
             min="0"
             max="100"
             step="5"
-            value={pixel.progress}
-            onChange={(e) => onUpdateProgress(pixel.id, Number(e.target.value))}
+            value={cell.progress}
+            onChange={(e) => onUpdateProgress(cell.id, Number(e.target.value))}
             className="w-full mt-1 accent-white opacity-60 hover:opacity-100 transition-opacity cursor-pointer h-1"
             aria-label={`Progress for ${pixel.name}`}
           />
         </div>
 
-        {/* Complete toggle */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/20">
           <button
-            onClick={() => onToggleComplete(pixel.id)}
+            onClick={() => onToggleComplete(cell.id)}
             className="flex items-center gap-2 cursor-pointer group/check"
           >
             <div
               className={`w-5 h-5 flex items-center justify-center transition-all ${
-                pixel.completedAt ? 'bg-white/30' : 'border-2 border-white/40'
+                cell.completedAt ? 'bg-white/30' : 'border-2 border-white/40'
               }`}
               style={{ borderRadius: '2px 5px 3px 6px' }}
             >
-              {pixel.completedAt && <DoodleCheckmark size={14} />}
+              {cell.completedAt && <DoodleCheckmark size={14} />}
             </div>
             <span className="text-sm font-serif group-hover/check:opacity-100 opacity-70 transition-opacity">
-              {pixel.completedAt ? 'Completed!' : 'Mark complete'}
+              {cell.completedAt ? 'Completed!' : 'Mark complete'}
             </span>
           </button>
-
-          {pixel.completedAt && (
+          {cell.completedAt && (
             <DoodleCircle size={16} className="opacity-50" />
           )}
         </div>
+        */}
       </div>
     </div>
   )
