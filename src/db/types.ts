@@ -127,7 +127,7 @@ export const createCellSchema = z.object({
 })
 
 export const createManyCellsSchema = z.object({
-  ownerId: z.uuid(), // grid owner ID
+  ownerId: z.string(), // grid owner ID (Better Auth text ID)
   gridId: z.uuid(),
   cells: z.array(createCellSchema).min(1).max(365), // reasonable batch limit
 })
@@ -146,7 +146,7 @@ export const gridPixelSchema = z.object({
     ),
 })
 export const bulkGridPixelsSchema = z.object({
-  ownerId: z.uuid(), // grid owner ID
+  ownerId: z.string(), // grid owner ID (Better Auth text ID)
   gridId: z.uuid(),
   pixelData: z.array(gridPixelSchema).min(1).max(365),
 })
@@ -216,7 +216,7 @@ export type UpdateUserInput = z.infer<typeof updateUserSchema>
 
 export const updatePageSchema = z.object({
   id: z.uuid(),
-  ownerId: z.uuid(),
+  ownerId: z.string(),
   name: z.string().max(66).optional(),
   description: z.string().max(666).optional(),
   theme: z.enum(themeTypeEnum.enumValues).optional(),
@@ -226,7 +226,7 @@ export const updatePageSchema = z.object({
 
 export const updateGridSchema = z.object({
   id: z.uuid(),
-  ownerId: z.uuid(),
+  ownerId: z.string(),
   name: z.string().max(66).optional(),
   description: z.string().max(333).nullable(),
   isPublic: z.boolean().nullable(),
@@ -242,7 +242,7 @@ export const updateGridSchema = z.object({
 
 export const updatePageGridSchema = z.object({
   pageId: z.uuid(),
-  ownerId: z.uuid(),
+  ownerId: z.string(),
   gridId: z.uuid(),
   sortOrder: z
     .string()
@@ -262,7 +262,7 @@ export const bulkPageGridSchema = z.object({
 })
 export const updatePageGridsSchema = z.object({
   pageId: z.uuid(),
-  ownerId: z.uuid(),
+  ownerId: z.string(),
   gridIds: z.array(bulkPageGridSchema).min(1).max(365),
 })
 
@@ -299,7 +299,7 @@ export type UpdateCellType = z.infer<typeof updatableCellFields>
 // Schema for a single cell in the bulk operation
 export const updateCellSchema = z.object({
   id: z.uuid(),
-  ownerId: z.uuid(),
+  ownerId: z.string(),
   type: z.enum(cellTypeEnum.enumValues),
   // Position identifiers (used for matching existing cells when id not provided)
   col: z.int().min(0).max(1000),
@@ -321,7 +321,7 @@ export const bulkCellSchema = z.object({
 })
 
 export const bulkUpsertCellsSchema = z.object({
-  ownerId: z.uuid(),
+  ownerId: z.string(),
   gridId: z.uuid(),
   cells: z.array(bulkCellSchema).min(1).max(365), // reasonable batch limit
   // Strategy: 'position' = match by col/row if no id, 'id-only' = require id for updates

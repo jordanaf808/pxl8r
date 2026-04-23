@@ -83,26 +83,13 @@ export const createGrid = createServerFn({ method: 'POST' })
   .inputValidator((data: NewGrid) => data)
   .handler(async ({ data, context }) => {
     const { user } = context
-    if (!user.id) throw new Error('Unauthorized')
+    if (!user.id || data.ownerId !== user.id) throw new Error('Unauthorized')
 
     const results = await db
       .insert(grids)
       .values({
+        ...data,
         ownerId: user.id,
-        name: data.name,
-        description: data.description,
-        isPublic: data.isPublic,
-        // Grid dimensions
-        columns: data.columns,
-        rows: data.rows,
-        // Scale configuration
-        scaleType: data.scaleType,
-        scaleUnit: data.scaleUnit,
-        scaleStart: data.scaleStart,
-        scaleEnd: data.scaleEnd,
-        scaleLabel: data.scaleLabel,
-        // Theme
-        theme: data.theme,
       })
       .returning()
 

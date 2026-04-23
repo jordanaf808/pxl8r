@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { X, Check } from 'lucide-react'
-import type { Pixel, PixelColor, GridData, Cell } from '@/db/types'
+import { X, Check, Star } from 'lucide-react'
+import type { Pixel, PixelColor, GridData, Cell, NewGridData } from '@/db/types'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 import { useSession } from '@/lib/auth/auth-client'
 
 interface CreateGridModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (gridData: GridData) => void
+  onSubmit: (gridData: NewGridData) => void
   pixels: Pixel[]
   /** When set, the modal opens in edit mode pre-populated with the grid */
   gridData?: GridData | null
@@ -36,7 +36,10 @@ export function CreateGridModal({
   const [selectedPixelIds, setSelectedPixelIds] = useState<string[]>(
     gridData?.pixels.map((p) => p.id) ?? [],
   )
-  const [isPrivate, setIsPrivate] = useState(false)
+  console.log('//// selectedPixelIds: ', selectedPixelIds)
+  const [isPrivate, setIsPrivate] = useState(
+    gridData?.grid.isPublic ? false : true,
+  )
   const [columns, setColumns] = useState(gridData?.grid.columns ?? 7)
   const [rows, setRows] = useState(gridData?.grid.rows ?? 4)
   const [cells, setCells] = useState<Map<string, Cell>>(
@@ -51,6 +54,15 @@ export function CreateGridModal({
     row: number
   } | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const updateCell = (key: string, updates: Partial<Cell>) => {
+    setCells((prev) => {
+      const next = new Map(prev)
+      const existing = next.get(key)
+      if (existing) next.set(key, { ...existing, ...updates })
+      return next
+    })
+  }
 
   // Reset state when modal opens/closes or gridData changes
   const isEdit = !!gridData
@@ -75,11 +87,44 @@ export function CreateGridModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
+    console.log('//// CreateGridModal - handleSubmit: ')
 
-    if (isEdit && onUpdate && selectedGrid) {
-      onUpdate(selectedGrid)
-    } else if (selectedGrid) {
-      onSubmit(selectedGrid)
+    if (isEdit && onUpdate && gridId) {
+      const updatedGridData = {
+        grid: {
+          ...gridData.grid,
+          name,
+          description,
+          isPublic: !isPrivate,
+          columns,
+          rows,
+        },
+        pixels: pixels.filter((p) => selectedPixelIds.includes(p.id)),
+        cells: Array.from(cells.values()),
+      }
+      console.log('//// updatedGridData: ', updatedGridData)
+
+      onUpdate(updatedGridData)
+    } else {
+      const newGridData = {
+        grid: {
+          ownerId: user.id,
+          name,
+          description,
+          theme: 'journal',
+          isPublic: !isPrivate,
+          columns,
+          rows,
+          scaleUnit: 'percent',
+          scaleLabel: '%',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        pixels: pixels.filter((p) => selectedPixelIds.includes(p.id)),
+        cells: Array.from(cells.values()),
+      } as NewGridData
+      console.log('//// newGridData: ', newGridData)
+      onSubmit(newGridData)
     }
 
     setName('')
@@ -369,7 +414,7 @@ export function CreateGridModal({
                       onClick={() => {
                         const key = `${selectedCell.col}-${selectedCell.row}`
                         setCells((prev) => {
-                          const next = { ...prev }
+                          const next = new Map(prev)
                           next.delete(key)
                           return next
                         })
@@ -386,18 +431,58 @@ export function CreateGridModal({
                   ) : (
                     <div className="flex flex-wrap">
                       {pixels.map((pixel) => {
-                        const isSelected = selectedPixelIds.includes(pixel.id)
                         const PixelColor = PIXEL_COLORS[pixel.color]
                         const key = `${selectedCell.col}-${selectedCell.row}`
-                        const isAssigned = cells.get(key)?.pixelId === pixel.id
+                        const selectedCellData = cells.get(key)
+                        const isAssigned =
+                          selectedCellData?.pixelId === pixel.id
                         return (
                           <button
                             key={pixel.id}
                             type="button"
                             onClick={() => {
+                              if (!selectedPixelIds.includes(pixel.id)) {
+                                setSelectedPixelIds((prev) => [
+                                  ...prev,
+                                  pixel.id,
+                                ])
+                              } else {
+                                setSelectedPixelIds((prev) =>
+                                  prev.filter((id) => id !== pixel.id),
+                                )
+                              }
+
                               setCells((prev) => {
                                 const newCellsMap = new Map(prev)
-                                const currentCell = newCellsMap.get(key) || {
+                                console.log(
+                                  '//// selectedCellData: ',
+                                  selectedCellData,
+                                )
+                                // update pixelId if cell already exists
+                                if (selectedCellData && !isAssigned) {
+                                  return newCellsMap.set(key, {
+                                    ...selectedCellData,
+                                    pixelId: pixel.id,
+                                    note: null,
+                                    value: null,
+                                    progress: 0,
+                                    completedAt: null,
+                                    updatedAt: new Date(),
+                                  })
+                                }
+                                // deselect pixel
+                                if (selectedCellData && isAssigned) {
+                                  return newCellsMap.set(key, {
+                                    ...selectedCellData,
+                                    pixelId: null,
+                                  })
+                                }
+
+                                console.log(
+                                  '//// creating new cell for pixel: ',
+                                  pixel.id,
+                                )
+                                const newCell = {
                                   id: crypto.randomUUID(),
                                   pixelId: pixel.id,
                                   col: selectedCell.col,
@@ -412,16 +497,9 @@ export function CreateGridModal({
                                   note: null,
                                   progress: 0,
                                   completedAt: null,
-                                }
-                                newCellsMap.set(key, currentCell)
-                                return newCellsMap
+                                } as Cell
+                                return newCellsMap.set(key, newCell)
                               })
-                              if (!selectedPixelIds.includes(pixel.id)) {
-                                setSelectedPixelIds((prev) => [
-                                  ...prev,
-                                  pixel.id,
-                                ])
-                              }
                             }}
                             className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all cursor-pointer ${
                               isAssigned
@@ -476,6 +554,257 @@ export function CreateGridModal({
                       })}
                     </div>
                   )}
+
+                  {/* Value + note editor for assigned cell */}
+                  {(() => {
+                    const key = `${selectedCell.col}-${selectedCell.row}`
+                    const cellData = cells.get(key)
+                    if (!cellData?.pixelId) return null
+                    const cellPixel = pixels.find(
+                      (p) => p.id === cellData.pixelId,
+                    )
+                    const endGoal = cellPixel?.endGoal ?? 100
+                    const unit = cellPixel?.unit ?? ''
+                    const fillPct = Math.min(
+                      100,
+                      ((cellData.value ?? 0) / endGoal) * 100,
+                    )
+                    return (
+                      <div className="mt-3 pt-3 border-t border-(--journal-warm) space-y-3">
+                        {/* Type selector */}
+                        {/* <div>
+                          <span className="text-xs font-serif text-(--journal-ink) opacity-50 block mb-1.5">
+                            type
+                          </span>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {(
+                              [
+                                ['boolean', 'done / not done'],
+                                ['numeric', 'number'],
+                                ['rating', 'rating'],
+                                ['time', 'duration'],
+                              ] as const
+                            ).map(([t, label]) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => updateCell(key, { type: t })}
+                                className={`text-xs font-serif px-2 py-1 transition-all cursor-pointer ${
+                                  cellData.type === t
+                                    ? 'bg-(--journal-ink) text-(--journal-paper)'
+                                    : 'border border-(--journal-warm) text-(--journal-ink) opacity-60 hover:opacity-100'
+                                }`}
+                                style={{ borderRadius: '2px 5px 3px 6px' }}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div> */}
+
+                        {/* Value input based on type */}
+                        {cellData.type}
+                        {cellData.type === 'boolean' && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateCell(key, {
+                                  // flip completedAt state
+                                  value: cellData.completedAt ? null : 100,
+                                  progress: cellData.completedAt ? 0 : 100,
+                                  updatedAt: new Date(),
+                                  completedAt: cellData.completedAt
+                                    ? null
+                                    : new Date(),
+                                })
+                              }
+                              className={`w-6 h-6 flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                                cellData.completedAt
+                                  ? 'bg-(--journal-ink)'
+                                  : 'border-2 border-(--journal-warm)'
+                              }`}
+                              style={{ borderRadius: '2px 5px 3px 6px' }}
+                            >
+                              {cellData.completedAt && (
+                                <Check
+                                  size={14}
+                                  className="text-(--journal-paper)"
+                                />
+                              )}
+                            </button>
+                            <span className="text-sm font-serif text-(--journal-ink) opacity-60">
+                              {cellData.completedAt ? 'completed' : 'not done'}
+                            </span>
+                          </div>
+                        )}
+
+                        {cellData.type === 'numeric' && (
+                          <div>
+                            <div className="flex items-baseline justify-between mb-2">
+                              <span className="text-xs font-serif text-(--journal-ink) opacity-50">
+                                value
+                              </span>
+                              <span className="text-sm font-sans text-(--journal-ink)">
+                                <span className="font-bold">
+                                  {cellData.value ?? 0}
+                                </span>
+                                <span className="opacity-40">
+                                  {' '}
+                                  / {endGoal} {unit}s
+                                </span>
+                              </span>
+                            </div>
+                            <div
+                              className="relative h-2 w-full rounded-full overflow-hidden"
+                              style={{
+                                background: 'var(--journal-warm)',
+                                opacity: 1,
+                              }}
+                            >
+                              <div
+                                className="absolute inset-y-0 left-0 transition-all"
+                                style={{
+                                  width: `${fillPct}%`,
+                                  background: 'var(--journal-ink)',
+                                  borderRadius: 'inherit',
+                                }}
+                              />
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={endGoal}
+                              value={cellData.value ?? 0}
+                              onChange={(e) => {
+                                const newValue = Number(e.target.value)
+                                const newDate = new Date()
+                                return updateCell(key, {
+                                  value: newValue,
+                                  progress: (newValue / endGoal) * 100,
+                                  updatedAt: newDate,
+                                  completedAt:
+                                    newValue === endGoal ? null : newDate,
+                                })
+                              }}
+                              className="w-full mt-1 cursor-pointer accent-(--journal-ink)"
+                            />
+                          </div>
+                        )}
+
+                        {cellData.type === 'rating' && (
+                          <div>
+                            <span className="text-xs font-serif text-(--journal-ink) opacity-50 block mb-1.5">
+                              rating
+                            </span>
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onClick={() => {
+                                    const newDate = new Date()
+                                    // flip if selected star is clicked again, else set to star value
+                                    return updateCell(key, {
+                                      value:
+                                        cellData.value === star ? null : star,
+                                      progress:
+                                        cellData.value === star
+                                          ? 0
+                                          : (star / endGoal) * 100,
+                                      updatedAt: newDate,
+                                      completedAt:
+                                        cellData.value === star
+                                          ? null
+                                          : star === endGoal // if star value matches endGoal, set to completed
+                                            ? newDate
+                                            : null,
+                                    })
+                                  }}
+                                  className="cursor-pointer transition-all hover:scale-110"
+                                >
+                                  <Star
+                                    size={22}
+                                    className={
+                                      (cellData.value ?? 0) >= star
+                                        ? 'text-(--journal-gold) fill-(--journal-gold)'
+                                        : 'text-(--journal-warm)'
+                                    }
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {cellData.type === 'time' && (
+                          <div>
+                            <div className="flex items-baseline justify-between mb-2">
+                              <span className="text-xs font-serif text-(--journal-ink) opacity-50">
+                                duration
+                              </span>
+                              <span className="text-sm font-sans text-(--journal-ink)">
+                                <span className="font-bold">
+                                  {cellData.value ?? 0}
+                                </span>
+                                <span className="opacity-40">
+                                  {' '}
+                                  / {endGoal} {unit}
+                                </span>
+                              </span>
+                            </div>
+                            <div
+                              className="relative h-2 w-full rounded-full overflow-hidden"
+                              style={{ background: 'var(--journal-warm)' }}
+                            >
+                              <div
+                                className="absolute inset-y-0 left-0 transition-all"
+                                style={{
+                                  width: `${fillPct}%`,
+                                  background: 'var(--journal-ink)',
+                                  borderRadius: 'inherit',
+                                }}
+                              />
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={endGoal}
+                              value={cellData.value ?? 0}
+                              onChange={(e) => {
+                                const newValue = Number(e.target.value)
+                                const newDate = new Date()
+                                return updateCell(key, {
+                                  value: newValue,
+                                  progress: (newValue / endGoal) * 100,
+                                  updatedAt: newDate,
+                                  completedAt:
+                                    newValue === endGoal ? null : newDate,
+                                })
+                              }}
+                              className="w-full mt-1 cursor-pointer accent-(--journal-ink)"
+                            />
+                          </div>
+                        )}
+
+                        {/* Note */}
+                        <div>
+                          <span className="text-xs font-serif text-(--journal-ink) opacity-50 block mb-1">
+                            note
+                          </span>
+                          <textarea
+                            value={cellData.note ?? ''}
+                            onChange={(e) =>
+                              updateCell(key, { note: e.target.value || null })
+                            }
+                            placeholder="add a note…"
+                            rows={2}
+                            className="w-full bg-transparent border-b-2 border-(--journal-warm) text-(--journal-ink) text-sm py-1 px-1 placeholder:text-(--journal-warm) focus:border-(--journal-ink) outline-none transition-colors font-sans resize-none"
+                          />
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </div>
