@@ -20,6 +20,7 @@ import type {
   GridByGridIdMap,
   GridsByPixelIdMap,
   Cell,
+  NewGridData,
 } from '@/db/types'
 import { PIXEL_TYPE_LABELS } from '@/db/types'
 import {
@@ -175,7 +176,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
   }
 
   // ---- Grid CRUD ----
-  async function createGridHandler(gridData: GridData) {
+  async function createGridHandler(gridData: NewGridData) {
     const gridOwnerId = user.id
     const { grid: newGrid, cells: cellsData, pixels: pixelsData } = gridData
 
@@ -196,7 +197,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
       }),
       addGridPixels({
         gridId: createdGrid.results[0].id,
-        pixelIds: pixelsData.map((p) => p.id),
+        pixelIds: pixelsData.map((p) => p.id).filter(Boolean) as string[],
       }),
     ])
 
@@ -615,7 +616,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
   return (
     <div className="min-h-screen paper-dots">
       {/* Header */}
-      <DashboardHeader user={user} />
+      {/* <DashboardHeader user={user} /> */}
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Welcome */}
@@ -724,6 +725,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
                 <GridCard
                   key={grid.id}
                   grid={grid}
+                  cellsData={cellsData}
                   pixels={pixelsData}
                   onEdit={(g) => {
                     setSelectedGrid({
@@ -817,14 +819,15 @@ export function Dashboard({ user, userData }: DashboardProps) {
 
       {/* Create / Edit Group Modal */}
       <CreateGridModal
+        key={selectedGrid?.grid.id ?? 'new'}
         isOpen={isGroupModalOpen}
         onClose={() => {
           setIsGroupModalOpen(false)
           setSelectedGrid(null)
         }}
         onSubmit={createGridHandler}
-        ungridedPixels={pixels}
-        selectedGrid={selectedGrid}
+        pixels={pixels}
+        gridData={selectedGrid}
         onUpdate={updateGridHandler}
       />
     </div>

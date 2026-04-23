@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { X, Check } from 'lucide-react'
-import type { Pixel, PixelColor, GridData } from '@/db/types'
+import type { Pixel, PixelColor, GridData, Cell } from '@/db/types'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
+import { useSession } from '@/lib/auth/auth-client'
 
 interface CreateGridModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (gridData: GridData) => void
-  ungridedPixels: Pixel[]
+  pixels: Pixel[]
   /** When set, the modal opens in edit mode pre-populated with the grid */
-  selectedGrid?: GridData | null
+  gridData?: GridData | null
   onUpdate?: (gridData: GridData) => void
 }
 
@@ -17,29 +18,33 @@ export function CreateGridModal({
   isOpen,
   onClose,
   onSubmit,
-  ungridedPixels,
-  selectedGrid,
+  pixels,
+  gridData,
   onUpdate,
 }: CreateGridModalProps) {
-  const [name, setName] = useState(selectedGrid?.grid.name ?? '')
+  console.log('//// gridData: ', gridData)
+
+  const { data: session } = useSession()
+  const user = session?.user
+  if (!user) throw new Error('User not authenticated')
+  const [gridId, setGridId] = useState(gridData?.grid.id ?? crypto.randomUUID())
+  const [name, setName] = useState(gridData?.grid.name ?? '')
   const [description, setDescription] = useState(
-    selectedGrid?.grid.description ?? '',
+    gridData?.grid.description ?? '',
   )
-  // const [color, setColor] = useState<PixelColor>(selectedGrid?.color ?? 'warm')
+  // const [color, setColor] = useState<PixelColor>(gridData?.color ?? 'warm')
   const [selectedPixelIds, setSelectedPixelIds] = useState<string[]>(
-    selectedGrid?.pixels.map((p) => p.id) ?? [],
+    gridData?.pixels.map((p) => p.id) ?? [],
   )
   const [isPrivate, setIsPrivate] = useState(false)
-  const [columns, setColumns] = useState(selectedGrid?.grid.columns ?? 7)
-  const [rows, setRows] = useState(selectedGrid?.grid.rows ?? 4)
-  const [localCells, setLocalCells] = useState<Record<string, string>>(
-    selectedGrid
-      ? Object.fromEntries(
-          selectedGrid.cells
-            .filter((c) => c.pixelId)
-            .map((c) => [`${c.col}-${c.row}`, c.pixelId!]),
-        )
-      : {},
+  const [columns, setColumns] = useState(gridData?.grid.columns ?? 7)
+  const [rows, setRows] = useState(gridData?.grid.rows ?? 4)
+  const [cells, setCells] = useState<Map<string, Cell>>(
+    new Map(
+      gridData?.cells
+        .filter((c) => c.pixelId)
+        .map((c) => [`${c.col}-${c.row}`, c]) ?? [],
+    ),
   )
   const [selectedCell, setSelectedCell] = useState<{
     col: number
@@ -47,16 +52,8 @@ export function CreateGridModal({
   } | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Reset state when modal opens/closes or selectedGrid changes
-  const isEdit = !!selectedGrid
-  // Pixels available for selection: ungrided + already in this grid (if editing)
-  const availablePixels = isEdit
-    ? [...ungridedPixels, ...ungridedPixels] // placeholder replaced below
-    : ungridedPixels
-
-  const selectedPixels = ungridedPixels.filter((p) =>
-    selectedPixelIds.includes(p.id),
-  )
+  // Reset state when modal opens/closes or gridData changes
+  const isEdit = !!gridData
 
   if (!isOpen) return null
 
@@ -92,11 +89,6 @@ export function CreateGridModal({
     setErrors({})
     onClose()
   }
-
-  const pixelColors = Object.entries(PIXEL_COLORS) as [
-    PixelColor,
-    { bg: string; text: string; label: string },
-  ][]
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -311,93 +303,6 @@ export function CreateGridModal({
               </div>
             </div>
 
-            {/* Pixel selection */}
-            <div>
-              <label className="pixel text-lg text-[var(--journal-ink)] mb-2 font-serif">
-                Include Pixels
-              </label>
-              {ungridedPixels.length === 0 && !isEdit ? (
-                <p className="text-base text-[var(--journal-ink)] opacity-40 font-serif py-3 text-center">
-                  {'No ungrided pixels yet -- create some first!'}
-                </p>
-              ) : (
-                <div
-                  className="space-y-2 max-h-48 overflow-y-auto p-2 bg-[var(--journal-paper)]"
-                  style={{
-                    borderRadius: '3px 8px 5px 10px',
-                    border: '1.5px solid var(--journal-warm)',
-                  }}
-                >
-                  {ungridedPixels.map((pixel) => {
-                    const isSelected = selectedPixelIds.includes(pixel.id)
-                    const PixelColor = PIXEL_COLORS[pixel.color]
-                    return (
-                      <button
-                        key={pixel.id}
-                        type="button"
-                        onClick={() => togglePixel(pixel.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-[var(--journal-tan)]'
-                            : 'hover:bg-[var(--journal-cream)]'
-                        }`}
-                        style={{ borderRadius: '2px 6px 3px 7px' }}
-                      >
-                        {/* Checkbox */}
-                        <div
-                          className={`w-5 h-5 flex items-center justify-center shrink-0 transition-all ${
-                            isSelected
-                              ? 'bg-[var(--journal-ink)]'
-                              : 'border-2 border-[var(--journal-warm)]'
-                          }`}
-                          style={{ borderRadius: '2px 5px 3px 6px' }}
-                        >
-                          {isSelected && (
-                            <Check
-                              size={13}
-                              className="text-[var(--journal-paper)]"
-                            />
-                          )}
-                        </div>
-
-                        {/* Color dot */}
-                        <div
-                          className="w-3 h-3 shrink-0"
-                          style={{
-                            backgroundColor: PixelColor.bg,
-                            borderRadius: '1px 3px 2px 4px',
-                          }}
-                        />
-
-                        {/* Name + type */}
-                        <div className="flex-1 min-w-0">
-                          <span className="text-base text-[var(--journal-ink)] truncate pixel font-sans">
-                            {pixel.name}
-                          </span>
-                        </div>
-
-                        {/* Type badge */}
-                        <span
-                          className="text-xs text-[var(--journal-ink)] opacity-50 font-serif shrink-0 px-1.5 py-0.5 bg-[var(--journal-paper)]"
-                          style={{ borderRadius: '1px 4px 2px 5px' }}
-                        >
-                          {PIXEL_TYPE_LABELS[pixel.type]}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-              {selectedPixelIds.length > 0 && (
-                <p className="text-sm text-[var(--journal-ink)] opacity-50 font-serif mt-1">
-                  {selectedPixelIds.length}
-                  {' pixel'}
-                  {selectedPixelIds.length !== 1 ? 's' : ''}
-                  {' selected'}
-                </p>
-              )}
-            </div>
-
             {/* Interactive Grid */}
             <div>
               <label className="pixel text-lg text-(--journal-ink) mb-2 font-serif block">
@@ -415,9 +320,9 @@ export function CreateGridModal({
                   const col = i % columns
                   const row = Math.floor(i / columns)
                   const key = `${col}-${row}`
-                  const pixelId = localCells[key]
+                  const pixelId = cells.get(key)?.pixelId
                   const pixel = pixelId
-                    ? ungridedPixels.find((p) => p.id === pixelId)
+                    ? pixels.find((p) => p.id === pixelId)
                     : null
                   const color = pixel ? PIXEL_COLORS[pixel.color] : null
                   const isSelected =
@@ -459,42 +364,58 @@ export function CreateGridModal({
                     <span className="text-sm font-serif text-(--journal-ink) opacity-60">
                       {`col ${selectedCell.col + 1}, row ${selectedCell.row + 1}`}
                     </span>
-                    {localCells[`${selectedCell.col}-${selectedCell.row}`] && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const key = `${selectedCell.col}-${selectedCell.row}`
-                          setLocalCells((prev) => {
-                            const next = { ...prev }
-                            delete next[key]
-                            return next
-                          })
-                        }}
-                        className="text-xs font-serif text-(--journal-ink) opacity-40 hover:opacity-80 cursor-pointer transition-opacity"
-                      >
-                        clear
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const key = `${selectedCell.col}-${selectedCell.row}`
+                        setCells((prev) => {
+                          const next = { ...prev }
+                          next.delete(key)
+                          return next
+                        })
+                      }}
+                      className="text-xs font-serif text-(--journal-ink) opacity-40 hover:opacity-80 cursor-pointer transition-opacity"
+                    >
+                      clear
+                    </button>
                   </div>
-                  {ungridedPixels.length === 0 ? (
+                  {pixels.length === 0 ? (
                     <p className="text-sm font-serif text-(--journal-ink) opacity-40 text-center py-2">
                       No pixels available — create some first!
                     </p>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {ungridedPixels.map((pixel) => {
-                        const color = PIXEL_COLORS[pixel.color]
+                    <div className="flex flex-wrap">
+                      {pixels.map((pixel) => {
+                        const isSelected = selectedPixelIds.includes(pixel.id)
+                        const PixelColor = PIXEL_COLORS[pixel.color]
                         const key = `${selectedCell.col}-${selectedCell.row}`
-                        const isAssigned = localCells[key] === pixel.id
+                        const isAssigned = cells.get(key)?.pixelId === pixel.id
                         return (
                           <button
                             key={pixel.id}
                             type="button"
                             onClick={() => {
-                              setLocalCells((prev) => ({
-                                ...prev,
-                                [key]: pixel.id,
-                              }))
+                              setCells((prev) => {
+                                const newCellsMap = new Map(prev)
+                                const currentCell = newCellsMap.get(key) || {
+                                  id: crypto.randomUUID(),
+                                  pixelId: pixel.id,
+                                  col: selectedCell.col,
+                                  row: selectedCell.row,
+                                  gridId: gridId,
+                                  type: 'boolean',
+                                  createdAt: new Date(),
+                                  updatedAt: new Date(),
+                                  ownerId: user.id,
+                                  colorOverride: null,
+                                  value: null,
+                                  note: null,
+                                  progress: 0,
+                                  completedAt: null,
+                                }
+                                newCellsMap.set(key, currentCell)
+                                return newCellsMap
+                              })
                               if (!selectedPixelIds.includes(pixel.id)) {
                                 setSelectedPixelIds((prev) => [
                                   ...prev,
@@ -502,18 +423,54 @@ export function CreateGridModal({
                                 ])
                               }
                             }}
-                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-sans transition-all cursor-pointer"
-                            style={{
-                              backgroundColor: color.bg,
-                              color: color.text,
-                              borderRadius: '2px 5px 3px 6px',
-                              outline: isAssigned
-                                ? '2px solid var(--journal-ink)'
-                                : 'none',
-                              outlineOffset: '2px',
-                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all cursor-pointer ${
+                              isAssigned
+                                ? 'bg-[var(--journal-tan)]'
+                                : 'hover:bg-[var(--journal-cream)]'
+                            }`}
+                            style={{ borderRadius: '2px 6px 3px 7px' }}
                           >
-                            {pixel.name}
+                            {/* Checkbox */}
+                            <div
+                              className={`w-5 h-5 flex items-center justify-center shrink-0 transition-all ${
+                                isAssigned
+                                  ? 'bg-[var(--journal-ink)]'
+                                  : 'border-2 border-[var(--journal-warm)]'
+                              }`}
+                              style={{ borderRadius: '2px 5px 3px 6px' }}
+                            >
+                              {isAssigned && (
+                                <Check
+                                  size={13}
+                                  className="text-[var(--journal-paper)]"
+                                />
+                              )}
+                            </div>
+
+                            {/* Color dot */}
+                            <div
+                              className="w-3 h-3 shrink-0"
+                              style={{
+                                backgroundColor: PixelColor.bg,
+                                borderRadius: '1px 3px 2px 4px',
+                              }}
+                            />
+
+                            {/* Name + type */}
+                            <div className="flex-1 min-w-0">
+                              <span className="text-base text-[var(--journal-ink)] truncate pixel font-sans">
+                                {pixel.name}
+                              </span>
+                            </div>
+
+                            {/* Type badge */}
+                            <span
+                              className="text-xs text-[var(--journal-ink)] opacity-50 font-serif shrink-0 px-1.5 py-0.5 bg-[var(--journal-paper)]"
+                              style={{ borderRadius: '1px 4px 2px 5px' }}
+                            >
+                              {/* {PIXEL_TYPE_LABELS[pixel.type]} */}
+                              {pixel.endGoal} {pixel.unit}
+                            </span>
                           </button>
                         )
                       })}

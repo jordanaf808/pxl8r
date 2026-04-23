@@ -1,4 +1,4 @@
-import type { NewUser } from '@/db/schema'
+import type { NewUser } from '@/db/types'
 import { signOut } from '@/lib/auth/auth-client'
 import { useNavigate } from '@tanstack/react-router'
 import { LogOut } from 'lucide-react'

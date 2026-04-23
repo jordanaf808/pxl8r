@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
-import { DoodleCircle } from '@/components/sketchy-elements'
+import { Pencil, Trash2, LayoutGrid } from 'lucide-react'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
-import type { Grid, Pixel } from '@/db/types'
+import type { Cell, Grid, Pixel } from '@/db/types'
 
 interface GridCardProps {
   grid: Grid
+  cellsData: Cell[] | null
   pixels: Pixel[] | []
   onEdit: (grid: Grid) => void
   onDelete: (gridId: string) => void
@@ -18,74 +18,40 @@ interface GridCardProps {
   }) => Promise<{ success: boolean; result: any[] }>
 }
 
-/** Sketchy stack / folder doodle icon */
-function StackDoodle({
-  size = 20,
-  className = '',
-}: {
-  size?: number
-  className?: string
-}) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} className={className}>
-      <rect
-        x="3"
-        y="13"
-        width="18"
-        height="8"
-        rx="1"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <rect
-        x="5"
-        y="8"
-        width="14"
-        height="5"
-        rx="1"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <rect
-        x="7"
-        y="3"
-        width="10"
-        height="5"
-        rx="1"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 export function GridCard({
   grid,
+  cellsData,
   pixels,
   onEdit,
   onDelete,
   onRemovePixel,
 }: GridCardProps) {
   const [isHovered, setIsHovered] = useState(false)
+  const [selectedCell, setSelectedCell] = useState<{
+    col: number
+    row: number
+  } | null>(null)
+  const [cells, setCells] = useState<Map<string, Cell>>(
+    new Map(
+      cellsData
+        ?.filter((c) => c.pixelId)
+        .map((c) => [`${c.col}-${c.row}`, c]) ?? [],
+    ),
+  )
+
+  const columns = grid.columns
+  const rows = grid.rows
   const colorInfo = PIXEL_COLORS['sage']
 
-  // TODO: totalProgress and completedCount should derive from cells data, not pixels.
+  // TODO: avgProgress and completedCount should derive from cells data, not pixels.
   // pixels don't have progress/completedAt — those live on cells. Wire in cell data when building the grid detail view.
-  // const totalProgress =
-  //   pixels.length > 0
-  //     ? Math.round(
-  //         pixels.reduce((acc, p) => acc + p.progress, 0) / pixels.length,
-  //       )
-  //     : 0
-  // const completedCount = pixels.filter((p) => !!p.completedAt).length
-  const totalProgress = 0
-  const completedCount = 0
+  let totalProgress = 0
+  cells.forEach((c) => {
+    totalProgress += c.progress
+  })
+  const avgProgress = cells.size > 0 ? totalProgress / cells.size : 0
+  let completedCount = 0
+  cells.forEach((c) => (c.completedAt !== null ? completedCount++ : null))
 
   // Slight random rotation for hand-placed feel
   const rotation = ((grid.id.charCodeAt(0) % 5) - 2) * 0.4
@@ -98,7 +64,7 @@ export function GridCard({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className="relative p-5 transition-all duration-200 hover:-translate-y-1"
+        className="relative p-4 pt-3 pb-3 transition-all duration-200 hover:-translate-y-1"
         style={{
           backgroundColor: colorInfo.bg,
           color: colorInfo.text,
@@ -111,7 +77,7 @@ export function GridCard({
         }}
       >
         {/* Action buttons */}
-        <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover/card:opacity-70 transition-opacity">
+        <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover/card:opacity-70 transition-opacity z-10">
           <button
             onClick={() => onEdit(grid)}
             className="hover:opacity-100 cursor-pointer"
@@ -130,11 +96,11 @@ export function GridCard({
 
         {/* Group badge */}
         <div className="flex items-center gap-1.5 mb-2 opacity-80">
-          <StackDoodle size={18} />
+          <LayoutGrid size={18} />
           <span className="text-sm font-serif uppercase tracking-wide">
-            {'Group'}
+            {'Grid'}
           </span>
-          <span
+          {/* <span
             className="text-xs ml-auto px-1.5 py-0.5 font-serif"
             style={{
               backgroundColor: 'rgba(255,255,255,0.2)',
@@ -144,7 +110,7 @@ export function GridCard({
             {pixels.length}
             {' pixel'}
             {pixels.length !== 1 ? 's' : ''}
-          </span>
+          </span> */}
         </div>
 
         {/* Name */}
@@ -160,7 +126,47 @@ export function GridCard({
         )}
 
         {/* ---- Mini-grid of child pixels ---- */}
-        {pixels.length > 0 ? (
+        <div
+          className="grid gap-0.5 p-2 mb-3 bg-(--journal-paper)"
+          style={{
+            gridTemplateColumns: `repeat(${columns}, 1fr)`,
+            border: '1.5px solid var(--journal-warm)',
+            borderRadius: '3px 8px 5px 10px',
+          }}
+        >
+          {Array.from({ length: rows * columns }, (_, i) => {
+            const col = i % columns
+            const row = Math.floor(i / columns)
+            const key = `${col}-${row}`
+            const cell = cells.get(key)
+            const pixelId = cell?.pixelId
+            const pixel = pixelId ? pixels.find((p) => p.id === pixelId) : null
+            const color = pixel ? PIXEL_COLORS[pixel.color] : null
+            const isSelected =
+              !!selectedCell &&
+              selectedCell.col === col &&
+              selectedCell.row === row
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() =>
+                  setSelectedCell(isSelected ? null : { col, row })
+                }
+                className="aspect-square transition-all cursor-pointer hover:opacity-70 min-w-0"
+                style={{
+                  backgroundColor: color?.bg ?? 'transparent',
+                  border: isSelected
+                    ? '2px solid var(--journal-ink)'
+                    : '1px solid var(--journal-warm)',
+                  borderRadius: '2px 3px 2px 3px',
+                }}
+                title={pixel?.name}
+              />
+            )
+          })}
+        </div>
+        {/* pixels.length > 0 ? (
           <div
             className="grid gap-1.5 mb-3 p-2"
             style={{
@@ -184,7 +190,6 @@ export function GridCard({
                     minHeight: '48px',
                   }}
                 >
-                  {/* Remove from group x */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
@@ -210,7 +215,7 @@ export function GridCard({
                     {PIXEL_TYPE_LABELS[pixel.type]}
                   </span>
 
-                  {/* TODO: tiny progress bar — needs cell data, not pixel data
+                  TODO: tiny progress bar — needs cell data, not pixel data
                   <div
                     className="w-full h-1 mt-1"
                     style={{
@@ -226,7 +231,7 @@ export function GridCard({
                         borderRadius: '1px 2px 1px 2px',
                       }}
                     />
-                  </div> */}
+                  </div>
                 </div>
               )
             })}
@@ -242,7 +247,7 @@ export function GridCard({
           >
             {'no pixels yet -- edit to add some!'}
           </div>
-        )}
+        ) */}
 
         {/* Aggregate progress */}
         <div>
@@ -250,7 +255,7 @@ export function GridCard({
             <span className="text-sm font-serif opacity-70">
               {'Group Progress'}
             </span>
-            <span className="text-sm font-bold">{totalProgress}%</span>
+            <span className="text-sm font-bold">{avgProgress}%</span>
           </div>
           <div
             className="w-full h-3 relative overflow-hidden"
@@ -262,7 +267,7 @@ export function GridCard({
             <div
               className="h-full transition-all duration-500 ease-out"
               style={{
-                width: `${totalProgress}%`,
+                width: `${avgProgress}%`,
                 backgroundColor: 'rgba(255,255,255,0.5)',
                 borderRadius: '2px 4px 3px 5px',
               }}
