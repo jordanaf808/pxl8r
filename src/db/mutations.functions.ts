@@ -127,7 +127,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(bulkUpsertCellsSchema)
   .handler(async ({ data, context }) => {
-    console.log('//// check auth - context: ', context, 'data: ', data)
+    console.log('//// check auth - context: ', context.user, 'data: ', data)
     const { user } = context
     const { ownerId, gridId, cells: cellUpserts } = data
 
@@ -141,6 +141,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
       col: cell.col,
       row: cell.row,
       value: cell.value ?? null,
+      progress: cell.progress ?? 0,
       note: cell.note ?? null,
       colorOverride: cell.colorOverride ?? null,
       completedAt: cell.completedAt ?? null,
@@ -153,8 +154,10 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
         target: [cells.gridId, cells.col, cells.row],
         set: {
           // COALESCE(excluded.column, table.column) means "use the new value if it's not null, otherwise keep the existing value."
+          type: sql`COALESCE(excluded.type, ${cells.type})`,
           pixelId: sql`COALESCE(excluded.pixel_id, ${cells.pixelId})`,
           value: sql`COALESCE(excluded.value, ${cells.value})`,
+          progress: sql`COALESCE(excluded.progress, ${cells.progress})`,
           note: sql`COALESCE(excluded.note, ${cells.note})`,
           colorOverride: sql`COALESCE(excluded.color_override, ${cells.colorOverride})`,
           completedAt: sql`COALESCE(excluded.completed_at, ${cells.completedAt})`,
@@ -334,12 +337,7 @@ export const updateGrid = createServerFn({ method: 'POST' })
           eq(grids.ownerId, user.id), // ownership check
         ),
       )
-      .returning({
-        id: grids.id,
-        name: grids.name,
-        isPublic: grids.isPublic,
-        scaleType: grids.scaleType,
-      })
+      .returning()
 
     return {
       success: results.length > 0,

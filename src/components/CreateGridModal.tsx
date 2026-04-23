@@ -58,7 +58,9 @@ export function CreateGridModal({
     setCells((prev) => {
       const next = new Map(prev)
       const existing = next.get(key)
-      if (existing) next.set(key, { ...existing, ...updates })
+      const updatedCell = { ...existing, ...updates } as Cell
+      console.log('//// updatedCell: ', updatedCell)
+      if (existing) next.set(key, updatedCell)
       return next
     })
   }
@@ -110,7 +112,7 @@ export function CreateGridModal({
     const cellsData = updatedCells ?? cells
     const newSelectedPixels: string[] = []
     cellsData.forEach((c) => {
-      if (c.pixelId && !newSelectedPixels.includes(pixelId))
+      if (c.pixelId && !newSelectedPixels.includes(c.pixelId))
         newSelectedPixels.push(c.pixelId)
     })
     setSelectedPixelIds(newSelectedPixels)
@@ -414,7 +416,9 @@ export function CreateGridModal({
                 selectedCell={selectedCell}
                 onCellClick={(col, row) =>
                   setSelectedCell(
-                    selectedCell !== null && selectedCell.col === col && selectedCell.row === row
+                    selectedCell !== null &&
+                      selectedCell.col === col &&
+                      selectedCell.row === row
                       ? null
                       : { col, row },
                   )

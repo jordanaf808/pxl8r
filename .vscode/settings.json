@@ -8,5 +8,5 @@
   "files.readonlyInclude": {
     "**/routeTree.gen.ts": true
   },
-  "cSpell.words": ["Upserts"]
+  "cSpell.words": ["upserting", "Upserts"]
 }

@@ -242,6 +242,20 @@ export function Dashboard({ user, userData }: DashboardProps) {
       throw new Error('Error updating grid pixels', {
         cause: updatedGridPixels.results,
       })
+
+    const updatedGridData = updatedGrid.results[0]
+    setGrids((prev) => prev.map((g) => (g.id === gridId ? updatedGridData : g)))
+
+    setPixelsByGridId((prev) => {
+      const newMap = new Map(prev)
+      const newGridPixels = updatedGridPixels.results.map((gp) => ({
+        gridId: gp.gridId,
+        sortOrder: gp.sortOrder,
+        pixel: gridData.pixels.find((p) => p.id === gp.pixelId)!,
+      }))
+      newMap.set(gridId, newGridPixels)
+      return newMap
+    })
   }
 
   async function removeGrid(gridId: string) {
@@ -417,15 +431,15 @@ export function Dashboard({ user, userData }: DashboardProps) {
     // Merge updated cells into state, replacing any existing cell at the same col+row position
     setCellsByGridId((oldCellsByGridId) => {
       const newCellsByGridMap = new Map(oldCellsByGridId)
-      const existing = oldCellsByGridId.get(gridId) ?? []
+      // const existing = oldCellsByGridId.get(gridId) ?? []
       const updated = upsertCellsResponse.results
-      const merged = [
-        ...existing.filter(
-          (c) => !updated.some((u) => u.col === c.col && u.row === c.row),
-        ),
-        ...updated,
-      ]
-      newCellsByGridMap.set(gridId, merged)
+      // const merged = [
+      //   ...existing.filter(
+      //     (c) => !updated.some((u) => u.col === c.col && u.row === c.row),
+      //   ),
+      //   ...updated,
+      // ]
+      newCellsByGridMap.set(gridId, updated)
       return newCellsByGridMap
     })
 

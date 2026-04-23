@@ -39,6 +39,11 @@ export function GridCard({
     ),
   )
 
+  const completedCells: Cell[] = []
+  cells.forEach((c) => {
+    if (c.pixelId !== null && c.completedAt !== null) completedCells.push(c)
+  })
+
   const columns = grid.columns
   const rows = grid.rows
   const colorInfo = PIXEL_COLORS['sage']
@@ -253,7 +258,7 @@ export function GridCard({
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-serif opacity-70">
-              {'Group Progress'}
+              {'Grid Progress'}
             </span>
             <span className="text-sm font-bold">{avgProgress}%</span>
           </div>
@@ -287,7 +292,7 @@ export function GridCard({
           <span className="text-sm font-serif opacity-70">
             {completedCount}
             {' / '}
-            {pixels.length}
+            {cells.size}
             {' completed'}
           </span>
           {/* TODO: re-enable once completedCount derives from cell data
