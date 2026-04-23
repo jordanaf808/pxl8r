@@ -3,11 +3,13 @@ import { X, Check, Star } from 'lucide-react'
 import type { Pixel, PixelColor, GridData, Cell, NewGridData } from '@/db/types'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 import { useSession } from '@/lib/auth/auth-client'
+import { PixelGrid } from '@/components/PixelGrid'
 
 interface CreateGridModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (gridData: NewGridData) => void
+  userId: string
   pixels: Pixel[]
   /** When set, the modal opens in edit mode pre-populated with the grid */
   gridData?: GridData | null
@@ -18,15 +20,12 @@ export function CreateGridModal({
   isOpen,
   onClose,
   onSubmit,
+  userId,
   pixels,
   gridData,
   onUpdate,
 }: CreateGridModalProps) {
   console.log('//// gridData: ', gridData)
-
-  const { data: session } = useSession()
-  const user = session?.user
-  if (!user) throw new Error('User not authenticated')
   const [gridId, setGridId] = useState(gridData?.grid.id ?? crypto.randomUUID())
   const [name, setName] = useState(gridData?.grid.name ?? '')
   const [description, setDescription] = useState(
@@ -55,7 +54,7 @@ export function CreateGridModal({
   } | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const updateCell = (key: string, updates: Partial<Cell>) => {
+  function updateCell(key: string, updates: Partial<Cell>) {
     setCells((prev) => {
       const next = new Map(prev)
       const existing = next.get(key)
@@ -64,20 +63,74 @@ export function CreateGridModal({
     })
   }
 
+  const assignPixelToCell = (pixelId: string, col: number, row: number) => {
+    const key = `${col}-${row}`
+    setCells((prev) => {
+      const newCellsMap = new Map(prev)
+      const cellData = newCellsMap.get(key)
+      const isAssigned = cellData?.pixelId === pixelId
+
+      if (cellData && !isAssigned) {
+        newCellsMap.set(key, {
+          ...cellData,
+          pixelId,
+          note: null,
+          value: null,
+          progress: 0,
+          completedAt: null,
+          updatedAt: new Date(),
+        })
+      } else if (cellData && isAssigned) {
+        newCellsMap.set(key, { ...cellData, pixelId: null })
+      } else {
+        newCellsMap.set(key, {
+          id: crypto.randomUUID(),
+          pixelId,
+          col,
+          row,
+          gridId,
+          type: 'boolean',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          ownerId: userId,
+          colorOverride: null,
+          value: null,
+          note: null,
+          progress: 0,
+          completedAt: null,
+        } as Cell)
+      }
+
+      updateSelectedPixels(newCellsMap)
+      return newCellsMap
+    })
+  }
+
+  function updateSelectedPixels(updatedCells: Map<string, Cell> | null) {
+    const cellsData = updatedCells ?? cells
+    const newSelectedPixels: string[] = []
+    cellsData.forEach((c) => {
+      if (c.pixelId && !newSelectedPixels.includes(pixelId))
+        newSelectedPixels.push(c.pixelId)
+    })
+    setSelectedPixelIds(newSelectedPixels)
+    return newSelectedPixels
+  }
+
   // Reset state when modal opens/closes or gridData changes
   const isEdit = !!gridData
 
   if (!isOpen) return null
 
-  const togglePixel = (pixelId: string) => {
-    setSelectedPixelIds((prev) =>
-      prev.includes(pixelId)
-        ? prev.filter((id) => id !== pixelId)
-        : [...prev, pixelId],
-    )
-  }
+  // function togglePixel(pixelId: string) {
+  //   setSelectedPixelIds((prev) =>
+  //     prev.includes(pixelId)
+  //       ? prev.filter((id) => id !== pixelId)
+  //       : [...prev, pixelId],
+  //   )
+  // }
 
-  const validate = () => {
+  function validate() {
     const newErrors: Record<string, string> = {}
     if (!name.trim()) newErrors.name = 'Name your grid!'
     setErrors(newErrors)
@@ -108,7 +161,7 @@ export function CreateGridModal({
     } else {
       const newGridData = {
         grid: {
-          ownerId: user.id,
+          ownerId: userId,
           name,
           description,
           theme: 'journal',
@@ -353,47 +406,20 @@ export function CreateGridModal({
               <label className="pixel text-lg text-(--journal-ink) mb-2 font-serif block">
                 Grid
               </label>
-              <div
-                className="grid gap-0.5 p-2 bg-(--journal-paper)"
-                style={{
-                  gridTemplateColumns: `repeat(${columns}, 1fr)`,
-                  border: '1.5px solid var(--journal-warm)',
-                  borderRadius: '3px 8px 5px 10px',
-                }}
-              >
-                {Array.from({ length: rows * columns }, (_, i) => {
-                  const col = i % columns
-                  const row = Math.floor(i / columns)
-                  const key = `${col}-${row}`
-                  const pixelId = cells.get(key)?.pixelId
-                  const pixel = pixelId
-                    ? pixels.find((p) => p.id === pixelId)
-                    : null
-                  const color = pixel ? PIXEL_COLORS[pixel.color] : null
-                  const isSelected =
-                    !!selectedCell &&
-                    selectedCell.col === col &&
-                    selectedCell.row === row
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() =>
-                        setSelectedCell(isSelected ? null : { col, row })
-                      }
-                      className="aspect-square transition-all cursor-pointer hover:opacity-70 min-w-0"
-                      style={{
-                        backgroundColor: color?.bg ?? 'transparent',
-                        border: isSelected
-                          ? '2px solid var(--journal-ink)'
-                          : '1px solid var(--journal-warm)',
-                        borderRadius: '2px 3px 2px 3px',
-                      }}
-                      title={pixel?.name}
-                    />
+              <PixelGrid
+                cells={cells}
+                columns={columns}
+                rows={rows}
+                pixels={pixels}
+                selectedCell={selectedCell}
+                onCellClick={(col, row) =>
+                  setSelectedCell(
+                    selectedCell !== null && selectedCell.col === col && selectedCell.row === row
+                      ? null
+                      : { col, row },
                   )
-                })}
-              </div>
+                }
+              />
 
               {/* Cell editor */}
               {selectedCell && (
@@ -440,67 +466,13 @@ export function CreateGridModal({
                           <button
                             key={pixel.id}
                             type="button"
-                            onClick={() => {
-                              if (!selectedPixelIds.includes(pixel.id)) {
-                                setSelectedPixelIds((prev) => [
-                                  ...prev,
-                                  pixel.id,
-                                ])
-                              } else {
-                                setSelectedPixelIds((prev) =>
-                                  prev.filter((id) => id !== pixel.id),
-                                )
-                              }
-
-                              setCells((prev) => {
-                                const newCellsMap = new Map(prev)
-                                console.log(
-                                  '//// selectedCellData: ',
-                                  selectedCellData,
-                                )
-                                // update pixelId if cell already exists
-                                if (selectedCellData && !isAssigned) {
-                                  return newCellsMap.set(key, {
-                                    ...selectedCellData,
-                                    pixelId: pixel.id,
-                                    note: null,
-                                    value: null,
-                                    progress: 0,
-                                    completedAt: null,
-                                    updatedAt: new Date(),
-                                  })
-                                }
-                                // deselect pixel
-                                if (selectedCellData && isAssigned) {
-                                  return newCellsMap.set(key, {
-                                    ...selectedCellData,
-                                    pixelId: null,
-                                  })
-                                }
-
-                                console.log(
-                                  '//// creating new cell for pixel: ',
-                                  pixel.id,
-                                )
-                                const newCell = {
-                                  id: crypto.randomUUID(),
-                                  pixelId: pixel.id,
-                                  col: selectedCell.col,
-                                  row: selectedCell.row,
-                                  gridId: gridId,
-                                  type: 'boolean',
-                                  createdAt: new Date(),
-                                  updatedAt: new Date(),
-                                  ownerId: user.id,
-                                  colorOverride: null,
-                                  value: null,
-                                  note: null,
-                                  progress: 0,
-                                  completedAt: null,
-                                } as Cell
-                                return newCellsMap.set(key, newCell)
-                              })
-                            }}
+                            onClick={() =>
+                              assignPixelToCell(
+                                pixel.id,
+                                selectedCell.col,
+                                selectedCell.row,
+                              )
+                            }
                             className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all cursor-pointer ${
                               isAssigned
                                 ? 'bg-[var(--journal-tan)]'

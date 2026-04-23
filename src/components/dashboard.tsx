@@ -826,6 +826,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
           setSelectedGrid(null)
         }}
         onSubmit={createGridHandler}
+        userId={user.id}
         pixels={pixels}
         gridData={selectedGrid}
         onUpdate={updateGridHandler}
