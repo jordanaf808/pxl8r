@@ -3,7 +3,7 @@ import {
   ErrorComponent,
 } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
-import NotFoundComponent from './components/NotFoundComponent'
+import NotFoundComponent from './components/layout/NotFoundComponent'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
 export function getRouter() {

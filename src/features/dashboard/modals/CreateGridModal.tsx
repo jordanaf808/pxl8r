@@ -3,7 +3,7 @@ import { X, Check, Star } from 'lucide-react'
 import type { Pixel, PixelColor, GridData, Cell, NewGridData } from '@/db/types'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 import { useSession } from '@/lib/auth/auth-client'
-import { PixelGrid } from '@/components/PixelGrid'
+import { PixelGrid } from '../PixelGrid'
 
 interface CreateGridModalProps {
   isOpen: boolean

@@ -3,7 +3,7 @@ import { signOut, useSession } from '@/lib/auth/auth-client.ts'
 
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Database, Globe, Home, Menu, X, Moon, Sun, LogOut } from 'lucide-react'
-import BetterAuthHeader from '../integrations/better-auth/header-user.tsx'
+import BetterAuthHeader from '@/integrations/better-auth/header-user.tsx'
 
 export default function Header() {
   const [isDarkMode, setIsDarkMode] = useState(false)

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Pencil, Trash2, LayoutGrid } from 'lucide-react'
-import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
+import { PIXEL_COLORS } from '@/db/types'
 import type { Cell, Grid, Pixel } from '@/db/types'
+import { computeGridStats } from '@/lib/utils/stats'
 
 interface GridCardProps {
   grid: Grid
@@ -39,24 +40,11 @@ export function GridCard({
     ),
   )
 
-  const completedCells: Cell[] = []
-  cells.forEach((c) => {
-    if (c.pixelId !== null && c.completedAt !== null) completedCells.push(c)
-  })
-
   const columns = grid.columns
   const rows = grid.rows
   const colorInfo = PIXEL_COLORS['sage']
 
-  // TODO: avgProgress and completedCount should derive from cells data, not pixels.
-  // pixels don't have progress/completedAt — those live on cells. Wire in cell data when building the grid detail view.
-  let totalProgress = 0
-  cells.forEach((c) => {
-    totalProgress += c.progress
-  })
-  const avgProgress = cells.size > 0 ? totalProgress / cells.size : 0
-  let completedCount = 0
-  cells.forEach((c) => (c.completedAt !== null ? completedCount++ : null))
+  const { avgProgress, completedCount } = computeGridStats(cellsData ?? [])
 
   // Slight random rotation for hand-placed feel
   const rotation = ((grid.id.charCodeAt(0) % 5) - 2) * 0.4
