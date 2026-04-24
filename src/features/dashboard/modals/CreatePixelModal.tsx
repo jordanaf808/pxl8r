@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { SketchyDivider, DoodleStar } from '@/components/sketchy-elements'
@@ -7,31 +5,47 @@ import type {
   PixelUnitType,
   PixelTypeType,
   NewPixel,
+  Pixel,
   PixelColor,
+  UpdatePixelType,
 } from '@/db/types'
-import { PIXEL_TYPE_LABELS, PIXEL_COLORS } from '@/db/types'
-import { pixels } from '@/db/schema'
+import { PIXEL_COLORS } from '@/db/types'
+import { pixelTypeEnum, unitTypeEnum } from '@/db/schema'
 
 interface CreatePixelModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (pixel: NewPixel) => void
+  pixelToEdit?: Pixel
+  onUpdate?: (pixel: UpdatePixelType) => void
 }
 
 export function CreatePixelModal({
   isOpen,
   onClose,
   onSubmit,
+  pixelToEdit,
+  onUpdate,
 }: CreatePixelModalProps) {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [type, setType] = useState<PixelTypeType>('skill')
-  const [unit, setUnit] = useState<PixelUnitType>('minute')
-  const [endGoal, setEndGoal] = useState(30)
-  const [color, setColor] = useState<PixelColor>('sage')
+  const isEditing = !!pixelToEdit
+  const [name, setName] = useState(pixelToEdit?.name ?? '')
+  const [description, setDescription] = useState(pixelToEdit?.description ?? '')
+  const [type, setType] = useState<PixelTypeType>(pixelToEdit?.type ?? 'skill')
+  const [unit, setUnit] = useState<PixelUnitType>(pixelToEdit?.unit ?? 'minute')
+  const [endGoal, setEndGoal] = useState(pixelToEdit?.endGoal ?? 30)
+  const [color, setColor] = useState<PixelColor>(pixelToEdit?.color ?? 'sage')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
+
+  const unitSuffix = (u: string) => {
+    let suffix = ''
+    const endsInS = u.indexOf('s', u.length - 1) !== -1
+    if (endGoal !== 1 && !endsInS) {
+      suffix = 's'
+    }
+    return suffix
+  }
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -45,25 +59,26 @@ export function CreatePixelModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (validate()) {
-      onSubmit({ name, description, type, endGoal, unit, color })
-      setName('')
-      setDescription('')
-      setType('project')
-      setEndGoal(100)
-      setColor('sage')
+      if (isEditing && onUpdate) {
+        onUpdate({
+          id: pixelToEdit.id,
+          name,
+          description,
+          type,
+          endGoal,
+          unit,
+          color,
+        })
+      } else {
+        onSubmit({ name, description, type, endGoal, unit, color })
+      }
       setErrors({})
       onClose()
     }
   }
 
-  const pixelUnits = Object.entries(pixels.$inferSelect.unit) as [
-    PixelUnitType,
-    string,
-  ][]
-  const pixelTypes = Object.entries(pixels.$inferSelect.type) as [
-    PixelTypeType,
-    string,
-  ][]
+  const pixelTypes = pixelTypeEnum.enumValues
+  const pixelUnits = unitTypeEnum.enumValues
   const pixelColors = Object.entries(PIXEL_COLORS) as [
     PixelColor,
     { bg: string; text: string; label: string },
@@ -95,11 +110,13 @@ export function CreatePixelModal({
           <div className="flex items-center gap-2 mb-1">
             <DoodleStar size={20} className="text-[var(--journal-gold)]" />
             <h2 className="text-3xl md:text-4xl font-bold text-[var(--journal-ink)]">
-              New Pixel
+              {isEditing ? 'Edit Pixel' : 'New Pixel'}
             </h2>
           </div>
           <p className="text-[var(--journal-ink)] opacity-50 font-serif mb-4">
-            sketch out a new goal or task
+            {isEditing
+              ? 'update your pixel details'
+              : 'sketch out a new goal or task'}
           </p>
           <SketchyDivider className="text-[var(--journal-warm)] mb-6" />
 
@@ -149,7 +166,7 @@ export function CreatePixelModal({
                 Type
               </label>
               <div className="flex flex-wrap gap-2">
-                {pixelTypes.map(([key, label]) => (
+                {pixelTypes.map((key) => (
                   <button
                     key={key}
                     type="button"
@@ -161,7 +178,7 @@ export function CreatePixelModal({
                     }`}
                     style={{ borderRadius: '2px 6px 3px 7px' }}
                   >
-                    {label}
+                    {key}
                   </button>
                 ))}
               </div>
@@ -170,10 +187,10 @@ export function CreatePixelModal({
             {/* Unit */}
             <div>
               <label className="pixel text-lg text-[var(--journal-ink)] mb-2 font-serif">
-                Type
+                Unit
               </label>
               <div className="flex flex-wrap gap-2">
-                {pixelUnits.map(([key, label]) => (
+                {pixelUnits.map((key) => (
                   <button
                     key={key}
                     type="button"
@@ -185,7 +202,7 @@ export function CreatePixelModal({
                     }`}
                     style={{ borderRadius: '2px 6px 3px 7px' }}
                   >
-                    {label}
+                    {key}
                   </button>
                 ))}
               </div>
@@ -205,6 +222,11 @@ export function CreatePixelModal({
                 placeholder={'e.g. "Complete 100 reps"'}
                 className="w-full bg-transparent border-b-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-xl py-2 px-1 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans"
               />
+              {endGoal && !errors.endGoal && (
+                <p className="text-sm text-[var(--journal-ink)] mt-1 font-serif">
+                  {`${unit}${unitSuffix(unit)}`}
+                </p>
+              )}
               {errors.endGoal && (
                 <p className="text-sm text-[var(--journal-rust)] mt-1 font-serif">
                   {errors.endGoal}
@@ -263,7 +285,7 @@ export function CreatePixelModal({
               className="w-full bg-[var(--journal-ink)] text-[var(--journal-paper)] text-xl py-3 font-serif hover:bg-[var(--journal-ink)]/90 active:translate-y-px transition-all cursor-pointer"
               style={{ borderRadius: '3px 8px 5px 10px' }}
             >
-              Add This Pixel
+              {isEditing ? 'Save Changes' : 'Add This Pixel'}
             </button>
           </form>
         </div>

@@ -5,7 +5,7 @@ import {
   updatePixel as updatePixelServerFn,
   deletePixelById as deletePixelByIdServerFn,
 } from '@/db/mutations.functions'
-import type { Pixel, NewPixel } from '@/db/types'
+import type { Pixel, NewPixel, UpdatePixelType } from '@/db/types'
 import { buildPixelsMap } from '@/lib/utils/maps'
 
 export function usePixelState(
@@ -30,6 +30,13 @@ export function usePixelState(
     setUngroupedPixels((prev) => [...createdPixel.results, ...prev])
   }
 
+  async function updatePixelHandler(pixelData: UpdatePixelType) {
+    const snapshot = pixels
+    setPixels((prev) => prev.map((p) => (p.id === pixelData.id ? { ...p, ...pixelData } : p)))
+    const result = await updatePixel({ data: pixelData })
+    if (result.success !== true) setPixels(snapshot)
+  }
+
   return {
     pixels,
     pixelsMap,
@@ -37,7 +44,6 @@ export function usePixelState(
     setPixels,
     deletePixelFn,
     createPixelHandler,
-    // updatePixel exposed in case it's needed later
-    updatePixel,
+    updatePixelHandler,
   }
 }
