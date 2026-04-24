@@ -8,9 +8,10 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { LoginPage } from '@/components/login-page'
+import HomePage from '@/features/homepage/Homepage'
 
 export const Route = createFileRoute('/')({
-  component: App,
+  component: HomePage,
   beforeLoad: ({ context }) => {
     console.log('//// homepage - session does not exist')
     if (context.session?.user) throw redirect({ to: '/dashboard' })
