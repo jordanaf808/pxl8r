@@ -36,12 +36,14 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    console.log('//// handleSubmit - email: ', email, 'password: ', password)
-
     if (validate()) {
-      // onLogin(name || 'Journal Keeper', email)
-      const result = await signIn.email({ email, password, callbackURL: '/' })
-      console.log('//// signIn result: ', result)
+      if (isSignUp) {
+        const result = await signUp.email({ email, password, name, callbackURL: '/' })
+        console.log('//// signUp result: ', result)
+      } else {
+        const result = await signIn.email({ email, password, callbackURL: '/' })
+        console.log('//// signIn result: ', result)
+      }
     }
   }
 
