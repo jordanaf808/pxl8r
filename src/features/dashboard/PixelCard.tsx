@@ -3,6 +3,7 @@ import { Trash2, FolderInput } from 'lucide-react'
 import { DoodleStar } from '@/components/sketchy-elements'
 import type { Pixel, Grid } from '@/db/types'
 import { PIXEL_TYPE_LABELS, PIXEL_COLORS } from '@/db/types'
+import { CountdownTimer } from './CountdownTimer'
 
 const TYPE_DOODLES: Record<string, React.ReactNode> = {
   workout: (
@@ -243,6 +244,8 @@ export function PixelCard({
               )}
             </div>
           )}
+
+          {pixel.timerMinutes && <CountdownTimer minutes={pixel.timerMinutes} />}
 
           <button
             onClick={() => onDelete(pixel.id)}

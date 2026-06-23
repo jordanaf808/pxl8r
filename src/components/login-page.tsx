@@ -7,18 +7,24 @@ import {
 } from '@/components/sketchy-elements'
 
 // Import SignIn and SignUp functions from BetterAuth
-import { signIn, signOut, signUp } from '@/lib/auth/auth-client'
+import { signIn, signOut, signUp, GitHubSignIn } from '@/lib/auth/auth-client'
 
-export function LoginPage() {
+interface LoginPageProps {
+  onLogin?: () => void
+  defaultMode?: 'signin' | 'signup'
+}
+
+export function LoginPage({ onLogin, defaultMode = 'signin' }: LoginPageProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
+  const [isSignUp, setIsSignUp] = useState(defaultMode === 'signup')
   const [errors, setErrors] = useState<{
     name?: string
     email?: string
     password?: string
   }>({})
+  const [authError, setAuthError] = useState('')
 
   const validate = () => {
     const newErrors: typeof errors = {}
@@ -35,15 +41,21 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setAuthError('')
 
     if (validate()) {
-      if (isSignUp) {
-        const result = await signUp.email({ email, password, name, callbackURL: '/' })
-        console.log('//// signUp result: ', result)
-      } else {
-        const result = await signIn.email({ email, password, callbackURL: '/' })
-        console.log('//// signIn result: ', result)
+      const result = isSignUp
+        ? await signUp.email({ email, password, name, callbackURL: '/' })
+        : await signIn.email({ email, password, callbackURL: '/' })
+
+      if (result.error) {
+        setAuthError(
+          result.error.message ?? 'Something went wrong. Please try again.',
+        )
+        return
       }
+
+      onLogin?.()
     }
   }
 
@@ -162,6 +174,12 @@ export function LoginPage() {
               )}
             </div>
 
+            {authError && (
+              <p className="text-sm text-[var(--journal-rust)] text-center font-serif">
+                {authError}
+              </p>
+            )}
+
             <button
               type="submit"
               className="w-full mt-4 bg-[var(--journal-ink)] text-[var(--journal-paper)] text-xl py-3 font-serif hover:bg-[var(--journal-ink)]/90 active:translate-y-px transition-all cursor-pointer"
@@ -170,6 +188,26 @@ export function LoginPage() {
               {isSignUp ? 'Start My Journal' : 'Open My Journal'}
             </button>
           </form>
+
+          <div className="flex items-center gap-3 my-5">
+            <div className="h-px flex-1 bg-[var(--journal-warm)] opacity-40" />
+            <span className="text-sm text-[var(--journal-ink)] opacity-40 font-serif">
+              or
+            </span>
+            <div className="h-px flex-1 bg-[var(--journal-warm)] opacity-40" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => GitHubSignIn()}
+            className="w-full flex items-center justify-center gap-2 bg-[var(--journal-paper)] text-[var(--journal-ink)] text-lg py-3 font-serif border-2 border-[var(--journal-warm)] hover:bg-[var(--journal-tan)] active:translate-y-px transition-all cursor-pointer"
+            style={{ borderRadius: '3px 8px 5px 10px' }}
+          >
+            <svg viewBox="0 0 16 16" width={20} height={20} fill="currentColor">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+            </svg>
+            Continue with GitHub
+          </button>
 
           {/* Quick access */}
           {/* <div className="mt-6 text-center">

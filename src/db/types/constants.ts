@@ -1,4 +1,4 @@
-import type { PixelTypeType, PixelColor } from './db.types'
+import type { PixelTypeType, PixelUnitType, PixelColor } from './db.types'
 
 export const PIXEL_TYPE_LABELS: Record<PixelTypeType, string> = {
   workout: 'Workout',
@@ -12,6 +12,27 @@ export const PIXEL_TYPE_LABELS: Record<PixelTypeType, string> = {
   personal: 'personal',
   journal: 'journal',
   scale: 'scale',
+  custom: 'Custom',
+}
+
+export const PIXEL_UNIT_LABELS: Record<PixelUnitType, string> = {
+  count: 'Count',
+  percent: 'Percent',
+  dollar: 'Dollars',
+  hour: 'Hours',
+  minute: 'Minutes',
+  day: 'Days',
+  gram: 'Grams',
+  lbs: 'Pounds',
+  cups: 'Cups',
+  gallon: 'Gallons',
+  reps: 'Reps',
+  steps: 'Steps',
+  miles: 'Miles',
+  kilometers: 'Kilometers',
+  pages: 'Pages',
+  books: 'Books',
+  rating: 'Rating',
   custom: 'Custom',
 }
 

@@ -2,7 +2,17 @@ import { useEffect, useState } from 'react'
 import { signOut, useSession } from '@/lib/auth/auth-client.ts'
 
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Database, Globe, Home, Menu, X, Moon, Sun, LogOut } from 'lucide-react'
+import {
+  Database,
+  Globe,
+  Home,
+  Menu,
+  X,
+  Moon,
+  Sun,
+  LogOut,
+  LogIn,
+} from 'lucide-react'
 import BetterAuthHeader from '@/integrations/better-auth/header-user.tsx'
 
 export default function Header() {
@@ -70,13 +80,23 @@ export default function Header() {
             >
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-1.5 text-[var(--journal-ink)] opacity-50 hover:opacity-100 transition-opacity font-serif cursor-pointer"
-            >
-              <LogOut size={18} />
-              <span className="hidden sm:inline">Close Journal</span>
-            </button>
+            {user ? (
+              <button
+                onClick={onLogout}
+                className="flex items-center gap-1.5 text-[var(--journal-ink)] opacity-50 hover:opacity-100 transition-opacity font-serif cursor-pointer"
+              >
+                <LogOut size={18} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                className="flex items-center gap-1.5 text-[var(--journal-ink)] opacity-50 hover:opacity-100 transition-opacity font-serif"
+              >
+                <LogIn size={18} />
+                <span className="hidden sm:inline">Login</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>

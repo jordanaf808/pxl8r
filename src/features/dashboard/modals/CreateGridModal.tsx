@@ -14,6 +14,7 @@ interface CreateGridModalProps {
   /** When set, the modal opens in edit mode pre-populated with the grid */
   gridData?: GridData | null
   onUpdate?: (gridData: GridData) => void
+  onCreatePixel?: () => void
 }
 
 export function CreateGridModal({
@@ -24,6 +25,7 @@ export function CreateGridModal({
   pixels,
   gridData,
   onUpdate,
+  onCreatePixel,
 }: CreateGridModalProps) {
   console.log('//// gridData: ', gridData)
   const [gridId, setGridId] = useState(gridData?.grid.id ?? crypto.randomUUID())
@@ -36,9 +38,7 @@ export function CreateGridModal({
     gridData?.pixels.map((p) => p.id) ?? [],
   )
   console.log('//// selectedPixelIds: ', selectedPixelIds)
-  const [isPrivate, setIsPrivate] = useState(
-    gridData?.grid.isPublic ? false : true,
-  )
+  const [isPrivate] = useState(gridData?.grid.isPublic ? false : true)
   const [columns, setColumns] = useState(gridData?.grid.columns ?? 7)
   const [rows, setRows] = useState(gridData?.grid.rows ?? 4)
   const [cells, setCells] = useState<Map<string, Cell>>(
@@ -259,27 +259,6 @@ export function CreateGridModal({
                 {isEdit ? 'Edit Grid' : 'New Grid'}
               </h2>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsPrivate((v) => !v)}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <div
-                className={`w-5 h-5 flex items-center justify-center shrink-0 transition-all ${
-                  isPrivate
-                    ? 'bg-(--journal-ink)'
-                    : 'border-2 border-(--journal-warm)'
-                }`}
-                style={{ borderRadius: '2px 5px 3px 6px' }}
-              >
-                {isPrivate && (
-                  <Check size={13} className="text-(--journal-paper)" />
-                )}
-              </div>
-              <span className="text-sm text-(--journal-ink) opacity-60 font-serif">
-                private
-              </span>
-            </button>
           </div>
           <p className="text-[var(--journal-ink)] opacity-50 font-serif mb-4">
             {isEdit ? 'update your pixel grid' : 'bundle pixels together'}
@@ -454,11 +433,22 @@ export function CreateGridModal({
                       clear
                     </button>
                   </div>
-                  {pixels.length === 0 ? (
+                  {pixels.length === 0 && (
                     <p className="text-sm font-serif text-(--journal-ink) opacity-40 text-center py-2">
-                      No pixels available — create some first!
+                      No pixels available — create one below!
                     </p>
-                  ) : (
+                  )}
+                  {onCreatePixel && (
+                    <button
+                      type="button"
+                      onClick={onCreatePixel}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-serif text-(--journal-ink) opacity-60 hover:opacity-100 border border-dashed border-(--journal-warm) transition-all cursor-pointer mb-1"
+                      style={{ borderRadius: '2px 6px 3px 7px' }}
+                    >
+                      {'+ New Pixel'}
+                    </button>
+                  )}
+                  {pixels.length > 0 && (
                     <div className="flex flex-wrap">
                       {pixels.map((pixel) => {
                         const PixelColor = PIXEL_COLORS[pixel.color]
@@ -579,7 +569,6 @@ export function CreateGridModal({
                         </div> */}
 
                         {/* Value input based on type */}
-                        {cellData.type}
                         {cellData.type === 'boolean' && (
                           <div className="flex items-center gap-2">
                             <button

@@ -95,6 +95,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
     "dotenv": "^16.6.1",
+    "eslint": "^9.39.3",
     "jsdom": "^27.4.0",
     "postcss": "^8.5.8",
     "prettier": "^3.8.1",

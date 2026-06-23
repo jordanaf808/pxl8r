@@ -141,6 +141,7 @@ export const updatePixelSchema = z.object({
   unit: z.enum(unitTypeEnum.enumValues).optional(),
   endGoal: z.number().max(10000).optional(),
   color: z.enum(ColorTypeEnum.enumValues).optional(),
+  timerMinutes: z.number().int().min(1).optional(),
 })
 
 export type UpdatePixelType = z.infer<typeof updatePixelSchema>

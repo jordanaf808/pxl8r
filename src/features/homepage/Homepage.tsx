@@ -246,6 +246,7 @@ export default function HomePage() {
               <div className="flex flex-wrap gap-4">
                 <Link
                   to="/login"
+                  search={{ mode: 'signup' }}
                   className="inline-flex items-center gap-2 bg-[var(--journal-ink)] text-[var(--journal-paper)] text-xl font-serif px-8 py-4 hover:bg-[var(--journal-ink)]/90 active:translate-y-px transition-all"
                   style={{ borderRadius: '3px 8px 5px 10px' }}
                 >
@@ -415,6 +416,7 @@ export default function HomePage() {
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               to="/login"
+              search={{ mode: 'signup' }}
               className="inline-flex items-center gap-2 bg-[var(--journal-ink)] text-[var(--journal-paper)] text-xl font-serif px-8 py-4 hover:bg-[var(--journal-ink)]/90 active:translate-y-px transition-all"
               style={{ borderRadius: '3px 8px 5px 10px' }}
             >
@@ -450,6 +452,7 @@ export default function HomePage() {
             </Link>
             <Link
               to="/login"
+              search={{ mode: 'signup' }}
               className="text-base text-[var(--journal-ink)] opacity-40 hover:opacity-100 font-serif transition-opacity"
             >
               Get Started

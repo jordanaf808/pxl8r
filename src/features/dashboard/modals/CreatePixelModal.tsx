@@ -9,8 +9,22 @@ import type {
   PixelColor,
   UpdatePixelType,
 } from '@/db/types'
-import { PIXEL_COLORS } from '@/db/types'
+import { PIXEL_COLORS, PIXEL_TYPE_LABELS, PIXEL_UNIT_LABELS } from '@/db/types'
 import { pixelTypeEnum, unitTypeEnum } from '@/db/schema'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Slider } from '@/components/ui/slider'
+
+const UNIT_SLIDER_MAX: Partial<Record<PixelUnitType, number>> = {
+  minute: 240,
+  hour: 72,
+  day: 365,
+}
 
 interface CreatePixelModalProps {
   isOpen: boolean
@@ -28,12 +42,17 @@ export function CreatePixelModal({
   onUpdate,
 }: CreatePixelModalProps) {
   const isEditing = !!pixelToEdit
-  const [name, setName] = useState(pixelToEdit?.name ?? '')
+  const [name, setName] = useState(
+    pixelToEdit?.name ?? 'Go for a morning run',
+  )
   const [description, setDescription] = useState(pixelToEdit?.description ?? '')
   const [type, setType] = useState<PixelTypeType>(pixelToEdit?.type ?? 'skill')
   const [unit, setUnit] = useState<PixelUnitType>(pixelToEdit?.unit ?? 'minute')
   const [endGoal, setEndGoal] = useState(pixelToEdit?.endGoal ?? 30)
   const [color, setColor] = useState<PixelColor>(pixelToEdit?.color ?? 'sage')
+  const [timerMinutes, setTimerMinutes] = useState<number | null>(
+    pixelToEdit?.timerMinutes ?? null,
+  )
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
@@ -68,9 +87,10 @@ export function CreatePixelModal({
           endGoal,
           unit,
           color,
+          timerMinutes: timerMinutes ?? undefined,
         })
       } else {
-        onSubmit({ name, description, type, endGoal, unit, color })
+        onSubmit({ name, description, type, endGoal, unit, color, timerMinutes })
       }
       setErrors({})
       onClose()
@@ -85,7 +105,7 @@ export function CreatePixelModal({
   ][]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-[var(--journal-ink)]/40 backdrop-blur-sm"
@@ -165,23 +185,25 @@ export function CreatePixelModal({
               <label className="pixel text-lg text-[var(--journal-ink)] mb-2 font-serif">
                 Type
               </label>
-              <div className="flex flex-wrap gap-2">
-                {pixelTypes.map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setType(key)}
-                    className={`px-3 py-1 text-base font-serif transition-all cursor-pointer ${
-                      type === key
-                        ? 'bg-[var(--journal-ink)] text-[var(--journal-paper)]'
-                        : 'bg-[var(--journal-paper)] text-[var(--journal-ink)] border border-[var(--journal-warm)] hover:bg-[var(--journal-tan)]'
-                    }`}
-                    style={{ borderRadius: '2px 6px 3px 7px' }}
-                  >
-                    {key}
-                  </button>
-                ))}
-              </div>
+              <Select
+                value={type}
+                onValueChange={(value) => setType(value as PixelTypeType)}
+              >
+                <SelectTrigger className="w-full bg-[var(--journal-paper)] border-[var(--journal-warm)] text-[var(--journal-ink)] font-serif text-base">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[70] bg-[var(--journal-cream)] border-[var(--journal-warm)]">
+                  {pixelTypes.map((key) => (
+                    <SelectItem
+                      key={key}
+                      value={key}
+                      className="text-[var(--journal-ink)] font-serif"
+                    >
+                      {PIXEL_TYPE_LABELS[key]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Unit */}
@@ -189,38 +211,49 @@ export function CreatePixelModal({
               <label className="pixel text-lg text-[var(--journal-ink)] mb-2 font-serif">
                 Unit
               </label>
-              <div className="flex flex-wrap gap-2">
-                {pixelUnits.map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setUnit(key)}
-                    className={`px-3 py-1 text-base font-serif transition-all cursor-pointer ${
-                      unit === key
-                        ? 'bg-[var(--journal-ink)] text-[var(--journal-paper)]'
-                        : 'bg-[var(--journal-paper)] text-[var(--journal-ink)] border border-[var(--journal-warm)] hover:bg-[var(--journal-tan)]'
-                    }`}
-                    style={{ borderRadius: '2px 6px 3px 7px' }}
-                  >
-                    {key}
-                  </button>
-                ))}
-              </div>
+              <Select
+                value={unit}
+                onValueChange={(value) => {
+                  const newUnit = value as PixelUnitType
+                  setUnit(newUnit)
+                  const newMax = UNIT_SLIDER_MAX[newUnit] ?? 10000
+                  setEndGoal((prev) => Math.min(prev, newMax))
+                }}
+              >
+                <SelectTrigger className="w-full bg-[var(--journal-paper)] border-[var(--journal-warm)] text-[var(--journal-ink)] font-serif text-base">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[70] bg-[var(--journal-cream)] border-[var(--journal-warm)]">
+                  {pixelUnits.map((key) => (
+                    <SelectItem
+                      key={key}
+                      value={key}
+                      className="text-[var(--journal-ink)] font-serif"
+                    >
+                      {PIXEL_UNIT_LABELS[key]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* End Goal */}
             <div>
-              <label className="pixel text-lg text-[var(--journal-ink)] mb-1 font-serif">
-                End Goal
-              </label>
-              <input
-                type="number"
-                value={endGoal}
+              <div className="flex items-center justify-between mb-1">
+                <label className="pixel text-lg text-[var(--journal-ink)] font-serif">
+                  End Goal
+                </label>
+                <span className="text-lg font-bold text-[var(--journal-ink)] font-serif">
+                  {endGoal}
+                </span>
+              </div>
+              <Slider
+                value={[endGoal]}
                 min={0}
-                max={10000}
-                onChange={(e) => setEndGoal(parseInt(e.target.value))}
-                placeholder={'e.g. "Complete 100 reps"'}
-                className="w-full bg-transparent border-b-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-xl py-2 px-1 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans"
+                max={UNIT_SLIDER_MAX[unit] ?? 10000}
+                step={1}
+                onValueChange={([value]) => setEndGoal(value)}
+                className="py-2"
               />
               {endGoal && !errors.endGoal && (
                 <p className="text-sm text-[var(--journal-ink)] mt-1 font-serif">
@@ -232,6 +265,29 @@ export function CreatePixelModal({
                   {errors.endGoal}
                 </p>
               )}
+            </div>
+
+            {/* Timer */}
+            <div>
+              <label className="pixel text-lg text-[var(--journal-ink)] mb-1 font-serif">
+                {'Timer (optional)'}
+              </label>
+              <input
+                type="number"
+                value={timerMinutes ?? ''}
+                min={1}
+                max={999}
+                onChange={(e) =>
+                  setTimerMinutes(
+                    e.target.value === '' ? null : parseInt(e.target.value),
+                  )
+                }
+                placeholder={'e.g. "20" minutes'}
+                className="w-full bg-transparent border-b-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-xl py-2 px-1 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans"
+              />
+              <p className="text-sm text-[var(--journal-ink)] opacity-50 mt-1 font-serif">
+                {'set a duration to start as a countdown later'}
+              </p>
             </div>
 
             {/* Color */}

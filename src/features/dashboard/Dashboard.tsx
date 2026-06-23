@@ -307,7 +307,7 @@ export function Dashboard({ user, userData }: DashboardProps) {
 
       {/* Create / Edit Pixel Modal */}
       <CreatePixelModal
-        key={selectedPixel?.id ?? 'new'}
+        key={selectedPixel?.id ?? `new-${isPixelModalOpen}`}
         isOpen={isPixelModalOpen}
         onClose={() => {
           setIsPixelModalOpen(false)
@@ -331,6 +331,10 @@ export function Dashboard({ user, userData }: DashboardProps) {
         pixels={pixels}
         gridData={selectedGrid}
         onUpdate={updateGridHandler}
+        onCreatePixel={() => {
+          setSelectedPixel(null)
+          setIsPixelModalOpen(true)
+        }}
       />
     </div>
   )

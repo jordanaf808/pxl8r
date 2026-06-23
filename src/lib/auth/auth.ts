@@ -1,4 +1,5 @@
 import { db } from '@/db'
+import { seedSampleDataForUser } from '@/db/seed'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
@@ -41,6 +42,15 @@ const auth = betterAuth({
     },
   },
   plugins: [tanstackStartCookies()],
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          await seedSampleDataForUser(user.id)
+        },
+      },
+    },
+  },
   user: {
     modelName: 'users',
     additionalFields: {

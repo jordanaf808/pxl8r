@@ -46,6 +46,7 @@ export const pixelTypeEnum = pgEnum('pixel_type', [
   'custom',
 ])
 export const unitTypeEnum = pgEnum('unit_type', [
+  'count',
   'percent',
   'dollar',
   'hour',
@@ -222,6 +223,7 @@ export const pixels = pgTable(
     unit: unitTypeEnum('unit').notNull(), // unit to measure by
     endGoal: integer('end_goal'), // short label shown in key
     color: ColorTypeEnum('color').notNull(), // hex color string
+    timerMinutes: integer('timer_minutes'), // optional countdown duration to start later
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
