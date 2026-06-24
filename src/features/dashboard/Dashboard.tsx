@@ -1,11 +1,16 @@
 import { useState } from 'react'
-import { Plus, Search, Layers } from 'lucide-react'
+import { Plus, Search, Layers, Filter } from 'lucide-react'
 import { PixelCard } from './PixelCard'
 import { GridCard } from './GridCard'
 import { CreatePixelModal } from './modals/CreatePixelModal'
 import { CreateGridModal } from './modals/CreateGridModal'
 import { StatsBar } from './StatsBar'
 import { PixelSidebar } from './PixelSidebar'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { usePixelState } from '@/features/dashboard/hooks/usePixelState'
 import { useGridState } from '@/features/dashboard/hooks/useGridState'
 import { useDashboardFilter } from '@/features/dashboard/hooks/useDashboardFilter'
@@ -14,7 +19,6 @@ import type {
   NewUser,
   Grid,
   Page,
-  GridPixel,
   GridData,
   PixelTypeType,
   DashboardGridDataReturn,
@@ -32,25 +36,17 @@ interface DashboardProps {
 }
 
 export function Dashboard({ user, userData }: DashboardProps) {
-  const {
-    pixels,
-    ungroupedPixels,
-    setPixels,
-    deletePixelFn,
-    createPixelHandler,
-    updatePixelHandler,
-  } = usePixelState(userData.pixels, userData.gridsData.ungroupedPixels)
+  const { pixels, ungroupedPixels, createPixelHandler, updatePixelHandler } =
+    usePixelState(userData.pixels, userData.gridsData.ungroupedPixels)
 
   const {
     grids,
     cellsByGridId,
     pixelsByGridId,
-    setPixelsByGridId,
     gridsByPixelId,
     allCells,
     createGridHandler,
     updateGridHandler,
-    removeGrid,
     addGridPixels,
     removeGridPixels,
   } = useGridState(
@@ -68,34 +64,10 @@ export function Dashboard({ user, userData }: DashboardProps) {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
   const [selectedGrid, setSelectedGrid] = useState<GridData | null>(null)
   const [selectedPixel, setSelectedPixel] = useState<Pixel | null>(null)
-
-  // Composite handler: touches both pixel and grid state
-  async function deletePixel(pixelId: string) {
-    const oldPixel = pixels.find((p) => p.id === pixelId)
-    const oldPixelsByGridId = new Map(pixelsByGridId)
-    if (!oldPixel) throw new Error('Pixel not found')
-
-    setPixels((prev) => prev.filter((p) => p.id !== pixelId))
-    setPixelsByGridId((prev) => {
-      const updated = new Map(prev)
-      updated.forEach((value, key) => {
-        updated.set(
-          key,
-          value.filter((gp: GridPixel) => gp.pixel.id !== pixelId),
-        )
-      })
-      return updated
-    })
-
-    const response = await deletePixelFn({ data: { pixelId } })
-
-    if (response.success !== true) {
-      setPixels((prev) => [...prev, oldPixel])
-      setPixelsByGridId(() => oldPixelsByGridId)
-    }
-
-    return response
-  }
+  const [selectedInitialCell, setSelectedInitialCell] = useState<{
+    col: number
+    row: number
+  } | null>(null)
 
   const pixelTypes = Object.entries(PIXEL_TYPE_LABELS) as [PixelTypeType, string][]
 
@@ -125,7 +97,9 @@ export function Dashboard({ user, userData }: DashboardProps) {
           {/* Pixel Sidebar */}
           <PixelSidebar
             pixels={pixels}
-            onDeletePixel={deletePixel}
+            onAddToDashboard={(pixelId) =>
+              updatePixelHandler({ id: pixelId, isActive: true })
+            }
             onNewPixel={() => {
               setSelectedPixel(null)
               setIsPixelModalOpen(true)
@@ -157,33 +131,55 @@ export function Dashboard({ user, userData }: DashboardProps) {
                 </div>
 
                 {/* Filter */}
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    onClick={() => setFilterType('all')}
-                    className={`px-3 py-1 text-sm font-serif transition-all cursor-pointer ${
-                      filterType === 'all'
-                        ? 'bg-(--journal-ink) text-(--journal-paper)'
-                        : 'bg-(--journal-cream) text-(--journal-ink) border border-(--journal-warm) hover:bg-(--journal-tan)'
-                    }`}
-                    style={{ borderRadius: '2px 6px 3px 7px' }}
-                  >
-                    All
-                  </button>
-                  {pixelTypes.map(([key, label]) => (
+                <Popover>
+                  <PopoverTrigger asChild>
                     <button
-                      key={key}
-                      onClick={() => setFilterType(key)}
-                      className={`px-3 py-1 text-sm font-serif transition-all cursor-pointer ${
-                        filterType === key
+                      className={`relative flex items-center gap-1.5 px-3 py-2 text-sm font-serif transition-all cursor-pointer ${
+                        filterType !== 'all'
                           ? 'bg-(--journal-ink) text-(--journal-paper)'
-                          : 'bg-(--journal-cream) text-(--journal-ink) border border-(--journal-warm) hover:bg-(--journal-tan)'
+                          : 'bg-(--journal-cream) text-(--journal-ink) border-2 border-(--journal-warm) hover:bg-(--journal-tan)'
                       }`}
-                      style={{ borderRadius: '2px 6px 3px 7px' }}
+                      style={{ borderRadius: '3px 8px 5px 10px' }}
                     >
-                      {label}
+                      <Filter size={16} />
+                      {filterType === 'all'
+                        ? 'Filter'
+                        : PIXEL_TYPE_LABELS[filterType]}
                     </button>
-                  ))}
-                </div>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    className="bg-(--journal-cream) border-(--journal-warm) p-2 w-auto"
+                  >
+                    <div className="flex flex-wrap gap-1.5 max-w-64">
+                      <button
+                        onClick={() => setFilterType('all')}
+                        className={`px-3 py-1 text-sm font-serif transition-all cursor-pointer ${
+                          filterType === 'all'
+                            ? 'bg-(--journal-ink) text-(--journal-paper)'
+                            : 'bg-(--journal-paper) text-(--journal-ink) border border-(--journal-warm) hover:bg-(--journal-tan)'
+                        }`}
+                        style={{ borderRadius: '2px 6px 3px 7px' }}
+                      >
+                        All
+                      </button>
+                      {pixelTypes.map(([key, label]) => (
+                        <button
+                          key={key}
+                          onClick={() => setFilterType(key)}
+                          className={`px-3 py-1 text-sm font-serif transition-all cursor-pointer ${
+                            filterType === key
+                              ? 'bg-(--journal-ink) text-(--journal-paper)'
+                              : 'bg-(--journal-paper) text-(--journal-ink) border border-(--journal-warm) hover:bg-(--journal-tan)'
+                          }`}
+                          style={{ borderRadius: '2px 6px 3px 7px' }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Action buttons */}
@@ -232,9 +228,18 @@ export function Dashboard({ user, userData }: DashboardProps) {
                           pixels: pixelsData,
                           cells: cellsData,
                         })
+                        setSelectedInitialCell(null)
                         setIsGroupModalOpen(true)
                       }}
-                      onDelete={removeGrid}
+                      onCellClick={(g, col, row) => {
+                        setSelectedGrid({
+                          grid: g,
+                          pixels: pixelsData,
+                          cells: cellsData,
+                        })
+                        setSelectedInitialCell({ col, row })
+                        setIsGroupModalOpen(true)
+                      }}
                       onRemovePixel={removeGridPixels}
                     />
                   )
@@ -247,7 +252,10 @@ export function Dashboard({ user, userData }: DashboardProps) {
                       key={pixel.id}
                       pixel={pixel}
                       currentGrids={gridData && Array.from(gridData)}
-                      onDelete={deletePixel}
+                      onEdit={(p) => {
+                        setSelectedPixel(p)
+                        setIsPixelModalOpen(true)
+                      }}
                       availableGrids={grids}
                       onMoveToGrid={addGridPixels}
                     />
@@ -320,16 +328,22 @@ export function Dashboard({ user, userData }: DashboardProps) {
 
       {/* Create / Edit Group Modal */}
       <CreateGridModal
-        key={selectedGrid?.grid.id ?? 'new'}
+        key={`${selectedGrid?.grid.id ?? 'new'}-${
+          selectedInitialCell
+            ? `${selectedInitialCell.col}-${selectedInitialCell.row}`
+            : 'none'
+        }`}
         isOpen={isGroupModalOpen}
         onClose={() => {
           setIsGroupModalOpen(false)
           setSelectedGrid(null)
+          setSelectedInitialCell(null)
         }}
         onSubmit={createGridHandler}
         userId={user.id}
         pixels={pixels}
         gridData={selectedGrid}
+        initialSelectedCell={selectedInitialCell}
         onUpdate={updateGridHandler}
         onCreatePixel={() => {
           setSelectedPixel(null)

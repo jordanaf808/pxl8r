@@ -1,10 +1,4 @@
 import { useState } from 'react'
-import {
-  SketchyDivider,
-  DoodleStar,
-  DoodleCircle,
-  PaperClipDecoration,
-} from '@/components/sketchy-elements'
 
 // Import SignIn and SignUp functions from BetterAuth
 import { signIn, signOut, signUp, GitHubSignIn } from '@/lib/auth/auth-client'
@@ -64,11 +58,6 @@ export function LoginPage({ onLogin, defaultMode = 'signin' }: LoginPageProps) {
       <div className="w-full max-w-md">
         {/* Notebook card */}
         <div className="relative bg-[var(--journal-cream)] sketch-border p-8 md:p-10 paper-dots z-1 overflow-clip">
-          {/* Paper clip decoration */}
-          <div className="absolute -top-[4px] right-2">
-            <PaperClipDecoration />
-          </div>
-
           {/* Red margin line */}
           <div className="absolute left-4 top-0 bottom-0 w-px bg-[var(--journal-rust)] opacity-30 z-[-1]" />
 
@@ -78,11 +67,9 @@ export function LoginPage({ onLogin, defaultMode = 'signin' }: LoginPageProps) {
               BlockJournal
             </h1>
             <div className="mt-1 flex items-center justify-center gap-2">
-              <DoodleStar size={14} className="text-[var(--journal-gold)]" />
               <p className="text-lg text-[var(--journal-ink)] opacity-60 font-serif">
                 your goals, sketched out
               </p>
-              <DoodleStar size={14} className="text-[var(--journal-gold)]" />
             </div>
           </div>
 

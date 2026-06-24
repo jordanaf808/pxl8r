@@ -1,8 +1,4 @@
-import {
-  DoodleStar,
-  DoodleCircle,
-  DoodleCheckmark,
-} from '@/components/sketchy-elements'
+import { Layers, Circle, CheckCircle2 } from 'lucide-react'
 import type { Cell, Pixel } from '@/db/types'
 import { computeGlobalStats } from '@/lib/utils/stats'
 
@@ -26,7 +22,7 @@ export function StatsBar({ pixels, cells, gridCount = 0 }: StatsBarProps) {
     {
       label: 'Total Pixels',
       value: totalCells,
-      icon: <DoodleStar size={22} className="text-[var(--journal-gold)]" />,
+      icon: <Layers size={22} className="text-[var(--journal-gold)]" />,
       color: 'var(--journal-gold)',
     },
     {
@@ -79,15 +75,13 @@ export function StatsBar({ pixels, cells, gridCount = 0 }: StatsBarProps) {
     {
       label: 'Remaining',
       value: remainingCells,
-      icon: <DoodleCircle size={22} className="text-[var(--journal-rust)]" />,
+      icon: <Circle size={22} className="text-[var(--journal-rust)]" />,
       color: 'var(--journal-rust)',
     },
     {
       label: 'Completed',
       value: completedCells,
-      icon: (
-        <DoodleCheckmark size={22} className="text-[var(--journal-sage)]" />
-      ),
+      icon: <CheckCircle2 size={22} className="text-[var(--journal-sage)]" />,
       color: 'var(--journal-sage)',
     },
     {

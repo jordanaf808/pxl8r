@@ -12,6 +12,7 @@ export function useDashboardFilter(
   const filteredUngroupedPixels = useMemo(
     () =>
       ungroupedPixels.filter((p) => {
+        if (!p.isActive) return false
         const matchesSearch =
           p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.description?.toLowerCase().includes(searchTerm.toLowerCase())
