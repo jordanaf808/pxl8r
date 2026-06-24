@@ -55,7 +55,7 @@ function PixelRow({
           {!pixel.isActive && (
             <button
               onClick={onAddClick}
-              className="shrink-0 transition-opacity cursor-pointer opacity-0 group-hover:opacity-60 hover:opacity-100! text-(--journal-ink)"
+              className="shrink-0 transition-opacity cursor-pointer opacity-0 group-hover:opacity-60 hover:opacity-100! focus-visible:opacity-100 text-(--journal-ink)"
               aria-label={`Add ${pixel.name} to dashboard`}
               title="Add to dashboard"
             >

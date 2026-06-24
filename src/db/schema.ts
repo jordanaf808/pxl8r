@@ -385,6 +385,8 @@ export const cells = pgTable(
   (t) => ({
     // Critical: fast lookup of all cells in a grid
     gridIdx: index('cells_grid_idx').on(t.gridId),
+    // Fast lookup of all cells owned by a user (e.g. getDashboardGridData)
+    ownerIdx: index('cells_owner_idx').on(t.ownerId),
     // Unique constraint: only one cell per grid position per grid
     positionIdx: uniqueIndex('cells_position_idx').on(t.gridId, t.col, t.row),
     // Add check constraint for 0-100 range

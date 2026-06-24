@@ -127,7 +127,6 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(bulkUpsertCellsSchema)
   .handler(async ({ data, context }) => {
-    console.log('//// check auth - context: ', context.user, 'data: ', data)
     const { user } = context
     const { ownerId, gridId, cells: cellUpserts } = data
 
@@ -333,8 +332,6 @@ export const updateGrid = createServerFn({ method: 'POST' })
     if (!user.id) throw new Error('Unauthorized')
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
 
-    console.log('//// updateGrid - gridData: ', gridData)
-
     const results = await db
       .update(grids)
       .set(gridData)
@@ -427,23 +424,20 @@ export const updatePageGridSort = createServerFn({ method: 'POST' })
     const { pageId, ownerId, gridId, sortOrder } = data
     if (user.id !== ownerId) throw new Error('Unauthorized')
 
+    // Verify ownership
+    const page = await db
+      .select({ ownerId: pages.ownerId })
+      .from(pages)
+      .where(eq(pages.id, pageId))
+
+    if (!page[0] || page[0].ownerId !== user.id) {
+      throw new Error('Not Page Owner')
+    }
+
     const results = await db
       .update(pageGrids)
       .set({ sortOrder })
-      .where(
-        and(
-          eq(pageGrids.pageId, pageId),
-          eq(pageGrids.gridId, gridId),
-          // Join to pages to verify ownership
-          inArray(
-            pageGrids.pageId,
-            db
-              .select({ id: pages.id })
-              .from(pages)
-              .where(eq(pages.ownerId, user.id)),
-          ),
-        ),
-      )
+      .where(and(eq(pageGrids.pageId, pageId), eq(pageGrids.gridId, gridId)))
       .returning({
         pageId: pageGrids.pageId,
         gridId: pageGrids.gridId,
@@ -460,12 +454,6 @@ export const updateCell = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(updateCellSchema)
   .handler(async ({ data, context }) => {
-    console.log(
-      '//// updateCell - check auth - context: ',
-      context,
-      'data: ',
-      data,
-    )
     const { user } = context
     const { id: cellId, ownerId, note, value, colorOverride } = data
 

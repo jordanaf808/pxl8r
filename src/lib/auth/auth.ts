@@ -29,7 +29,7 @@ const auth = betterAuth({
   session: {
     cookieCache: {
       enabled: true,
-      maxAge: 60 * 1, // 1min
+      maxAge: 60 * 5, // 5min
     },
   },
   emailAndPassword: {

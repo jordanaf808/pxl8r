@@ -54,7 +54,6 @@ export default function Header() {
           navigate({ to: '/' }) // redirect to homepage
         },
         onError: (ctx) => {
-          console.log('//// onLogout error: ', ctx.error.message)
           throw new Error(ctx.error.error)
         },
       },

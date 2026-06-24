@@ -70,7 +70,6 @@ export function CreateGridModal({
       const next = new Map(prev)
       const existing = next.get(key)
       const updatedCell = { ...existing, ...updates } as Cell
-      console.log('//// updatedCell: ', updatedCell)
       if (existing) next.set(key, updatedCell)
       return next
     })
@@ -155,7 +154,6 @@ export function CreateGridModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
-    console.log('//// CreateGridModal - handleSubmit: ')
 
     if (isEdit && onUpdate && gridId) {
       const updatedGridData = {
@@ -170,7 +168,6 @@ export function CreateGridModal({
         pixels: pixels.filter((p) => selectedPixelIds.includes(p.id)),
         cells: Array.from(cells.values()),
       }
-      console.log('//// updatedGridData: ', updatedGridData)
 
       onUpdate(updatedGridData)
     } else {
@@ -191,7 +188,6 @@ export function CreateGridModal({
         pixels: pixels.filter((p) => selectedPixelIds.includes(p.id)),
         cells: Array.from(cells.values()),
       } as NewGridData
-      console.log('//// newGridData: ', newGridData)
       onSubmit(newGridData)
     }
 
