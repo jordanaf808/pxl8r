@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Pencil, Trash2, LayoutGrid } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Pencil, LayoutGrid, Timer } from 'lucide-react'
 import { PIXEL_COLORS } from '@/db/types'
 import type { Cell, Grid, Pixel } from '@/db/types'
 import { computeGridStats } from '@/lib/utils/stats'
@@ -9,7 +9,7 @@ interface GridCardProps {
   cellsData: Cell[] | null
   pixels: Pixel[] | []
   onEdit: (grid: Grid) => void
-  onDelete: (gridId: string) => void
+  onCellClick: (grid: Grid, col: number, row: number) => void
   onRemovePixel: ({
     gridId,
     pixelIds,
@@ -24,20 +24,18 @@ export function GridCard({
   cellsData,
   pixels,
   onEdit,
-  onDelete,
+  onCellClick,
   onRemovePixel,
 }: GridCardProps) {
   const [isHovered, setIsHovered] = useState(false)
-  const [selectedCell, setSelectedCell] = useState<{
-    col: number
-    row: number
-  } | null>(null)
-  const [cells, setCells] = useState<Map<string, Cell>>(
-    new Map(
-      cellsData
-        ?.filter((c) => c.pixelId)
-        .map((c) => [`${c.col}-${c.row}`, c]) ?? [],
-    ),
+  const cells = useMemo<Map<string, Cell>>(
+    () =>
+      new Map(
+        cellsData
+          ?.filter((c) => c.pixelId)
+          .map((c) => [`${c.col}-${c.row}`, c]) ?? [],
+      ),
+    [cellsData],
   )
 
   const columns = grid.columns
@@ -57,7 +55,8 @@ export function GridCard({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className="relative p-4 pt-3 pb-3 transition-all duration-200 hover:-translate-y-1"
+        className="relative p-4 pt-3 pb-3 transition-all duration-200 hover:-translate-y-1 cursor-pointer"
+        onClick={() => onEdit(grid)}
         style={{
           backgroundColor: colorInfo.bg,
           color: colorInfo.text,
@@ -72,18 +71,14 @@ export function GridCard({
         {/* Action buttons */}
         <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover/card:opacity-70 transition-opacity z-10">
           <button
-            onClick={() => onEdit(grid)}
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(grid)
+            }}
             className="hover:opacity-100 cursor-pointer"
             aria-label="Edit group"
           >
             <Pencil size={15} />
-          </button>
-          <button
-            onClick={() => onDelete(grid.id)}
-            className="hover:opacity-100 cursor-pointer"
-            aria-label="Delete group"
-          >
-            <Trash2 size={15} />
           </button>
         </div>
 
@@ -135,27 +130,30 @@ export function GridCard({
             const pixelId = cell?.pixelId
             const pixel = pixelId ? pixels.find((p) => p.id === pixelId) : null
             const color = pixel ? PIXEL_COLORS[pixel.color] : null
-            const isSelected =
-              !!selectedCell &&
-              selectedCell.col === col &&
-              selectedCell.row === row
+            const isTimerRunning = !!cell?.timerStartedAt
             return (
               <button
                 key={key}
                 type="button"
-                onClick={() =>
-                  setSelectedCell(isSelected ? null : { col, row })
-                }
-                className="aspect-square transition-all cursor-pointer hover:opacity-70 min-w-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCellClick(grid, col, row)
+                }}
+                className="relative aspect-square transition-all cursor-pointer hover:opacity-70 min-w-0"
                 style={{
                   backgroundColor: color?.bg ?? 'transparent',
-                  border: isSelected
-                    ? '2px solid var(--journal-ink)'
-                    : '1px solid var(--journal-warm)',
+                  border: '1px solid var(--journal-warm)',
                   borderRadius: '2px 3px 2px 3px',
                 }}
                 title={pixel?.name}
-              />
+              >
+                {isTimerRunning && (
+                  <Timer
+                    size={9}
+                    className="absolute top-0.5 right-0.5 text-(--journal-ink) opacity-70"
+                  />
+                )}
+              </button>
             )
           })}
         </div>

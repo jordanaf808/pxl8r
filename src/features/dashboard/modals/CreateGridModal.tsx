@@ -1,9 +1,19 @@
 import { useState } from 'react'
-import { X, Check, Star } from 'lucide-react'
+import { X, Check, Star, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react'
 import type { Pixel, PixelColor, GridData, Cell, NewGridData } from '@/db/types'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 import { useSession } from '@/lib/auth/auth-client'
 import { PixelGrid } from '../PixelGrid'
+import { CountdownTimer } from '../CountdownTimer'
+
+function getDefaultTimerMinutes(pixel: Pixel): number {
+  const goal = pixel.endGoal ?? 20
+  let minutes = 20
+  if (pixel.unit === 'minute') minutes = goal
+  else if (pixel.unit === 'hour') minutes = goal * 60
+  else if (pixel.unit === 'day') minutes = goal * 1440
+  return Math.min(120, Math.max(1, minutes))
+}
 
 interface CreateGridModalProps {
   isOpen: boolean
@@ -13,6 +23,8 @@ interface CreateGridModalProps {
   pixels: Pixel[]
   /** When set, the modal opens in edit mode pre-populated with the grid */
   gridData?: GridData | null
+  /** When set, the cell editor opens pre-selected to this position */
+  initialSelectedCell?: { col: number; row: number } | null
   onUpdate?: (gridData: GridData) => void
   onCreatePixel?: () => void
 }
@@ -24,10 +36,10 @@ export function CreateGridModal({
   userId,
   pixels,
   gridData,
+  initialSelectedCell,
   onUpdate,
   onCreatePixel,
 }: CreateGridModalProps) {
-  console.log('//// gridData: ', gridData)
   const [gridId, setGridId] = useState(gridData?.grid.id ?? crypto.randomUUID())
   const [name, setName] = useState(gridData?.grid.name ?? '')
   const [description, setDescription] = useState(
@@ -37,7 +49,6 @@ export function CreateGridModal({
   const [selectedPixelIds, setSelectedPixelIds] = useState<string[]>(
     gridData?.pixels.map((p) => p.id) ?? [],
   )
-  console.log('//// selectedPixelIds: ', selectedPixelIds)
   const [isPrivate] = useState(gridData?.grid.isPublic ? false : true)
   const [columns, setColumns] = useState(gridData?.grid.columns ?? 7)
   const [rows, setRows] = useState(gridData?.grid.rows ?? 4)
@@ -51,7 +62,7 @@ export function CreateGridModal({
   const [selectedCell, setSelectedCell] = useState<{
     col: number
     row: number
-  } | null>(null)
+  } | null>(initialSelectedCell ?? null)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   function updateCell(key: string, updates: Partial<Cell>) {
@@ -100,6 +111,8 @@ export function CreateGridModal({
           note: null,
           progress: 0,
           completedAt: null,
+          timerMinutes: null,
+          timerStartedAt: null,
         } as Cell)
       }
 
@@ -342,436 +355,473 @@ export function CreateGridModal({
               </div>
             </div> */}
 
-            {/* Grid Size */}
-            <div>
-              <label className="pixel text-lg text-(--journal-ink) mb-2 font-serif block">
-                Grid Size
-              </label>
-              <div className="flex gap-6">
-                {(
-                  [
-                    ['Columns', columns, setColumns],
-                    ['Rows', rows, setRows],
-                  ] as const
-                ).map(([label, value, set]) => (
-                  <div key={label} className="flex items-center gap-2">
-                    <span className="text-sm font-serif text-(--journal-ink) opacity-60 w-16">
-                      {label}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => set((v) => Math.max(1, v - 1))}
-                      className="w-7 h-7 flex items-center justify-center text-base text-(--journal-ink) border border-(--journal-warm) hover:bg-(--journal-tan) transition-all cursor-pointer"
-                      style={{ borderRadius: '2px 5px 3px 6px' }}
-                    >
-                      {'−'}
-                    </button>
-                    <span className="w-6 text-center font-bold text-(--journal-ink)">
-                      {value}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => set((v) => Math.min(52, v + 1))}
-                      className="w-7 h-7 flex items-center justify-center text-base text-(--journal-ink) border border-(--journal-warm) hover:bg-(--journal-tan) transition-all cursor-pointer"
-                      style={{ borderRadius: '2px 5px 3px 6px' }}
-                    >
-                      {'+'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Interactive Grid */}
             <div>
               <label className="pixel text-lg text-(--journal-ink) mb-2 font-serif block">
                 Grid
               </label>
-              <PixelGrid
-                cells={cells}
-                columns={columns}
-                rows={rows}
-                pixels={pixels}
-                selectedCell={selectedCell}
-                onCellClick={(col, row) =>
-                  setSelectedCell(
-                    selectedCell !== null &&
-                      selectedCell.col === col &&
-                      selectedCell.row === row
-                      ? null
-                      : { col, row },
-                  )
-                }
-              />
+
+              {/* Column controls — top edge */}
+              <div className="flex items-center justify-end gap-1.5 pr-1 mb-1">
+                <button
+                  type="button"
+                  onClick={() => setColumns((v) => Math.max(1, v - 1))}
+                  className="w-6 h-6 flex items-center justify-center text-(--journal-ink) border border-(--journal-warm) hover:bg-(--journal-tan) transition-all cursor-pointer"
+                  style={{ borderRadius: '2px 5px 3px 6px' }}
+                  aria-label="Remove column"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-xs font-serif text-(--journal-ink) opacity-60 w-14 text-center">
+                  {columns} cols
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setColumns((v) => Math.min(52, v + 1))}
+                  className="w-6 h-6 flex items-center justify-center text-(--journal-ink) border border-(--journal-warm) hover:bg-(--journal-tan) transition-all cursor-pointer"
+                  style={{ borderRadius: '2px 5px 3px 6px' }}
+                  aria-label="Add column"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+
+              <div className="flex gap-1.5">
+                <div className="flex-1 min-w-0">
+                  <PixelGrid
+                    cells={cells}
+                    columns={columns}
+                    rows={rows}
+                    pixels={pixels}
+                    selectedCell={selectedCell}
+                    onCellClick={(col, row) =>
+                      setSelectedCell(
+                        selectedCell !== null &&
+                          selectedCell.col === col &&
+                          selectedCell.row === row
+                          ? null
+                          : { col, row },
+                      )
+                    }
+                  />
+                </div>
+
+                {/* Row controls — side edge */}
+                <div className="flex flex-col items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setRows((v) => Math.max(1, v - 1))}
+                    className="w-6 h-6 flex items-center justify-center text-(--journal-ink) border border-(--journal-warm) hover:bg-(--journal-tan) transition-all cursor-pointer"
+                    style={{ borderRadius: '2px 5px 3px 6px' }}
+                    aria-label="Remove row"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                  <span className="text-xs font-serif text-(--journal-ink) opacity-60">
+                    {rows}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRows((v) => Math.min(52, v + 1))}
+                    className="w-6 h-6 flex items-center justify-center text-(--journal-ink) border border-(--journal-warm) hover:bg-(--journal-tan) transition-all cursor-pointer"
+                    style={{ borderRadius: '2px 5px 3px 6px' }}
+                    aria-label="Add row"
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
+              </div>
 
               {/* Cell editor */}
-              {selectedCell && (
-                <div
-                  className="mt-2 p-3"
-                  style={{
-                    backgroundColor: 'var(--journal-paper)',
-                    border: '1.5px solid var(--journal-warm)',
-                    borderRadius: '3px 8px 5px 10px',
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-serif text-(--journal-ink) opacity-60">
-                      {`col ${selectedCell.col + 1}, row ${selectedCell.row + 1}`}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const key = `${selectedCell.col}-${selectedCell.row}`
-                        setCells((prev) => {
-                          const next = new Map(prev)
-                          next.delete(key)
-                          return next
-                        })
-                      }}
-                      className="text-xs font-serif text-(--journal-ink) opacity-40 hover:opacity-80 cursor-pointer transition-opacity"
-                    >
-                      clear
-                    </button>
-                  </div>
-                  {pixels.length === 0 && (
-                    <p className="text-sm font-serif text-(--journal-ink) opacity-40 text-center py-2">
-                      No pixels available — create one below!
-                    </p>
-                  )}
-                  {onCreatePixel && (
-                    <button
-                      type="button"
-                      onClick={onCreatePixel}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-serif text-(--journal-ink) opacity-60 hover:opacity-100 border border-dashed border-(--journal-warm) transition-all cursor-pointer mb-1"
-                      style={{ borderRadius: '2px 6px 3px 7px' }}
-                    >
-                      {'+ New Pixel'}
-                    </button>
-                  )}
-                  {pixels.length > 0 && (
-                    <div className="flex flex-wrap">
-                      {pixels.map((pixel) => {
-                        const PixelColor = PIXEL_COLORS[pixel.color]
-                        const key = `${selectedCell.col}-${selectedCell.row}`
-                        const selectedCellData = cells.get(key)
-                        const isAssigned =
-                          selectedCellData?.pixelId === pixel.id
-                        return (
-                          <button
-                            key={pixel.id}
-                            type="button"
-                            onClick={() =>
-                              assignPixelToCell(
-                                pixel.id,
-                                selectedCell.col,
-                                selectedCell.row,
-                              )
-                            }
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all cursor-pointer ${
-                              isAssigned
-                                ? 'bg-[var(--journal-tan)]'
-                                : 'hover:bg-[var(--journal-cream)]'
-                            }`}
-                            style={{ borderRadius: '2px 6px 3px 7px' }}
-                          >
-                            {/* Checkbox */}
-                            <div
-                              className={`w-5 h-5 flex items-center justify-center shrink-0 transition-all ${
-                                isAssigned
-                                  ? 'bg-[var(--journal-ink)]'
-                                  : 'border-2 border-[var(--journal-warm)]'
-                              }`}
-                              style={{ borderRadius: '2px 5px 3px 6px' }}
-                            >
-                              {isAssigned && (
-                                <Check
-                                  size={13}
-                                  className="text-[var(--journal-paper)]"
-                                />
-                              )}
-                            </div>
+              {selectedCell &&
+                (() => {
+                  const key = `${selectedCell.col}-${selectedCell.row}`
+                  const cellData = cells.get(key)
+                  const cellPixel = cellData?.pixelId
+                    ? pixels.find((p) => p.id === cellData.pixelId)
+                    : null
+                  const endGoal = cellPixel?.endGoal ?? 100
+                  const unit = cellPixel?.unit ?? ''
+                  const fillPct = cellData
+                    ? Math.min(100, ((cellData.value ?? 0) / endGoal) * 100)
+                    : 0
 
-                            {/* Color dot */}
+                  return (
+                    <div
+                      className="mt-2 p-3"
+                      style={{
+                        backgroundColor: 'var(--journal-paper)',
+                        border: '1.5px solid var(--journal-warm)',
+                        borderRadius: '3px 8px 5px 10px',
+                      }}
+                    >
+                      {cellData && (
+                        <div className="flex items-center justify-end mb-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCells((prev) => {
+                                const next = new Map(prev)
+                                next.delete(key)
+                                return next
+                              })
+                            }}
+                            className="text-xs font-serif text-(--journal-ink) opacity-40 hover:opacity-80 cursor-pointer transition-opacity"
+                          >
+                            clear
+                          </button>
+                        </div>
+                      )}
+
+                      {!cellPixel ? (
+                        <>
+                          {pixels.length === 0 && (
+                            <p className="text-sm font-serif text-(--journal-ink) opacity-40 text-center py-2">
+                              No pixels available — create one below!
+                            </p>
+                          )}
+                          {onCreatePixel && (
+                            <button
+                              type="button"
+                              onClick={onCreatePixel}
+                              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-serif text-(--journal-ink) opacity-60 hover:opacity-100 border border-dashed border-(--journal-warm) transition-all cursor-pointer mb-1"
+                              style={{ borderRadius: '2px 6px 3px 7px' }}
+                            >
+                              {'+ New Pixel'}
+                            </button>
+                          )}
+                          {pixels.length > 0 && (
+                            <div className="flex flex-wrap">
+                              {pixels.map((pixel) => {
+                                const PixelColor = PIXEL_COLORS[pixel.color]
+                                return (
+                                  <button
+                                    key={pixel.id}
+                                    type="button"
+                                    onClick={() =>
+                                      assignPixelToCell(
+                                        pixel.id,
+                                        selectedCell.col,
+                                        selectedCell.row,
+                                      )
+                                    }
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all cursor-pointer hover:bg-(--journal-cream)"
+                                    style={{ borderRadius: '2px 6px 3px 7px' }}
+                                  >
+                                    {/* Color dot */}
+                                    <div
+                                      className="w-3 h-3 shrink-0"
+                                      style={{
+                                        backgroundColor: PixelColor.bg,
+                                        borderRadius: '1px 3px 2px 4px',
+                                      }}
+                                    />
+
+                                    {/* Name */}
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-base text-(--journal-ink) truncate pixel font-sans">
+                                        {pixel.name}
+                                      </span>
+                                    </div>
+
+                                    {/* Goal badge */}
+                                    <span
+                                      className="text-xs text-(--journal-ink) opacity-50 font-serif shrink-0 px-1.5 py-0.5 bg-(--journal-paper)"
+                                      style={{ borderRadius: '1px 4px 2px 5px' }}
+                                    >
+                                      {pixel.endGoal} {pixel.unit}
+                                    </span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Assigned pixel summary */}
+                          <div className="flex items-center gap-2">
                             <div
                               className="w-3 h-3 shrink-0"
                               style={{
-                                backgroundColor: PixelColor.bg,
+                                backgroundColor: PIXEL_COLORS[cellPixel.color].bg,
                                 borderRadius: '1px 3px 2px 4px',
                               }}
                             />
-
-                            {/* Name + type */}
-                            <div className="flex-1 min-w-0">
-                              <span className="text-base text-[var(--journal-ink)] truncate pixel font-sans">
-                                {pixel.name}
-                              </span>
-                            </div>
-
-                            {/* Type badge */}
-                            <span
-                              className="text-xs text-[var(--journal-ink)] opacity-50 font-serif shrink-0 px-1.5 py-0.5 bg-[var(--journal-paper)]"
-                              style={{ borderRadius: '1px 4px 2px 5px' }}
-                            >
-                              {/* {PIXEL_TYPE_LABELS[pixel.type]} */}
-                              {pixel.endGoal} {pixel.unit}
+                            <span className="text-base font-bold text-(--journal-ink) flex-1 truncate">
+                              {cellPixel.name}
                             </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
+                            <span className="text-xs text-(--journal-ink) opacity-50 font-serif shrink-0">
+                              {PIXEL_TYPE_LABELS[cellPixel.type]}
+                            </span>
+                          </div>
 
-                  {/* Value + note editor for assigned cell */}
-                  {(() => {
-                    const key = `${selectedCell.col}-${selectedCell.row}`
-                    const cellData = cells.get(key)
-                    if (!cellData?.pixelId) return null
-                    const cellPixel = pixels.find(
-                      (p) => p.id === cellData.pixelId,
-                    )
-                    const endGoal = cellPixel?.endGoal ?? 100
-                    const unit = cellPixel?.unit ?? ''
-                    const fillPct = Math.min(
-                      100,
-                      ((cellData.value ?? 0) / endGoal) * 100,
-                    )
-                    return (
-                      <div className="mt-3 pt-3 border-t border-(--journal-warm) space-y-3">
-                        {/* Type selector */}
-                        {/* <div>
-                          <span className="text-xs font-serif text-(--journal-ink) opacity-50 block mb-1.5">
-                            type
-                          </span>
-                          <div className="flex gap-1.5 flex-wrap">
-                            {(
-                              [
-                                ['boolean', 'done / not done'],
-                                ['numeric', 'number'],
-                                ['rating', 'rating'],
-                                ['time', 'duration'],
-                              ] as const
-                            ).map(([t, label]) => (
+                          {/* Value input based on type */}
+                          {cellData!.type === 'boolean' && (
+                            <div className="flex items-center gap-2">
                               <button
-                                key={t}
                                 type="button"
-                                onClick={() => updateCell(key, { type: t })}
-                                className={`text-xs font-serif px-2 py-1 transition-all cursor-pointer ${
-                                  cellData.type === t
-                                    ? 'bg-(--journal-ink) text-(--journal-paper)'
-                                    : 'border border-(--journal-warm) text-(--journal-ink) opacity-60 hover:opacity-100'
+                                onClick={() =>
+                                  updateCell(key, {
+                                    // flip completedAt state
+                                    value: cellData!.completedAt ? null : 100,
+                                    progress: cellData!.completedAt ? 0 : 100,
+                                    updatedAt: new Date(),
+                                    completedAt: cellData!.completedAt
+                                      ? null
+                                      : new Date(),
+                                  })
+                                }
+                                className={`w-6 h-6 flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                                  cellData!.completedAt
+                                    ? 'bg-(--journal-ink)'
+                                    : 'border-2 border-(--journal-warm)'
                                 }`}
                                 style={{ borderRadius: '2px 5px 3px 6px' }}
                               >
-                                {label}
+                                {cellData!.completedAt && (
+                                  <Check
+                                    size={14}
+                                    className="text-(--journal-paper)"
+                                  />
+                                )}
                               </button>
-                            ))}
-                          </div>
-                        </div> */}
+                              <span className="text-sm font-serif text-(--journal-ink) opacity-60">
+                                {cellData!.completedAt ? 'completed' : 'not done'}
+                              </span>
+                            </div>
+                          )}
 
-                        {/* Value input based on type */}
-                        {cellData.type === 'boolean' && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
+                          {cellData!.type === 'numeric' && (
+                            <div>
+                              <div className="flex items-baseline justify-between mb-2">
+                                <span className="text-xs font-serif text-(--journal-ink) opacity-50">
+                                  value
+                                </span>
+                                <span className="text-sm font-sans text-(--journal-ink)">
+                                  <span className="font-bold">
+                                    {cellData!.value ?? 0}
+                                  </span>
+                                  <span className="opacity-40">
+                                    {' '}
+                                    / {endGoal} {unit}s
+                                  </span>
+                                </span>
+                              </div>
+                              <div
+                                className="relative h-2 w-full rounded-full overflow-hidden"
+                                style={{
+                                  background: 'var(--journal-warm)',
+                                  opacity: 1,
+                                }}
+                              >
+                                <div
+                                  className="absolute inset-y-0 left-0 transition-all"
+                                  style={{
+                                    width: `${fillPct}%`,
+                                    background: 'var(--journal-ink)',
+                                    borderRadius: 'inherit',
+                                  }}
+                                />
+                              </div>
+                              <input
+                                type="range"
+                                min={0}
+                                max={endGoal}
+                                value={cellData!.value ?? 0}
+                                onChange={(e) => {
+                                  const newValue = Number(e.target.value)
+                                  const newDate = new Date()
+                                  return updateCell(key, {
+                                    value: newValue,
+                                    progress: (newValue / endGoal) * 100,
+                                    updatedAt: newDate,
+                                    completedAt:
+                                      newValue === endGoal ? null : newDate,
+                                  })
+                                }}
+                                className="w-full mt-1 cursor-pointer accent-(--journal-ink)"
+                              />
+                            </div>
+                          )}
+
+                          {cellData!.type === 'rating' && (
+                            <div>
+                              <span className="text-xs font-serif text-(--journal-ink) opacity-50 block mb-1.5">
+                                rating
+                              </span>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <button
+                                    key={star}
+                                    type="button"
+                                    onClick={() => {
+                                      const newDate = new Date()
+                                      // flip if selected star is clicked again, else set to star value
+                                      return updateCell(key, {
+                                        value:
+                                          cellData!.value === star
+                                            ? null
+                                            : star,
+                                        progress:
+                                          cellData!.value === star
+                                            ? 0
+                                            : (star / endGoal) * 100,
+                                        updatedAt: newDate,
+                                        completedAt:
+                                          cellData!.value === star
+                                            ? null
+                                            : star === endGoal // if star value matches endGoal, set to completed
+                                              ? newDate
+                                              : null,
+                                      })
+                                    }}
+                                    className="cursor-pointer transition-all hover:scale-110"
+                                  >
+                                    <Star
+                                      size={22}
+                                      className={
+                                        (cellData!.value ?? 0) >= star
+                                          ? 'text-(--journal-gold) fill-(--journal-gold)'
+                                          : 'text-(--journal-warm)'
+                                      }
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {cellData!.type === 'time' && (
+                            <div>
+                              <div className="flex items-baseline justify-between mb-2">
+                                <span className="text-xs font-serif text-(--journal-ink) opacity-50">
+                                  duration
+                                </span>
+                                <span className="text-sm font-sans text-(--journal-ink)">
+                                  <span className="font-bold">
+                                    {cellData!.value ?? 0}
+                                  </span>
+                                  <span className="opacity-40">
+                                    {' '}
+                                    / {endGoal} {unit}
+                                  </span>
+                                </span>
+                              </div>
+                              <div
+                                className="relative h-2 w-full rounded-full overflow-hidden"
+                                style={{ background: 'var(--journal-warm)' }}
+                              >
+                                <div
+                                  className="absolute inset-y-0 left-0 transition-all"
+                                  style={{
+                                    width: `${fillPct}%`,
+                                    background: 'var(--journal-ink)',
+                                    borderRadius: 'inherit',
+                                  }}
+                                />
+                              </div>
+                              <input
+                                type="range"
+                                min={0}
+                                max={endGoal}
+                                value={cellData!.value ?? 0}
+                                onChange={(e) => {
+                                  const newValue = Number(e.target.value)
+                                  const newDate = new Date()
+                                  return updateCell(key, {
+                                    value: newValue,
+                                    progress: (newValue / endGoal) * 100,
+                                    updatedAt: newDate,
+                                    completedAt:
+                                      newValue === endGoal ? null : newDate,
+                                  })
+                                }}
+                                className="w-full mt-1 cursor-pointer accent-(--journal-ink)"
+                              />
+                            </div>
+                          )}
+
+                          {/* Note */}
+                          <div>
+                            <span className="text-xs font-serif text-(--journal-ink) opacity-50 block mb-1">
+                              note
+                            </span>
+                            <textarea
+                              value={cellData!.note ?? ''}
+                              onChange={(e) =>
                                 updateCell(key, {
-                                  // flip completedAt state
-                                  value: cellData.completedAt ? null : 100,
-                                  progress: cellData.completedAt ? 0 : 100,
-                                  updatedAt: new Date(),
-                                  completedAt: cellData.completedAt
-                                    ? null
-                                    : new Date(),
+                                  note: e.target.value || null,
                                 })
                               }
-                              className={`w-6 h-6 flex items-center justify-center shrink-0 transition-all cursor-pointer ${
-                                cellData.completedAt
-                                  ? 'bg-(--journal-ink)'
-                                  : 'border-2 border-(--journal-warm)'
-                              }`}
-                              style={{ borderRadius: '2px 5px 3px 6px' }}
-                            >
-                              {cellData.completedAt && (
-                                <Check
-                                  size={14}
-                                  className="text-(--journal-paper)"
-                                />
-                              )}
-                            </button>
-                            <span className="text-sm font-serif text-(--journal-ink) opacity-60">
-                              {cellData.completedAt ? 'completed' : 'not done'}
-                            </span>
-                          </div>
-                        )}
-
-                        {cellData.type === 'numeric' && (
-                          <div>
-                            <div className="flex items-baseline justify-between mb-2">
-                              <span className="text-xs font-serif text-(--journal-ink) opacity-50">
-                                value
-                              </span>
-                              <span className="text-sm font-sans text-(--journal-ink)">
-                                <span className="font-bold">
-                                  {cellData.value ?? 0}
-                                </span>
-                                <span className="opacity-40">
-                                  {' '}
-                                  / {endGoal} {unit}s
-                                </span>
-                              </span>
-                            </div>
-                            <div
-                              className="relative h-2 w-full rounded-full overflow-hidden"
-                              style={{
-                                background: 'var(--journal-warm)',
-                                opacity: 1,
-                              }}
-                            >
-                              <div
-                                className="absolute inset-y-0 left-0 transition-all"
-                                style={{
-                                  width: `${fillPct}%`,
-                                  background: 'var(--journal-ink)',
-                                  borderRadius: 'inherit',
-                                }}
-                              />
-                            </div>
-                            <input
-                              type="range"
-                              min={0}
-                              max={endGoal}
-                              value={cellData.value ?? 0}
-                              onChange={(e) => {
-                                const newValue = Number(e.target.value)
-                                const newDate = new Date()
-                                return updateCell(key, {
-                                  value: newValue,
-                                  progress: (newValue / endGoal) * 100,
-                                  updatedAt: newDate,
-                                  completedAt:
-                                    newValue === endGoal ? null : newDate,
-                                })
-                              }}
-                              className="w-full mt-1 cursor-pointer accent-(--journal-ink)"
+                              placeholder="add a note…"
+                              rows={2}
+                              className="w-full bg-transparent border-b-2 border-(--journal-warm) text-(--journal-ink) text-sm py-1 px-1 placeholder:text-(--journal-warm) focus:border-(--journal-ink) outline-none transition-colors font-sans resize-none"
                             />
                           </div>
-                        )}
 
-                        {cellData.type === 'rating' && (
+                          {/* Timer */}
                           <div>
-                            <span className="text-xs font-serif text-(--journal-ink) opacity-50 block mb-1.5">
-                              rating
-                            </span>
-                            <div className="flex gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                  key={star}
-                                  type="button"
-                                  onClick={() => {
-                                    const newDate = new Date()
-                                    // flip if selected star is clicked again, else set to star value
-                                    return updateCell(key, {
-                                      value:
-                                        cellData.value === star ? null : star,
-                                      progress:
-                                        cellData.value === star
-                                          ? 0
-                                          : (star / endGoal) * 100,
-                                      updatedAt: newDate,
-                                      completedAt:
-                                        cellData.value === star
-                                          ? null
-                                          : star === endGoal // if star value matches endGoal, set to completed
-                                            ? newDate
-                                            : null,
-                                    })
-                                  }}
-                                  className="cursor-pointer transition-all hover:scale-110"
-                                >
-                                  <Star
-                                    size={22}
-                                    className={
-                                      (cellData.value ?? 0) >= star
-                                        ? 'text-(--journal-gold) fill-(--journal-gold)'
-                                        : 'text-(--journal-warm)'
-                                    }
-                                  />
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {cellData.type === 'time' && (
-                          <div>
-                            <div className="flex items-baseline justify-between mb-2">
-                              <span className="text-xs font-serif text-(--journal-ink) opacity-50">
-                                duration
-                              </span>
-                              <span className="text-sm font-sans text-(--journal-ink)">
-                                <span className="font-bold">
-                                  {cellData.value ?? 0}
-                                </span>
-                                <span className="opacity-40">
-                                  {' '}
-                                  / {endGoal} {unit}
-                                </span>
-                              </span>
-                            </div>
-                            <div
-                              className="relative h-2 w-full rounded-full overflow-hidden"
-                              style={{ background: 'var(--journal-warm)' }}
-                            >
-                              <div
-                                className="absolute inset-y-0 left-0 transition-all"
-                                style={{
-                                  width: `${fillPct}%`,
-                                  background: 'var(--journal-ink)',
-                                  borderRadius: 'inherit',
+                            {cellData!.timerMinutes != null ? (
+                              <CountdownTimer
+                                timerMinutes={cellData!.timerMinutes}
+                                timerStartedAt={cellData!.timerStartedAt ?? null}
+                                onStart={() =>
+                                  updateCell(key, { timerStartedAt: new Date() })
+                                }
+                                onPause={() => {
+                                  const startedAt = cellData!.timerStartedAt
+                                  const elapsed = startedAt
+                                    ? Math.floor(
+                                        (Date.now() -
+                                          new Date(startedAt).getTime()) /
+                                          1000,
+                                      )
+                                    : 0
+                                  const remainingSeconds = Math.max(
+                                    0,
+                                    cellData!.timerMinutes! * 60 - elapsed,
+                                  )
+                                  updateCell(key, {
+                                    timerMinutes: Math.max(
+                                      1,
+                                      Math.ceil(remainingSeconds / 60),
+                                    ),
+                                    timerStartedAt: null,
+                                  })
                                 }}
+                                onDisable={() =>
+                                  updateCell(key, {
+                                    timerMinutes: null,
+                                    timerStartedAt: null,
+                                  })
+                                }
+                                onEditMinutes={(value) =>
+                                  updateCell(key, { timerMinutes: value })
+                                }
                               />
-                            </div>
-                            <input
-                              type="range"
-                              min={0}
-                              max={endGoal}
-                              value={cellData.value ?? 0}
-                              onChange={(e) => {
-                                const newValue = Number(e.target.value)
-                                const newDate = new Date()
-                                return updateCell(key, {
-                                  value: newValue,
-                                  progress: (newValue / endGoal) * 100,
-                                  updatedAt: newDate,
-                                  completedAt:
-                                    newValue === endGoal ? null : newDate,
-                                })
-                              }}
-                              className="w-full mt-1 cursor-pointer accent-(--journal-ink)"
-                            />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateCell(key, {
+                                    timerMinutes:
+                                      getDefaultTimerMinutes(cellPixel),
+                                    timerStartedAt: null,
+                                  })
+                                }
+                                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-serif text-(--journal-ink) opacity-60 hover:opacity-100 border border-dashed border-(--journal-warm) transition-all cursor-pointer"
+                                style={{ borderRadius: '2px 6px 3px 7px' }}
+                              >
+                                {'+ Enable Timer'}
+                              </button>
+                            )}
                           </div>
-                        )}
-
-                        {/* Note */}
-                        <div>
-                          <span className="text-xs font-serif text-(--journal-ink) opacity-50 block mb-1">
-                            note
-                          </span>
-                          <textarea
-                            value={cellData.note ?? ''}
-                            onChange={(e) =>
-                              updateCell(key, { note: e.target.value || null })
-                            }
-                            placeholder="add a note…"
-                            rows={2}
-                            className="w-full bg-transparent border-b-2 border-(--journal-warm) text-(--journal-ink) text-sm py-1 px-1 placeholder:text-(--journal-warm) focus:border-(--journal-ink) outline-none transition-colors font-sans resize-none"
-                          />
                         </div>
-                      </div>
-                    )
-                  })()}
-                </div>
-              )}
+                      )}
+                    </div>
+                  )
+                })()}
             </div>
 
             {/* Submit */}
