@@ -1,0 +1,1 @@
+ALTER TABLE "db_pxl8r_pixels" DROP COLUMN "timer_minutes";

@@ -145,6 +145,8 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
       note: cell.note ?? null,
       colorOverride: cell.colorOverride ?? null,
       completedAt: cell.completedAt ?? null,
+      timerMinutes: cell.timerMinutes ?? null,
+      timerStartedAt: cell.timerStartedAt ?? null,
     }))
 
     const results = await db
@@ -161,6 +163,9 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
           note: sql`COALESCE(excluded.note, ${cells.note})`,
           colorOverride: sql`COALESCE(excluded.color_override, ${cells.colorOverride})`,
           completedAt: sql`COALESCE(excluded.completed_at, ${cells.completedAt})`,
+          // direct assignment (no COALESCE) — disabling/pausing the timer needs to explicitly null these out
+          timerMinutes: sql`excluded.timer_minutes`,
+          timerStartedAt: sql`excluded.timer_started_at`,
           updatedAt: sql`NOW()`,
         },
       })
@@ -263,6 +268,7 @@ export const updateUser = createServerFn({ method: 'POST' })
     if (data.name !== undefined) updateData.name = data.name
     if (data.image !== undefined) updateData.image = data.image
     if (data.theme !== undefined) updateData.theme = data.theme
+    if (data.darkMode !== undefined) updateData.darkMode = data.darkMode
 
     // Handle array fields with operations
     if (data.savedPixelIds !== undefined) {
@@ -305,6 +311,7 @@ export const updateUser = createServerFn({ method: 'POST' })
         email: users.email,
         image: users.image,
         theme: users.theme,
+        darkMode: users.darkMode,
         savedPixelIds: users.savedPixelIds,
         savedGridIds: users.savedGridIds,
         savedTemplateIds: users.savedTemplateIds,
@@ -369,6 +376,7 @@ export const updatePixel = createServerFn({ method: 'POST' })
         unit: pixels.unit,
         endGoal: pixels.endGoal,
         color: pixels.color,
+        isActive: pixels.isActive,
       })
 
     return {

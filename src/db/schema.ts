@@ -108,6 +108,7 @@ export const users = pgTable('users', {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   theme: themeTypeEnum('theme').default('journal'),
+  darkMode: boolean('dark_mode').default(false).notNull(),
   savedPixelIds: text('saved_pixel_ids')
     .array()
     .default(sql`ARRAY[]::text[]`),
@@ -223,7 +224,7 @@ export const pixels = pgTable(
     unit: unitTypeEnum('unit').notNull(), // unit to measure by
     endGoal: integer('end_goal'), // short label shown in key
     color: ColorTypeEnum('color').notNull(), // hex color string
-    timerMinutes: integer('timer_minutes'), // optional countdown duration to start later
+    isActive: boolean('is_active').default(false).notNull(), // shown as a standalone card on the dashboard
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
@@ -370,6 +371,10 @@ export const cells = pgTable(
     completedAt: timestamp('completed_at', { withTimezone: true }).default(
       sql`NULL`,
     ),
+    timerMinutes: integer('timer_minutes'), // non-null = timer enabled for this cell
+    timerStartedAt: timestamp('timer_started_at', { withTimezone: true }).default(
+      sql`NULL`,
+    ), // non-null = timer currently running
     colorOverride: text('color_override'), // if user overrides the pixel color for this cell
 
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

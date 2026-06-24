@@ -60,6 +60,12 @@ const auth = betterAuth({
         defaultValue: 'journal',
         input: true,
       },
+      darkMode: {
+        type: 'boolean',
+        required: false,
+        defaultValue: false,
+        input: true,
+      },
       savedPixelIds: {
         type: 'string[]',
         required: false,

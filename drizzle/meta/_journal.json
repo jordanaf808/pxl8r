@@ -36,6 +36,20 @@
       "when": 1782183372565,
       "tag": "0004_slimy_wallop",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782277171611,
+      "tag": "0005_stormy_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782277192495,
+      "tag": "0006_salty_agent_brand",
+      "breakpoints": true
     }
   ]
 }

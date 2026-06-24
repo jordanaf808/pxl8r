@@ -60,6 +60,7 @@ export const updatableUserFields = z.object({
   name: z.string().max(66).optional(),
   image: z.url().max(500).nullable().optional(),
   theme: z.enum(themeTypeEnum.enumValues).optional(),
+  darkMode: z.boolean().optional(),
   savedPixelIds: z.array(z.uuid()).optional(),
   savedGridIds: z.array(z.uuid()).optional(),
   savedTemplateIds: z.array(z.uuid()).optional(),
@@ -141,7 +142,7 @@ export const updatePixelSchema = z.object({
   unit: z.enum(unitTypeEnum.enumValues).optional(),
   endGoal: z.number().max(10000).optional(),
   color: z.enum(ColorTypeEnum.enumValues).optional(),
-  timerMinutes: z.number().int().min(1).optional(),
+  isActive: z.boolean().optional(),
 })
 
 export type UpdatePixelType = z.infer<typeof updatePixelSchema>
@@ -157,6 +158,8 @@ export const updatableCellFields = z.object({
     .nullish(),
   updatedAt: z.nullish(z.coerce.date()),
   completedAt: z.nullish(z.coerce.date()),
+  timerMinutes: z.int().min(1).max(120).nullish(),
+  timerStartedAt: z.nullish(z.coerce.date()),
 })
 
 export type UpdateCellType = z.infer<typeof updatableCellFields>
