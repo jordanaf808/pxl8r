@@ -1,26 +1,37 @@
 import { useEffect, useState } from 'react'
 import { signOut, useSession } from '@/lib/auth/auth-client.ts'
+import { useServerFn } from '@tanstack/react-start'
+import { updateUser as updateUserServerFn } from '@/db/mutations.functions'
 
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
-  Database,
-  Globe,
-  Home,
-  Menu,
-  X,
+  // Database,
+  // Globe,
+  // Home,
+  // Menu,
+  // X,
   Moon,
   Sun,
   LogOut,
   LogIn,
 } from 'lucide-react'
-import BetterAuthHeader from '@/integrations/better-auth/header-user.tsx'
+// import BetterAuthHeader from '@/integrations/better-auth/header-user.tsx'
 
 export default function Header() {
   const [isDarkMode, setIsDarkMode] = useState(false)
-  const [isOpen, setIsOpen] = useState(false)
+  // hamburger menu disabled — its links (Home/Drizzle/Better Auth demos) are testing-only, not needed on mobile
+  // const [isOpen, setIsOpen] = useState(false)
   const { data: session } = useSession()
   const user = session?.user
   const navigate = useNavigate({ from: '/dashboard/' })
+  const updateUser = useServerFn(updateUserServerFn)
+
+  // Sync from the user's persisted preference once the session loads
+  useEffect(() => {
+    if (user && 'darkMode' in user) {
+      setIsDarkMode(!!user.darkMode)
+    }
+  }, [user])
 
   useEffect(() => {
     if (isDarkMode) {
@@ -29,6 +40,12 @@ export default function Header() {
       document.documentElement.classList.remove('dark')
     }
   }, [isDarkMode])
+
+  function toggleDarkMode() {
+    const next = !isDarkMode
+    setIsDarkMode(next)
+    updateUser({ data: { data: { darkMode: next } } })
+  }
 
   function onLogout() {
     return signOut({
@@ -49,6 +66,7 @@ export default function Header() {
       <header className="sticky top-0 z-40 bg-[var(--journal-cream)]/95 backdrop-blur-sm border-b-2 border-[var(--journal-ink)]/60">
         <div className="max-w-7xl mx-auto px-4 md:px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {/* hamburger menu disabled — see import comment above
             <button
               onClick={() => setIsOpen(true)}
               className="p-2 outline-0 outline-gray-700 hover:outline-[0.01rem] hover:cursor-pointer gray-700 rounded-lg transition-colors"
@@ -56,6 +74,7 @@ export default function Header() {
             >
               <Menu size={24} />
             </button>
+            */}
             <h1 className="text-2xl md:text-3xl font-bold text-[var(--journal-ink)]">
               <Link to="/">PXL8</Link>
             </h1>
@@ -71,7 +90,7 @@ export default function Header() {
             </span>
             {/* Dark mode toggle */}
             <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
+              onClick={toggleDarkMode}
               className="flex items-center justify-center w-9 h-9 text-[var(--journal-ink)] opacity-50 hover:opacity-100 transition-all cursor-pointer bg-[var(--journal-paper)] hover:bg-[var(--journal-tan)]"
               style={{ borderRadius: '2px 6px 4px 8px' }}
               aria-label={
@@ -86,7 +105,7 @@ export default function Header() {
                 className="flex items-center gap-1.5 text-[var(--journal-ink)] opacity-50 hover:opacity-100 transition-opacity font-serif cursor-pointer"
               >
                 <LogOut size={18} />
-                <span className="hidden sm:inline">Logout</span>
+                <span>Logout</span>
               </button>
             ) : (
               <Link
@@ -94,13 +113,14 @@ export default function Header() {
                 className="flex items-center gap-1.5 text-[var(--journal-ink)] opacity-50 hover:opacity-100 transition-opacity font-serif"
               >
                 <LogIn size={18} />
-                <span className="hidden sm:inline">Login</span>
+                <span>Login</span>
               </Link>
             )}
           </div>
         </div>
       </header>
 
+      {/* hamburger menu disabled — demo links only (Home/Drizzle/Better Auth), unnecessary on mobile
       <aside
         className={`fixed top-0 left-0 h-full w-80 bg-[var(--journal-cream)]/98 text-[var(--journal-ink)] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
@@ -131,7 +151,7 @@ export default function Header() {
             <span className="font-medium">Home</span>
           </Link>
 
-          {/* Demo Links Start */}
+          {/* Demo Links Start *\/}
 
           <Link
             to="/demo/drizzle"
@@ -159,13 +179,14 @@ export default function Header() {
             <span className="font-medium">Better Auth</span>
           </Link>
 
-          {/* Demo Links End */}
+          {/* Demo Links End *\/}
         </nav>
 
         <div className="p-4 border-t border-gray-700 flex flex-col gap-2">
           <BetterAuthHeader />
         </div>
       </aside>
+      */}
     </>
   )
 }
