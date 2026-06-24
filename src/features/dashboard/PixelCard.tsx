@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Trash2, FolderInput } from 'lucide-react'
-import { DoodleStar } from '@/components/sketchy-elements'
+import { FolderInput, Sparkles } from 'lucide-react'
 import type { Pixel, Grid } from '@/db/types'
 import { PIXEL_TYPE_LABELS, PIXEL_COLORS } from '@/db/types'
-import { CountdownTimer } from './CountdownTimer'
 
 const TYPE_DOODLES: Record<string, React.ReactNode> = {
   workout: (
@@ -103,7 +101,7 @@ const TYPE_DOODLES: Record<string, React.ReactNode> = {
       />
     </svg>
   ),
-  custom: <DoodleStar size={18} />,
+  custom: <Sparkles size={18} />,
 }
 
 interface PixelCardProps {
@@ -113,7 +111,7 @@ interface PixelCardProps {
   // These are optional until cell data is wired into ungrouped PixelCards.
   // onToggleComplete?: (id: string) => void
   // onUpdateProgress?: (id: string, progress: number) => void
-  onDelete: (id: string) => void
+  onEdit: (pixel: Pixel) => void
   availableGrids?: Grid[]
   onMoveToGrid?: ({
     gridId,
@@ -138,7 +136,7 @@ export function PixelCard({
   currentGrids,
   // onToggleComplete,
   // onUpdateProgress,
-  onDelete,
+  onEdit,
   availableGrids = [],
   onMoveToGrid,
   gridName,
@@ -172,7 +170,8 @@ export function PixelCard({
     >
       {/* Card */}
       <div
-        className="relative p-5 transition-all duration-200 hover:-translate-y-1"
+        className="relative p-5 transition-all duration-200 hover:-translate-y-1 cursor-pointer"
+        onClick={() => onEdit(pixel)}
         style={{
           backgroundColor: colorInfo.bg,
           color: colorInfo.text,
@@ -188,7 +187,10 @@ export function PixelCard({
           {onMoveToGrid && availableGrids.length > 0 && (
             <div className="relative" ref={menuRef}>
               <button
-                onClick={() => setShowGridMenu((v) => !v)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowGridMenu((v) => !v)
+                }}
                 className="hover:opacity-100 cursor-pointer"
                 aria-label="Move to grid"
               >
@@ -207,7 +209,8 @@ export function PixelCard({
                   {availableGrids.map((g) => (
                     <button
                       key={g.id}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation()
                         onMoveToGrid({ gridId: g.id, pixelIds: [pixel.id] })
                         setShowGridMenu(false)
                       }}
@@ -228,7 +231,8 @@ export function PixelCard({
                     currentGrids.map((grid) => (
                       <button
                         key={grid.id}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           onMoveToGrid({
                             gridId: grid.id,
                             pixelIds: [pixel.id],
@@ -244,16 +248,6 @@ export function PixelCard({
               )}
             </div>
           )}
-
-          {pixel.timerMinutes && <CountdownTimer minutes={pixel.timerMinutes} />}
-
-          <button
-            onClick={() => onDelete(pixel.id)}
-            className="hover:opacity-100 cursor-pointer"
-            aria-label="Delete pixel"
-          >
-            <Trash2 size={16} />
-          </button>
         </div>
 
         {/* Grid name badge (if pixel belongs to a grid) */}

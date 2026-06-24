@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { SketchyDivider, DoodleStar } from '@/components/sketchy-elements'
+import { SketchyDivider } from '@/components/sketchy-elements'
 import type {
   PixelUnitType,
   PixelTypeType,
@@ -24,6 +24,26 @@ const UNIT_SLIDER_MAX: Partial<Record<PixelUnitType, number>> = {
   minute: 240,
   hour: 72,
   day: 365,
+  percent: 100,
+  rating: 5,
+  count: 500,
+  reps: 500,
+  steps: 5000,
+  miles: 100,
+  kilometers: 160,
+  gram: 1000,
+  lbs: 500,
+  cups: 100,
+  gallon: 50,
+  pages: 500,
+  books: 100,
+  dollar: 10000,
+  custom: 1000,
+}
+
+const UNIT_SLIDER_STEP: Partial<Record<PixelUnitType, number>> = {
+  reps: 5,
+  steps: 5,
 }
 
 interface CreatePixelModalProps {
@@ -50,9 +70,6 @@ export function CreatePixelModal({
   const [unit, setUnit] = useState<PixelUnitType>(pixelToEdit?.unit ?? 'minute')
   const [endGoal, setEndGoal] = useState(pixelToEdit?.endGoal ?? 30)
   const [color, setColor] = useState<PixelColor>(pixelToEdit?.color ?? 'sage')
-  const [timerMinutes, setTimerMinutes] = useState<number | null>(
-    pixelToEdit?.timerMinutes ?? null,
-  )
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
@@ -87,10 +104,9 @@ export function CreatePixelModal({
           endGoal,
           unit,
           color,
-          timerMinutes: timerMinutes ?? undefined,
         })
       } else {
-        onSubmit({ name, description, type, endGoal, unit, color, timerMinutes })
+        onSubmit({ name, description, type, endGoal, unit, color })
       }
       setErrors({})
       onClose()
@@ -128,7 +144,6 @@ export function CreatePixelModal({
         <div className="p-6 md:p-8">
           {/* Header */}
           <div className="flex items-center gap-2 mb-1">
-            <DoodleStar size={20} className="text-[var(--journal-gold)]" />
             <h2 className="text-3xl md:text-4xl font-bold text-[var(--journal-ink)]">
               {isEditing ? 'Edit Pixel' : 'New Pixel'}
             </h2>
@@ -143,9 +158,6 @@ export function CreatePixelModal({
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name */}
             <div>
-              <label className="pixel text-lg text-[var(--journal-ink)] mb-1 font-serif">
-                Pixel Name
-              </label>
               <input
                 type="text"
                 value={name}
@@ -162,9 +174,6 @@ export function CreatePixelModal({
 
             {/* Description */}
             <div>
-              <label className="pixel text-lg text-[var(--journal-ink)] mb-1 font-serif">
-                Description
-              </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -237,11 +246,11 @@ export function CreatePixelModal({
               </Select>
             </div>
 
-            {/* End Goal */}
+            {/* Goal */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="pixel text-lg text-[var(--journal-ink)] font-serif">
-                  End Goal
+                  Goal
                 </label>
                 <span className="text-lg font-bold text-[var(--journal-ink)] font-serif">
                   {endGoal}
@@ -251,7 +260,7 @@ export function CreatePixelModal({
                 value={[endGoal]}
                 min={0}
                 max={UNIT_SLIDER_MAX[unit] ?? 10000}
-                step={1}
+                step={UNIT_SLIDER_STEP[unit] ?? 1}
                 onValueChange={([value]) => setEndGoal(value)}
                 className="py-2"
               />
@@ -265,29 +274,6 @@ export function CreatePixelModal({
                   {errors.endGoal}
                 </p>
               )}
-            </div>
-
-            {/* Timer */}
-            <div>
-              <label className="pixel text-lg text-[var(--journal-ink)] mb-1 font-serif">
-                {'Timer (optional)'}
-              </label>
-              <input
-                type="number"
-                value={timerMinutes ?? ''}
-                min={1}
-                max={999}
-                onChange={(e) =>
-                  setTimerMinutes(
-                    e.target.value === '' ? null : parseInt(e.target.value),
-                  )
-                }
-                placeholder={'e.g. "20" minutes'}
-                className="w-full bg-transparent border-b-2 border-[var(--journal-warm)] text-[var(--journal-ink)] text-xl py-2 px-1 placeholder:text-[var(--journal-warm)] focus:border-[var(--journal-ink)] outline-none transition-colors font-sans"
-              />
-              <p className="text-sm text-[var(--journal-ink)] opacity-50 mt-1 font-serif">
-                {'set a duration to start as a countdown later'}
-              </p>
             </div>
 
             {/* Color */}

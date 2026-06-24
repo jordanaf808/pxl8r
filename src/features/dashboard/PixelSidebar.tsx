@@ -1,35 +1,31 @@
 import { useState, useMemo } from 'react'
-import { Plus, X, Search, Trash2, Layers } from 'lucide-react'
+import { Plus, X, Search, Layers, LayoutGrid } from 'lucide-react'
 import { SketchyDivider } from '@/components/sketchy-elements'
 import type { Pixel } from '@/db/types'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 
 interface PixelSidebarProps {
   pixels: Pixel[]
-  onDeletePixel: (pixelId: string) => void
   onNewPixel: () => void
   onSelectPixel: (pixel: Pixel) => void
+  onAddToDashboard: (pixelId: string) => void
 }
 
 function PixelRow({
   pixel,
-  isConfirmingDelete,
   onClick,
-  onDeleteClick,
+  onAddClick,
 }: {
   pixel: Pixel
-  isConfirmingDelete: boolean
   onClick: () => void
-  onDeleteClick: (e: React.MouseEvent) => void
+  onAddClick: (e: React.MouseEvent) => void
 }) {
   const colorInfo = PIXEL_COLORS[pixel.color]
 
   return (
     <li
       onClick={onClick}
-      className={`group flex items-start gap-2.5 px-3 py-2.5 transition-colors cursor-pointer hover:bg-(--journal-tan) ${
-        isConfirmingDelete ? 'bg-(--journal-rust)/10' : ''
-      }`}
+      className="group flex items-start gap-2.5 px-3 py-2.5 transition-colors cursor-pointer hover:bg-(--journal-tan)"
       style={{ borderRadius: '2px 6px 3px 7px' }}
     >
       {/* Color dot */}
@@ -45,38 +41,27 @@ function PixelRow({
       <div className="flex-1 min-w-0">
         {/* Name row */}
         <div className="flex items-center gap-1.5">
-          <span
-            className={`text-sm font-bold text-(--journal-ink) truncate leading-tight flex-1 ${
-              isConfirmingDelete ? 'opacity-60' : ''
-            }`}
-          >
+          <span className="text-sm font-bold text-(--journal-ink) truncate leading-tight flex-1">
             {pixel.name}
           </span>
 
-          {isConfirmingDelete ? (
-            <span className="text-[10px] font-serif text-(--journal-rust) shrink-0 whitespace-nowrap">
-              tap again
-            </span>
-          ) : (
-            <span
-              className="text-[10px] font-serif px-1.5 py-0.5 bg-(--journal-tan) text-(--journal-ink) opacity-70 shrink-0 whitespace-nowrap"
-              style={{ borderRadius: '1px 4px 2px 5px' }}
-            >
-              {PIXEL_TYPE_LABELS[pixel.type]}
-            </span>
-          )}
-
-          <button
-            onClick={onDeleteClick}
-            className={`shrink-0 transition-opacity cursor-pointer ${
-              isConfirmingDelete
-                ? 'opacity-100 text-(--journal-rust)'
-                : 'opacity-0 group-hover:opacity-40 hover:opacity-100! text-(--journal-ink)'
-            }`}
-            aria-label={isConfirmingDelete ? 'Confirm delete' : `Delete ${pixel.name}`}
+          <span
+            className="text-[10px] font-serif px-1.5 py-0.5 bg-(--journal-tan) text-(--journal-ink) opacity-70 shrink-0 whitespace-nowrap"
+            style={{ borderRadius: '1px 4px 2px 5px' }}
           >
-            <Trash2 size={12} />
-          </button>
+            {PIXEL_TYPE_LABELS[pixel.type]}
+          </span>
+
+          {!pixel.isActive && (
+            <button
+              onClick={onAddClick}
+              className="shrink-0 transition-opacity cursor-pointer opacity-0 group-hover:opacity-60 hover:opacity-100! text-(--journal-ink)"
+              aria-label={`Add ${pixel.name} to dashboard`}
+              title="Add to dashboard"
+            >
+              <LayoutGrid size={12} />
+            </button>
+          )}
         </div>
 
         {/* Description */}
@@ -105,9 +90,13 @@ function PixelRow({
   )
 }
 
-export function PixelSidebar({ pixels, onDeletePixel, onNewPixel, onSelectPixel }: PixelSidebarProps) {
+export function PixelSidebar({
+  pixels,
+  onNewPixel,
+  onSelectPixel,
+  onAddToDashboard,
+}: PixelSidebarProps) {
   const [sidebarSearch, setSidebarSearch] = useState('')
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const filtered = useMemo(
     () =>
@@ -129,7 +118,6 @@ export function PixelSidebar({ pixels, onDeletePixel, onNewPixel, onSelectPixel 
         boxShadow: '3px 3px 0px var(--journal-warm)',
         maxHeight: 'calc(100vh - 6rem)',
       }}
-      onClick={() => setConfirmDeleteId(null)}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-3 shrink-0 border-b-2 border-(--journal-warm)">
@@ -210,16 +198,10 @@ export function PixelSidebar({ pixels, onDeletePixel, onNewPixel, onSelectPixel 
               <PixelRow
                 key={pixel.id}
                 pixel={pixel}
-                isConfirmingDelete={confirmDeleteId === pixel.id}
                 onClick={() => onSelectPixel(pixel)}
-                onDeleteClick={(e) => {
+                onAddClick={(e) => {
                   e.stopPropagation()
-                  if (confirmDeleteId === pixel.id) {
-                    onDeletePixel(pixel.id)
-                    setConfirmDeleteId(null)
-                  } else {
-                    setConfirmDeleteId(pixel.id)
-                  }
+                  onAddToDashboard(pixel.id)
                 }}
               />
             ))}

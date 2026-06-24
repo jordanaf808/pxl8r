@@ -1,40 +1,37 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
-export function useCountdown(initialMinutes: number) {
-  const [remainingSeconds, setRemainingSeconds] = useState(
-    initialMinutes * 60,
-  )
-  const [isRunning, setIsRunning] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+/**
+ * Derives remaining time from a persisted duration + start timestamp,
+ * rather than owning a local countdown — this is what lets the timer
+ * survive a reload instead of resetting.
+ */
+export function useCountdown({
+  timerMinutes,
+  timerStartedAt,
+}: {
+  timerMinutes: number
+  timerStartedAt: Date | null
+}) {
+  const isRunning = !!timerStartedAt
+
+  const computeRemaining = useCallback(() => {
+    if (!timerStartedAt) return timerMinutes * 60
+    const elapsed = Math.floor((Date.now() - timerStartedAt.getTime()) / 1000)
+    return Math.max(0, timerMinutes * 60 - elapsed)
+  }, [timerMinutes, timerStartedAt])
+
+  const [remainingSeconds, setRemainingSeconds] = useState(computeRemaining)
 
   useEffect(() => {
+    setRemainingSeconds(computeRemaining())
     if (!isRunning) return
 
-    intervalRef.current = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          setIsRunning(false)
-          return 0
-        }
-        return prev - 1
-      })
+    const interval = setInterval(() => {
+      setRemainingSeconds(computeRemaining())
     }, 1000)
 
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [isRunning])
+    return () => clearInterval(interval)
+  }, [isRunning, computeRemaining])
 
-  const start = useCallback(() => {
-    if (remainingSeconds > 0) setIsRunning(true)
-  }, [remainingSeconds])
-
-  const pause = useCallback(() => setIsRunning(false), [])
-
-  const reset = useCallback(() => {
-    setIsRunning(false)
-    setRemainingSeconds(initialMinutes * 60)
-  }, [initialMinutes])
-
-  return { remainingSeconds, isRunning, start, pause, reset }
+  return { remainingSeconds, isRunning }
 }

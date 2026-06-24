@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
-import { Timer, Play, Pause, RotateCcw } from 'lucide-react'
+import { Pause, Play, Timer, X } from 'lucide-react'
 import { useCountdown } from './hooks/useCountdown'
 
 function formatTime(totalSeconds: number) {
@@ -9,72 +8,77 @@ function formatTime(totalSeconds: number) {
 }
 
 interface CountdownTimerProps {
-  minutes: number
+  timerMinutes: number
+  timerStartedAt: Date | null
+  onStart: () => void
+  onPause: () => void
+  onDisable: () => void
+  onEditMinutes: (minutes: number) => void
 }
 
-export function CountdownTimer({ minutes }: CountdownTimerProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const popoverRef = useRef<HTMLDivElement>(null)
-  const { remainingSeconds, isRunning, start, pause, reset } =
-    useCountdown(minutes)
-
-  useEffect(() => {
-    if (!isOpen) return
-    const handler = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [isOpen])
+export function CountdownTimer({
+  timerMinutes,
+  timerStartedAt,
+  onStart,
+  onPause,
+  onDisable,
+  onEditMinutes,
+}: CountdownTimerProps) {
+  const { remainingSeconds, isRunning } = useCountdown({
+    timerMinutes,
+    timerStartedAt,
+  })
 
   return (
-    <div className="relative" ref={popoverRef}>
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          setIsOpen((v) => !v)
-        }}
-        className="hover:opacity-100 cursor-pointer"
-        aria-label="Start timer"
-      >
-        <Timer size={16} />
-      </button>
+    <div
+      className="flex items-center gap-2 p-2"
+      style={{
+        backgroundColor: 'var(--journal-cream)',
+        border: '1.5px solid var(--journal-warm)',
+        borderRadius: '2px 6px 3px 7px',
+      }}
+    >
+      <Timer size={14} className="text-(--journal-ink) opacity-60 shrink-0" />
 
-      {isOpen && (
-        <div
-          className="absolute right-0 top-7 z-20 bg-[var(--journal-cream)] w-40 p-3 shadow-lg animate-float-in flex flex-col items-center gap-2"
-          style={{
-            border: '1.5px solid var(--journal-warm)',
-            borderRadius: '3px 8px 5px 10px',
+      {isRunning ? (
+        <span className="text-lg font-bold font-serif text-(--journal-ink) flex-1">
+          {formatTime(remainingSeconds)}
+        </span>
+      ) : (
+        <input
+          type="number"
+          min={1}
+          max={120}
+          value={timerMinutes}
+          onChange={(e) => {
+            const value = Math.min(
+              120,
+              Math.max(1, Number(e.target.value) || 1),
+            )
+            onEditMinutes(value)
           }}
-        >
-          <span className="text-2xl font-bold font-serif text-[var(--journal-ink)]">
-            {formatTime(remainingSeconds)}
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={isRunning ? pause : start}
-              className="p-1.5 hover:bg-[var(--journal-tan)] cursor-pointer text-[var(--journal-ink)]"
-              style={{ borderRadius: '2px 5px 3px 6px' }}
-              aria-label={isRunning ? 'Pause timer' : 'Start timer'}
-            >
-              {isRunning ? <Pause size={14} /> : <Play size={14} />}
-            </button>
-            <button
-              type="button"
-              onClick={reset}
-              className="p-1.5 hover:bg-[var(--journal-tan)] cursor-pointer text-[var(--journal-ink)]"
-              style={{ borderRadius: '2px 5px 3px 6px' }}
-              aria-label="Reset timer"
-            >
-              <RotateCcw size={14} />
-            </button>
-          </div>
-        </div>
+          className="flex-1 w-12 bg-transparent text-(--journal-ink) text-sm font-serif outline-none border-b border-(--journal-warm)"
+        />
       )}
+
+      <button
+        type="button"
+        onClick={isRunning ? onPause : onStart}
+        className="p-1 hover:bg-(--journal-tan) cursor-pointer text-(--journal-ink)"
+        style={{ borderRadius: '2px 5px 3px 6px' }}
+        aria-label={isRunning ? 'Pause timer' : 'Start timer'}
+      >
+        {isRunning ? <Pause size={13} /> : <Play size={13} />}
+      </button>
+      <button
+        type="button"
+        onClick={onDisable}
+        className="p-1 hover:bg-(--journal-tan) cursor-pointer text-(--journal-ink) opacity-60"
+        style={{ borderRadius: '2px 5px 3px 6px' }}
+        aria-label="Disable timer"
+      >
+        <X size={13} />
+      </button>
     </div>
   )
 }
