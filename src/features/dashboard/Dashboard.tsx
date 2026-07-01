@@ -57,8 +57,14 @@ export function Dashboard({ user, userData }: DashboardProps) {
     user.id,
   )
 
-  const { searchTerm, setSearchTerm, filterType, setFilterType, filteredUngroupedPixels, filteredGrids } =
-    useDashboardFilter(ungroupedPixels, grids, pixelsByGridId)
+  const {
+    searchTerm,
+    setSearchTerm,
+    filterType,
+    setFilterType,
+    filteredUngroupedPixels,
+    filteredGrids,
+  } = useDashboardFilter(ungroupedPixels, grids, pixelsByGridId)
 
   const [isPixelModalOpen, setIsPixelModalOpen] = useState(false)
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
@@ -69,7 +75,10 @@ export function Dashboard({ user, userData }: DashboardProps) {
     row: number
   } | null>(null)
 
-  const pixelTypes = Object.entries(PIXEL_TYPE_LABELS) as [PixelTypeType, string][]
+  const pixelTypes = Object.entries(PIXEL_TYPE_LABELS) as [
+    PixelTypeType,
+    string,
+  ][]
 
   return (
     <div className="min-h-screen paper-dots">
@@ -120,7 +129,10 @@ export function Dashboard({ user, userData }: DashboardProps) {
                   className="flex items-center gap-2 bg-(--journal-cream) px-3 py-2 border-2 border-(--journal-warm) focus-within:border-(--journal-ink) transition-colors"
                   style={{ borderRadius: '3px 8px 5px 10px' }}
                 >
-                  <Search size={18} className="text-(--journal-ink) opacity-40" />
+                  <Search
+                    size={18}
+                    className="text-(--journal-ink) opacity-40"
+                  />
                   <input
                     type="text"
                     placeholder="Search pixels & grids..."

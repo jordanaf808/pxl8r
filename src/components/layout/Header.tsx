@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { signOut, useSession } from '@/lib/auth/auth-client.ts'
 import { useServerFn } from '@tanstack/react-start'
 import { updateUser as updateUserServerFn } from '@/db/mutations.functions'
+import { Route } from '@/routes/__root'
 
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
@@ -33,13 +34,6 @@ export default function Header() {
   const user = session?.user
   const navigate = useNavigate({ from: '/dashboard/' })
   const updateUser = useServerFn(updateUserServerFn)
-
-  // Sync from the user's persisted preference once the session loads
-  useEffect(() => {
-    if (user && 'darkMode' in user) {
-      setIsDarkMode(!!user.darkMode)
-    }
-  }, [user])
 
   useEffect(() => {
     if (isDarkMode) {
