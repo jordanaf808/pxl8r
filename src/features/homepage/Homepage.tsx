@@ -1,4 +1,3 @@
-import { SketchyDivider } from '@/components/sketchy-elements'
 import { Link } from '@tanstack/react-router'
 import { useRef, useEffect } from 'react'
 
@@ -101,35 +100,20 @@ function IsometricPixelGrid() {
       ref={svgRef}
       viewBox="-130 -60 300 260"
       className="w-full h-full"
-      style={{ maxWidth: '400px' }}
+      style={{ maxWidth: '500px', maxHeight: 'max-content' }}
     >
-      <defs>
-        <style>
-          {`
-            @keyframes block-rise {
-              from {
-                opacity: 0;
-                transform: translate(var(--tx, 0), calc(var(--ty, 0) + 20px));
-              }
-              to {
-                opacity: 1;
-                transform: translate(var(--tx, 0), var(--ty, 0));
-              }
-            }
-          `}
-        </style>
-      </defs>
-      <g transform="translate(0, 40)">
-        {blocks.map((block, i) => (
-          <IsometricBlock
-            key={i}
-            x={block.x}
-            y={block.y}
-            color={block.color}
-            progress={block.progress}
-            delay={0.1 + i * 0.08}
-          />
-        ))}
+      <g transform="translate(0, 0)">
+        {PIXELS.map((pixel, i) => {
+          const c = PIXEL_COLORS[pixel.color]
+          const { left, right, top } = cubePaths(pixel.x, pixel.y, 0)
+          return (
+            <g key={i}>
+              <path data-pixel={i} data-face="left" d={left} fill={c.left} />
+              <path data-pixel={i} data-face="right" d={right} fill={c.right} />
+              <path data-pixel={i} data-face="top" d={top} fill={c.top} />
+            </g>
+          )
+        })}
       </g>
     </svg>
   )
@@ -301,8 +285,6 @@ export default function HomePage() {
         {/* Subtle dot pattern overlay */}
         <div className="absolute inset-0 paper-dots opacity-30 pointer-events-none" />
       </section>
-
-      <SketchyDivider className="text-[var(--journal-warm)] max-w-6xl mx-auto" />
 
       {/* How It Works */}
       <section className="py-16 md:py-24">

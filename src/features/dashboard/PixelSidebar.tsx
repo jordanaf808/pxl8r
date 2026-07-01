@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
 import { Plus, X, Search, Layers, LayoutGrid } from 'lucide-react'
-import { SketchyDivider } from '@/components/sketchy-elements'
 import type { Pixel } from '@/db/types'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 
@@ -78,7 +77,9 @@ function PixelRow({
           </span>
           {pixel.endGoal != null && (
             <>
-              <span className="text-[10px] text-(--journal-ink) opacity-20">·</span>
+              <span className="text-[10px] text-(--journal-ink) opacity-20">
+                ·
+              </span>
               <span className="text-[10px] font-serif text-(--journal-ink) opacity-40">
                 goal: {pixel.endGoal}
               </span>
@@ -104,7 +105,9 @@ export function PixelSidebar({
         (p) =>
           p.name.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
           p.type.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
-          (p.description ?? '').toLowerCase().includes(sidebarSearch.toLowerCase()),
+          (p.description ?? '')
+            .toLowerCase()
+            .includes(sidebarSearch.toLowerCase()),
       ),
     [pixels, sidebarSearch],
   )
@@ -150,7 +153,10 @@ export function PixelSidebar({
           className="flex items-center gap-1.5 bg-(--journal-paper) px-2.5 py-1.5 border border-(--journal-warm) focus-within:border-(--journal-ink) transition-colors"
           style={{ borderRadius: '2px 7px 4px 9px' }}
         >
-          <Search size={12} className="text-(--journal-ink) opacity-40 shrink-0" />
+          <Search
+            size={12}
+            className="text-(--journal-ink) opacity-40 shrink-0"
+          />
           <input
             type="text"
             placeholder="Search..."
@@ -211,7 +217,6 @@ export function PixelSidebar({
 
       {/* Footer */}
       <div className="px-3 py-2 shrink-0 border-t border-(--journal-warm)">
-        <SketchyDivider className="text-(--journal-warm)" />
         <p className="text-[10px] text-(--journal-ink) opacity-30 font-serif text-center mt-1">
           {pixels.length} pixel{pixels.length !== 1 ? 's' : ''}
         </p>

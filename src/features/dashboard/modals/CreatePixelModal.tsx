@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { SketchyDivider } from '@/components/sketchy-elements'
 import type {
   PixelUnitType,
   PixelTypeType,
@@ -62,9 +61,7 @@ export function CreatePixelModal({
   onUpdate,
 }: CreatePixelModalProps) {
   const isEditing = !!pixelToEdit
-  const [name, setName] = useState(
-    pixelToEdit?.name ?? 'Go for a morning run',
-  )
+  const [name, setName] = useState(pixelToEdit?.name ?? 'Go for a morning run')
   const [description, setDescription] = useState(pixelToEdit?.description ?? '')
   const [type, setType] = useState<PixelTypeType>(pixelToEdit?.type ?? 'skill')
   const [unit, setUnit] = useState<PixelUnitType>(pixelToEdit?.unit ?? 'minute')
@@ -153,7 +150,6 @@ export function CreatePixelModal({
               ? 'update your pixel details'
               : 'sketch out a new goal or task'}
           </p>
-          <SketchyDivider className="text-[var(--journal-warm)] mb-6" />
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name */}
@@ -318,8 +314,6 @@ export function CreatePixelModal({
                 ))}
               </div>
             </div>
-
-            <SketchyDivider className="text-[var(--journal-warm)]" />
 
             {/* Submit */}
             <button
