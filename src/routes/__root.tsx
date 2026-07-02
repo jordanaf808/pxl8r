@@ -45,8 +45,14 @@ const themeScript = `(function(){try{if(document.documentElement.dataset.themeIn
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={isDarkMode ? 'dark' : undefined}
+      data-theme-init={session?.user ? 'true' : undefined}
+    >
       <head>
+        <meta name="color-scheme" content={isDarkMode ? 'dark' : 'light'} />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <HeadContent />
       </head>
       <body>
