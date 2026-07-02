@@ -7,7 +7,7 @@ import type { ExtractTablesWithRelations } from 'drizzle-orm/relations'
 
 export type PixelTypeType = typeof schema.pixels.$inferSelect.type
 export type PixelUnitType = typeof schema.pixels.$inferSelect.unit
-export type PixelColor = 'rust' | 'sage' | 'gold' | 'slate' | 'warm'
+export type PixelColor = typeof schema.pixels.$inferSelect.color
 
 // ---- Raw DB row types ----
 
