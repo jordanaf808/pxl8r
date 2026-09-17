@@ -40,6 +40,9 @@ export const Route = createRootRoute({
   // },
 })
 
+// I want to reconsider this
+const themeScript = `(function(){try{if(document.documentElement.dataset.themeInit)return;var d=localStorage.getItem('pxl8-theme')==='dark'||(!localStorage.getItem('pxl8-theme')&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
