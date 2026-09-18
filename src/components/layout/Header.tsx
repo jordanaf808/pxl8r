@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { signOut, useSession } from '@/lib/auth/auth-client.ts'
 import { useServerFn } from '@tanstack/react-start'
 import { updateUser as updateUserServerFn } from '@/db/mutations.functions'
+import { Route } from '@/routes/__root'
 
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
@@ -18,7 +19,15 @@ import {
 // import BetterAuthHeader from '@/integrations/better-auth/header-user.tsx'
 
 export default function Header() {
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  const { session: routeSession } = Route.useRouteContext()
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (routeSession?.user) return !!routeSession.user.darkMode
+    // Guest: read what the FOUC-prevention script already applied
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark')
+    }
+    return false
+  })
   // hamburger menu disabled — its links (Home/Drizzle/Better Auth demos) are testing-only, not needed on mobile
   // const [isOpen, setIsOpen] = useState(false)
   const { data: session } = useSession()
@@ -26,25 +35,24 @@ export default function Header() {
   const navigate = useNavigate({ from: '/dashboard/' })
   const updateUser = useServerFn(updateUserServerFn)
 
-  // Sync from the user's persisted preference once the session loads
-  useEffect(() => {
-    if (user && 'darkMode' in user) {
-      setIsDarkMode(!!user.darkMode)
-    }
-  }, [user])
-
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark')
     } else {
       document.documentElement.classList.remove('dark')
     }
+    document
+      .querySelector('meta[name="color-scheme"]')
+      ?.setAttribute('content', isDarkMode ? 'dark' : 'light')
   }, [isDarkMode])
 
   function toggleDarkMode() {
     const next = !isDarkMode
     setIsDarkMode(next)
-    updateUser({ data: { data: { darkMode: next } } })
+    localStorage.setItem('pxl8-theme', next ? 'dark' : 'light')
+    if (user) {
+      updateUser({ data: { data: { darkMode: next } } })
+    }
   }
 
   function onLogout() {

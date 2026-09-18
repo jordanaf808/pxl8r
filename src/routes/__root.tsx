@@ -40,10 +40,22 @@ export const Route = createRootRoute({
   // },
 })
 
+// I want to reconsider this
+const themeScript = `(function(){try{if(document.documentElement.dataset.themeInit)return;var d=localStorage.getItem('pxl8-theme')==='dark'||(!localStorage.getItem('pxl8-theme')&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`
+
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const { session } = Route.useRouteContext()
+  const isDarkMode = !!session?.user?.darkMode
+
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={isDarkMode ? 'dark' : undefined}
+      data-theme-init={session?.user ? 'true' : undefined}
+    >
       <head>
+        <meta name="color-scheme" content={isDarkMode ? 'dark' : 'light'} />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <HeadContent />
       </head>
       <body>
