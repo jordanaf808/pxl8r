@@ -1,0 +1,1 @@
+CREATE INDEX "cells_owner_idx" ON "db_pxl8r_cells" USING btree ("owner_id");
