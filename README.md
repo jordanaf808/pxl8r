@@ -1,5 +1,7 @@
 # PXL8
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/26113811-0a84-4b23-ade2-e48fa52a2069/deploy-status)](https://app.netlify.com/projects/pxl8r/deploys)
+
 A visual goal tracker that feels like your favorite bullet journal. Define goals, stack them into a grid, and watch your progress unfold — one block at a time.
 
 PXL8 is a pixel-tracking web app where you create **pixels** to represent goals or tasks you want to complete, add them to **grids** that keep track of active or completed pixels, and fill **cells** over time as you make progress. Perfect for habit tracking, projects, fitness, finance, learning — anything that benefits from a visual, habit-tracker aesthetic.
@@ -21,21 +23,21 @@ PXL8 is a pixel-tracking web app where you create **pixels** to represent goals 
 
 ## Tech Stack
 
-| Layer | Choice | Version |
-| --- | --- | --- |
-| Framework | TanStack Start | 1.132.0 |
-| Build tool | Vite | 7.3.1 |
-| Language | TypeScript | 5.9.3 |
-| ORM | Drizzle ORM | 0.45.0 |
-| Database | PostgreSQL (Neon or local) | — |
-| Auth | BetterAuth | 1.4.12 |
-| UI Components | Shadcn/ui (Radix) | Latest |
-| Styling | Tailwind CSS | 4.2.1 |
-| Forms | React Hook Form + Zod | 7.71 / 4.3 |
-| Charts | Recharts | 2.15.0 |
-| Testing | Vitest | 3.2.4 |
-| Hosting | Netlify | — |
-| Client Routing | React Router | TBD |
+| Layer          | Choice                     | Version    |
+| -------------- | -------------------------- | ---------- |
+| Framework      | TanStack Start             | 1.132.0    |
+| Build tool     | Vite                       | 7.3.1      |
+| Language       | TypeScript                 | 5.9.3      |
+| ORM            | Drizzle ORM                | 0.45.0     |
+| Database       | PostgreSQL (Neon or local) | —          |
+| Auth           | BetterAuth                 | 1.4.12     |
+| UI Components  | Shadcn/ui (Radix)          | Latest     |
+| Styling        | Tailwind CSS               | 4.2.1      |
+| Forms          | React Hook Form + Zod      | 7.71 / 4.3 |
+| Charts         | Recharts                   | 2.15.0     |
+| Testing        | Vitest                     | 3.2.4      |
+| Hosting        | Netlify                    | —          |
+| Client Routing | React Router               | TBD        |
 
 ---
 
@@ -62,20 +64,20 @@ PXL8 is a pixel-tracking web app where you create **pixels** to represent goals 
 
    Copy `.env` (or create one) and populate these values:
 
-   | Variable | Purpose |
-   | --- | --- |
-   | `DATABASE_URL` | PostgreSQL connection string (Neon or local) |
-   | `DB_HOST` | Local Postgres hostname (e.g., `localhost`) |
-   | `DB_PORT` | Local Postgres port (e.g., `5432`) |
-   | `DB_USER` | Local Postgres username |
-   | `DB_PASSWORD` | Local Postgres password |
-   | `DB_NAME` | Local Postgres database name |
-   | `NEON_DATABASE_URL` | Neon serverless connection (alternative to local) |
-   | `BETTER_AUTH_SECRET` | Auth signing key (generate via `pnpm auth:generate`) |
-   | `BETTER_AUTH_URL` | Auth callback URL (e.g., `http://localhost:3000/api/auth`) |
-   | `GITHUB_AUTH_ID` | GitHub OAuth app client ID |
-   | `GITHUB_AUTH_SECRET` | GitHub OAuth app client secret |
-   | `VITE_NEON_AUTH_URL` | Neon auth endpoint (if using Neon Auth) |
+   | Variable             | Purpose                                                    |
+   | -------------------- | ---------------------------------------------------------- |
+   | `DATABASE_URL`       | PostgreSQL connection string (Neon or local)               |
+   | `DB_HOST`            | Local Postgres hostname (e.g., `localhost`)                |
+   | `DB_PORT`            | Local Postgres port (e.g., `5432`)                         |
+   | `DB_USER`            | Local Postgres username                                    |
+   | `DB_PASSWORD`        | Local Postgres password                                    |
+   | `DB_NAME`            | Local Postgres database name                               |
+   | `NEON_DATABASE_URL`  | Neon serverless connection (alternative to local)          |
+   | `BETTER_AUTH_SECRET` | Auth signing key (generate via `pnpm auth:generate`)       |
+   | `BETTER_AUTH_URL`    | Auth callback URL (e.g., `http://localhost:3000/api/auth`) |
+   | `GITHUB_AUTH_ID`     | GitHub OAuth app client ID                                 |
+   | `GITHUB_AUTH_SECRET` | GitHub OAuth app client secret                             |
+   | `VITE_NEON_AUTH_URL` | Neon auth endpoint (if using Neon Auth)                    |
 
 3. **Set up the database**
 
@@ -124,21 +126,21 @@ PXL8 is a pixel-tracking web app where you create **pixels** to represent goals 
 
 ## Available Scripts
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm dev` | Start dev server on port 3000 |
-| `pnpm build` | Build for production |
-| `pnpm preview` | Preview production build locally |
-| `pnpm test` | Run Vitest test suite |
-| `pnpm db:generate` | Generate Drizzle migrations from schema changes |
-| `pnpm db:migrate` | Apply pending migrations to the database |
-| `pnpm db:push` | Push schema changes directly (useful for early dev) |
-| `pnpm db:pull` | Introspect existing database and update schema |
-| `pnpm db:studio` | Open Drizzle Studio to inspect and edit data |
-| `pnpm lint` | Run ESLint |
-| `pnpm format` | Check formatting with Prettier |
-| `pnpm check` | Format and lint in fix mode |
-| `pnpm auth:generate` | Generate BetterAuth schema and secret |
+| Command              | Purpose                                             |
+| -------------------- | --------------------------------------------------- |
+| `pnpm dev`           | Start dev server on port 3000                       |
+| `pnpm build`         | Build for production                                |
+| `pnpm preview`       | Preview production build locally                    |
+| `pnpm test`          | Run Vitest test suite                               |
+| `pnpm db:generate`   | Generate Drizzle migrations from schema changes     |
+| `pnpm db:migrate`    | Apply pending migrations to the database            |
+| `pnpm db:push`       | Push schema changes directly (useful for early dev) |
+| `pnpm db:pull`       | Introspect existing database and update schema      |
+| `pnpm db:studio`     | Open Drizzle Studio to inspect and edit data        |
+| `pnpm lint`          | Run ESLint                                          |
+| `pnpm format`        | Check formatting with Prettier                      |
+| `pnpm check`         | Format and lint in fix mode                         |
+| `pnpm auth:generate` | Generate BetterAuth schema and secret               |
 
 ---
 
@@ -237,7 +239,7 @@ Production builds are deployed to Netlify via the `@netlify/vite-plugin-tanstack
 
 **Database**: Use Neon (serverless PostgreSQL) in production. Set `DATABASE_URL` to your Neon connection string in Netlify environment variables.
 
-**Environment variables**: Add all required `.env` variables to Netlify project settings under *Environment*.
+**Environment variables**: Add all required `.env` variables to Netlify project settings under _Environment_.
 
 ---
 
