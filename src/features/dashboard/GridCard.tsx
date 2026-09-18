@@ -55,17 +55,17 @@ export function GridCard({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className="relative p-4 pt-3 pb-3 transition-all duration-200 hover:-translate-y-1 cursor-pointer"
+        className="glass-pixel-card relative p-4 pt-3 pb-3 transition-all duration-200 hover:-translate-y-1 cursor-pointer"
         onClick={() => onEdit(grid)}
         style={{
-          backgroundColor: colorInfo.bg,
+          backgroundColor: colorInfo.bg + 'cc',
           color: colorInfo.text,
           borderRadius: '4px 12px 6px 14px',
+          border: '1px solid rgba(255,255,255,0.25)',
+          borderLeft: '4px solid rgba(255,255,255,0.40)',
           boxShadow: isHovered
-            ? '4px 4px 0px var(--journal-warm), 6px 6px 0px rgba(0,0,0,0.07)'
-            : '2px 3px 0px var(--journal-warm)',
-          /* Double-line left border to distinguish from single pixels */
-          borderLeft: `5px double rgba(255,255,255,0.35)`,
+            ? `-4px 12px 28px 0 ${colorInfo.bg}55, inset 0px 0px 4px 2px rgba(255,255,255,0.40)`
+            : `-2px 8px 20px 0 ${colorInfo.bg}44, inset 0px 0px 4px 1px rgba(255,255,255,0.30)`,
         }}
       >
         {/* Action buttons */}
@@ -115,7 +115,7 @@ export function GridCard({
 
         {/* ---- Mini-grid of child pixels ---- */}
         <div
-          className="grid gap-0.5 p-2 mb-3 bg-(--journal-paper)"
+          className="grid gap-px p-1 mb-3 bg-(--journal-paper)"
           style={{
             gridTemplateColumns: `repeat(${columns}, 1fr)`,
             border: '1.5px solid var(--journal-warm)',
@@ -141,9 +141,14 @@ export function GridCard({
                 }}
                 className="relative aspect-square transition-all cursor-pointer hover:opacity-70 min-w-0"
                 style={{
-                  backgroundColor: color?.bg ?? 'transparent',
                   border: '1px solid var(--journal-warm)',
-                  borderRadius: '2px 3px 2px 3px',
+
+                  backgroundColor: color?.bg + 'ee',
+                  color: color?.text,
+                  borderRadius: '4px',
+                  boxShadow:
+                    'inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 4px rgba(0,0,0,0.20)',
+                  overflow: 'hidden',
                 }}
                 title={pixel?.name}
               >
@@ -152,6 +157,23 @@ export function GridCard({
                     size={9}
                     className="absolute top-0.5 right-0.5 text-(--journal-ink) opacity-70"
                   />
+                )}
+
+                {/* Progress fill at bottom */}
+                {cell && cell.progress > 0 && (
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-1"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.15)' }}
+                  >
+                    <div
+                      className="h-full transition-all duration-500"
+                      style={{
+                        width: `${cell.progress}%`,
+                        backgroundColor: 'rgba(255,255,255,0.45)',
+                        borderRadius: '0 1px 1px 0',
+                      }}
+                    />
+                  </div>
                 )}
               </button>
             )
