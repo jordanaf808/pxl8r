@@ -6,13 +6,5 @@ allowBuilds:
   msw: true
   sharp: true
   unrs-resolver: true
-onlyBuiltDependencies:
-  - '@parcel/watcher'
-  - '@prisma/engines'
-  - '@sentry-internal/node-cpu-profiler'
-  - core-js
-  - esbuild
-  - msw
-  - prisma
-  - sharp
-  - unrs-resolver
+  '@prisma/engines': true
+  prisma: true
