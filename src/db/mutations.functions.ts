@@ -230,6 +230,30 @@ export const bulkUpsertPageGrids = createServerFn({ method: 'POST' })
     const { pageId, ownerId, gridIds } = data
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
 
+    const page = await db
+      .select({ ownerId: pages.ownerId })
+      .from(pages)
+      .where(eq(pages.id, pageId))
+
+    if (!page[0] || page[0].ownerId !== user.id) {
+      throw new Error('Not Page Owner')
+    }
+
+    const requestedGridIds = new Set(gridIds.map((grid) => grid.id))
+    const ownedGrids = await db
+      .select({ id: grids.id })
+      .from(grids)
+      .where(
+        and(
+          inArray(grids.id, [...requestedGridIds]),
+          eq(grids.ownerId, user.id),
+        ),
+      )
+
+    if (ownedGrids.length !== requestedGridIds.size) {
+      throw new Error('Not Grid Owner')
+    }
+
     const values = gridIds.map((grid) => ({
       pageId: pageId,
       gridId: grid.id,
