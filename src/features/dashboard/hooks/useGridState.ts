@@ -64,7 +64,11 @@ export function useGridState(
     const existingGridPixels = pixelsByGridId.get(gridId)
 
     const newGridPixelsState: GridPixel[] = []
-    const newGridPixelsDB: { gridId: string; pixelId: string; sortOrder: string }[] = []
+    const newGridPixelsDB: {
+      gridId: string
+      pixelId: string
+      sortOrder: string
+    }[] = []
 
     pixelIds.forEach((pixelId) => {
       const foundPixel = pixels.find(
@@ -79,8 +83,16 @@ export function useGridState(
       )
       if (foundGridPixel) return
 
-      newGridPixelsState.push({ gridId, pixel: foundPixel, sortOrder: 'manual' })
-      newGridPixelsDB.push({ gridId, pixelId: foundPixel.id, sortOrder: 'manual' })
+      newGridPixelsState.push({
+        gridId,
+        pixel: foundPixel,
+        sortOrder: 'manual',
+      })
+      newGridPixelsDB.push({
+        gridId,
+        pixelId: foundPixel.id,
+        sortOrder: 'manual',
+      })
     })
 
     setPixelsByGridId((oldPixelsByGridId) => {
@@ -170,13 +182,14 @@ export function useGridState(
       sortOrder: 'alphabetic',
     }))
 
-    const [updatedGrid, updatedGridCells, updatedGridPixels] = await Promise.all([
-      updateGrid({ data: gridData.grid }),
-      upsertGridCells({ gridId, cellData: gridData.cells }),
-      bulkUpsertGridPixels({
-        data: { ownerId: gridData.grid.ownerId, gridId, pixelData },
-      }),
-    ])
+    const [updatedGrid, updatedGridCells, updatedGridPixels] =
+      await Promise.all([
+        updateGrid({ data: gridData.grid }),
+        upsertGridCells({ gridId, cellData: gridData.cells }),
+        bulkUpsertGridPixels({
+          data: { ownerId: gridData.grid.ownerId, gridId, pixelData },
+        }),
+      ])
 
     if (updatedGrid.success !== true)
       throw new Error('Error updating grid', { cause: updatedGrid.results })
