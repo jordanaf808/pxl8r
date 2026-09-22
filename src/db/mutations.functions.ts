@@ -65,9 +65,10 @@ export const createPixel = createServerFn({ method: 'POST' })
     const { user } = context
     if (!user.id) throw new Error('Unauthorized')
 
+    // Spread first: the validator is type-only, so data can carry its own ownerId.
     const values = {
-      ownerId: user.id,
       ...data,
+      ownerId: user.id,
     }
 
     const results = await db.insert(pixels).values(values).returning()
@@ -108,11 +109,13 @@ export const createCells = createServerFn({ method: 'POST' })
 
     if (!user.id) throw new Error('Not Logged In')
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
+    await assertGridOwner(gridId, user.id)
 
+    // Spread first: the validator is type-only, so a cell object can carry its own ownerId/gridId.
     const values = cellsData.map((cell) => ({
+      ...cell,
       ownerId: user.id,
       gridId: gridId,
-      ...cell,
     }))
 
     const results = await db.insert(cells).values(values).returning()
