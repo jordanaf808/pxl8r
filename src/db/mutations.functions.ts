@@ -186,10 +186,18 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
 
     if (!user.id) throw new Error('Unauthorized')
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
+    await assertGridOwner(gridId, user.id)
+
+    // Each item carries its own gridId, but only the top-level one was verified — ignore theirs.
+    const values = pixelData.map(({ pixelId, sortOrder }) => ({
+      gridId,
+      pixelId,
+      sortOrder,
+    }))
 
     const results = await db
       .insert(gridPixels)
-      .values(pixelData)
+      .values(values)
       .onConflictDoUpdate({
         target: [gridPixels.gridId, gridPixels.pixelId],
         set: {
@@ -595,6 +603,7 @@ export const deleteGridPixels = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { user } = context
     if (!user.id) throw new Error('Unauthorized')
+    await assertGridOwner(data.gridId, user.id)
 
     const result = await db
       .delete(gridPixels)
