@@ -174,7 +174,6 @@ export const updateCellSchema = z.object({
 })
 
 export const bulkCellSchema = z.object({
-  id: z.uuid().optional(),
   type: z.enum(cellTypeEnum.enumValues),
   col: z.int().min(0).max(1000),
   row: z.int().min(0).max(1000),
@@ -187,7 +186,6 @@ export const bulkUpsertCellsSchema = z.object({
   ownerId: z.string(),
   gridId: z.uuid(),
   cells: z.array(bulkCellSchema).min(1).max(365),
-  matchStrategy: z.enum(['position', 'id-only']).default('position'),
 })
 
 export type BulkUpsertCellsInput = z.infer<typeof bulkUpsertCellsSchema>
