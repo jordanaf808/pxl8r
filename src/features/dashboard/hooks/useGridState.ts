@@ -12,7 +12,6 @@ import {
 import type {
   Grid,
   Cell,
-  NewCell,
   Pixel,
   GridPixel,
   GridData,
@@ -150,7 +149,7 @@ export function useGridState(
     cellData,
   }: {
     gridId: string
-    cellData: NewCell[]
+    cellData: Cell[]
   }) {
     const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
     if (gridOwnerId !== userId) throw new Error('You do not own this grid')

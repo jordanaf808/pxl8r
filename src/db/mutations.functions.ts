@@ -140,7 +140,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
       col: cell.col,
       row: cell.row,
       value: cell.value ?? null,
-      progress: cell.progress ?? 0,
+      progress: cell.progress,
       note: cell.note ?? null,
       colorOverride: cell.colorOverride ?? null,
       completedAt: cell.completedAt ?? null,
@@ -153,16 +153,17 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
       .values(values)
       .onConflictDoUpdate({
         target: [cells.gridId, cells.col, cells.row],
+        // Callers send the whole cell, never a patch, so null means "clear this" and every field is assigned directly.
+        // COALESCE(excluded.x, x) would keep the old value instead — un-completing, un-rating, and clearing a note wouldn't persist.
+        // bulkCellSchema makes every field required so a partial cell fails validation instead of wiping columns.
         set: {
-          // COALESCE(excluded.column, table.column) means "use the new value if it's not null, otherwise keep the existing value."
-          type: sql`COALESCE(excluded.type, ${cells.type})`,
-          pixelId: sql`COALESCE(excluded.pixel_id, ${cells.pixelId})`,
-          value: sql`COALESCE(excluded.value, ${cells.value})`,
-          progress: sql`COALESCE(excluded.progress, ${cells.progress})`,
-          note: sql`COALESCE(excluded.note, ${cells.note})`,
-          colorOverride: sql`COALESCE(excluded.color_override, ${cells.colorOverride})`,
-          completedAt: sql`COALESCE(excluded.completed_at, ${cells.completedAt})`,
-          // direct assignment (no COALESCE) — disabling/pausing the timer needs to explicitly null these out
+          type: sql`excluded.type`,
+          pixelId: sql`excluded.pixel_id`,
+          value: sql`excluded.value`,
+          progress: sql`excluded.progress`,
+          note: sql`excluded.note`,
+          colorOverride: sql`excluded.color_override`,
+          completedAt: sql`excluded.completed_at`,
           timerMinutes: sql`excluded.timer_minutes`,
           timerStartedAt: sql`excluded.timer_started_at`,
           updatedAt: sql`NOW()`,
