@@ -131,6 +131,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
     const { ownerId, gridId, cells: cellUpserts } = data
 
     if (!user.id || user.id !== ownerId) throw new Error('Unauthorized')
+    await assertGridOwner(gridId, user.id)
 
     const values = cellUpserts.map((cell) => ({
       gridId,
@@ -614,6 +615,16 @@ export const deleteGridPixels = createServerFn({ method: 'POST' })
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+// A missing grid and someone else's grid throw the same error, so callers can't probe which grid ids exist.
+async function assertGridOwner(gridId: string, userId: string): Promise<void> {
+  const results = await db
+    .select({ id: grids.id })
+    .from(grids)
+    .where(and(eq(grids.id, gridId), eq(grids.ownerId, userId)))
+
+  if (results.length === 0) throw new Error('Not Grid Owner')
+}
 
 // 'add' or 'remove' groups of values from an array, or replace the entire array with a new set of values with 'set'
 function buildArrayUpdate(
