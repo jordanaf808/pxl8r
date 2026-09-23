@@ -72,7 +72,7 @@ PXL8 is a pixel-tracking web app where you create **pixels** to represent goals 
    | `DB_USER`            | Local Postgres username                                    |
    | `DB_PASSWORD`        | Local Postgres password                                    |
    | `DB_NAME`            | Local Postgres database name                               |
-   | `NEON_DATABASE_URL`  | Neon serverless connection (alternative to local)          |
+   | `NEON_DB_URL`        | Neon serverless connection (alternative to local)          |
    | `BETTER_AUTH_SECRET` | Auth signing key (generate via `pnpm auth:generate`)       |
    | `BETTER_AUTH_URL`    | Auth callback URL (e.g., `http://localhost:3000/api/auth`) |
    | `GITHUB_AUTH_ID`     | GitHub OAuth app client ID                                 |
@@ -91,7 +91,7 @@ PXL8 is a pixel-tracking web app where you create **pixels** to represent goals 
    **Option B: Neon serverless**
 
    ```bash
-   # Set DATABASE_URL and NEON_DATABASE_URL in .env
+   # Set DATABASE_URL and NEON_DB_URL in .env
    pnpm db:push
    ```
 
