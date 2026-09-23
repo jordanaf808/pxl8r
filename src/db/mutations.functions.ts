@@ -492,34 +492,49 @@ export const updateCell = createServerFn({ method: 'POST' })
   .inputValidator(updateCellSchema)
   .handler(async ({ data, context }) => {
     const { user } = context
-    const { id: cellId, ownerId, note, value, colorOverride } = data
+    const {
+      id: cellId,
+      gridId,
+      value,
+      note,
+      progress,
+      colorOverride,
+      completedAt,
+      timerMinutes,
+      timerStartedAt,
+    } = data
 
-    if (!cellId) throw new Error('missing Cell ID')
     if (!user.id) throw new Error('Not Logged In.')
-    if (user.id !== ownerId) throw new Error('Unauthorized')
 
     // null = intentionally clear
     const values = {
-      note,
       value,
+      note,
+      progress,
       colorOverride,
+      completedAt,
+      timerMinutes,
+      timerStartedAt,
       updatedAt: sql`NOW()`,
     }
 
+    // A plain UPDATE, not an upsert: if the cell was deleted after the editor loaded it, no row matches and nothing is written.
+    // An upsert would re-insert it at its old position. Empty results means the cell no longer exists.
     const results = await db
       .update(cells)
       .set(values)
       .where(
         and(
           eq(cells.id, cellId),
+          eq(cells.gridId, gridId),
           eq(cells.ownerId, user.id), // ownership check
         ),
       )
-      .returning({ id: cells.id, col: cells.col, row: cells.row })
+      .returning()
 
     return {
       success: results.length > 0,
-      processed: results.length,
+      results,
     }
   })
 
