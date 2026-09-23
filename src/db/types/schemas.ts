@@ -178,7 +178,9 @@ export const bulkCellSchema = z.object({
   type: z.enum(cellTypeEnum.enumValues),
   col: z.int().min(0).max(1000),
   row: z.int().min(0).max(1000),
-  ...updatableCellFields.shape,
+  // required(): every field must be present, null allowed. bulkUpsertCells assigns them directly, so an omitted field would wipe its column.
+  // updatedAt is omitted because the server always writes NOW().
+  ...updatableCellFields.omit({ updatedAt: true }).required().shape,
 })
 
 export const bulkUpsertCellsSchema = z.object({
