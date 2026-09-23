@@ -65,9 +65,10 @@ export const createPixel = createServerFn({ method: 'POST' })
     const { user } = context
     if (!user.id) throw new Error('Unauthorized')
 
+    // Spread first: the validator is type-only, so data can carry its own ownerId.
     const values = {
-      ownerId: user.id,
       ...data,
+      ownerId: user.id,
     }
 
     const results = await db.insert(pixels).values(values).returning()
@@ -108,11 +109,13 @@ export const createCells = createServerFn({ method: 'POST' })
 
     if (!user.id) throw new Error('Not Logged In')
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
+    await assertGridOwner(gridId, user.id)
 
+    // Spread first: the validator is type-only, so a cell object can carry its own ownerId/gridId.
     const values = cellsData.map((cell) => ({
+      ...cell,
       ownerId: user.id,
       gridId: gridId,
-      ...cell,
     }))
 
     const results = await db.insert(cells).values(values).returning()
@@ -131,6 +134,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
     const { ownerId, gridId, cells: cellUpserts } = data
 
     if (!user.id || user.id !== ownerId) throw new Error('Unauthorized')
+    await assertGridOwner(gridId, user.id)
 
     const values = cellUpserts.map((cell) => ({
       gridId,
@@ -185,10 +189,18 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
 
     if (!user.id) throw new Error('Unauthorized')
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
+    await assertGridOwner(gridId, user.id)
+
+    // Each item carries its own gridId, but only the top-level one was verified — ignore theirs.
+    const values = pixelData.map(({ pixelId, sortOrder }) => ({
+      gridId,
+      pixelId,
+      sortOrder,
+    }))
 
     const results = await db
       .insert(gridPixels)
-      .values(pixelData)
+      .values(values)
       .onConflictDoUpdate({
         target: [gridPixels.gridId, gridPixels.pixelId],
         set: {
@@ -217,6 +229,30 @@ export const bulkUpsertPageGrids = createServerFn({ method: 'POST' })
 
     const { pageId, ownerId, gridIds } = data
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
+
+    const page = await db
+      .select({ ownerId: pages.ownerId })
+      .from(pages)
+      .where(eq(pages.id, pageId))
+
+    if (!page[0] || page[0].ownerId !== user.id) {
+      throw new Error('Not Page Owner')
+    }
+
+    const requestedGridIds = new Set(gridIds.map((grid) => grid.id))
+    const ownedGrids = await db
+      .select({ id: grids.id })
+      .from(grids)
+      .where(
+        and(
+          inArray(grids.id, [...requestedGridIds]),
+          eq(grids.ownerId, user.id),
+        ),
+      )
+
+    if (ownedGrids.length !== requestedGridIds.size) {
+      throw new Error('Not Grid Owner')
+    }
 
     const values = gridIds.map((grid) => ({
       pageId: pageId,
@@ -594,6 +630,7 @@ export const deleteGridPixels = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { user } = context
     if (!user.id) throw new Error('Unauthorized')
+    await assertGridOwner(data.gridId, user.id)
 
     const result = await db
       .delete(gridPixels)
@@ -614,6 +651,16 @@ export const deleteGridPixels = createServerFn({ method: 'POST' })
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+// A missing grid and someone else's grid throw the same error, so callers can't probe which grid ids exist.
+async function assertGridOwner(gridId: string, userId: string): Promise<void> {
+  const results = await db
+    .select({ id: grids.id })
+    .from(grids)
+    .where(and(eq(grids.id, gridId), eq(grids.ownerId, userId)))
+
+  if (results.length === 0) throw new Error('Not Grid Owner')
+}
 
 // 'add' or 'remove' groups of values from an array, or replace the entire array with a new set of values with 'set'
 function buildArrayUpdate(
