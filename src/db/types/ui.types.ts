@@ -1,4 +1,4 @@
-import type { Grid, Cell, Pixel, NewCell, NewGrid, NewPixel } from './db.types'
+import type { Grid, Cell, Pixel, NewGrid, NewPixel } from './db.types'
 
 // ---- Junction / composite types ----
 
@@ -17,7 +17,7 @@ export type GridData = {
 export type NewGridData = {
   grid: NewGrid
   pixels: NewPixel[]
-  cells: NewCell[]
+  cells: Cell[]
 }
 
 export type DashboardGridDataReturn = {

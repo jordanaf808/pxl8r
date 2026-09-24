@@ -65,9 +65,10 @@ export const createPixel = createServerFn({ method: 'POST' })
     const { user } = context
     if (!user.id) throw new Error('Unauthorized')
 
+    // Spread first: the validator is type-only, so data can carry its own ownerId.
     const values = {
-      ownerId: user.id,
       ...data,
+      ownerId: user.id,
     }
 
     const results = await db.insert(pixels).values(values).returning()
@@ -108,11 +109,13 @@ export const createCells = createServerFn({ method: 'POST' })
 
     if (!user.id) throw new Error('Not Logged In')
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
+    await assertGridOwner(gridId, user.id)
 
+    // Spread first: the validator is type-only, so a cell object can carry its own ownerId/gridId.
     const values = cellsData.map((cell) => ({
+      ...cell,
       ownerId: user.id,
       gridId: gridId,
-      ...cell,
     }))
 
     const results = await db.insert(cells).values(values).returning()
@@ -131,6 +134,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
     const { ownerId, gridId, cells: cellUpserts } = data
 
     if (!user.id || user.id !== ownerId) throw new Error('Unauthorized')
+    await assertGridOwner(gridId, user.id)
 
     const values = cellUpserts.map((cell) => ({
       gridId,
@@ -140,7 +144,7 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
       col: cell.col,
       row: cell.row,
       value: cell.value ?? null,
-      progress: cell.progress ?? 0,
+      progress: cell.progress,
       note: cell.note ?? null,
       colorOverride: cell.colorOverride ?? null,
       completedAt: cell.completedAt ?? null,
@@ -153,16 +157,17 @@ export const bulkUpsertCells = createServerFn({ method: 'POST' })
       .values(values)
       .onConflictDoUpdate({
         target: [cells.gridId, cells.col, cells.row],
+        // Callers send the whole cell, never a patch, so null means "clear this" and every field is assigned directly.
+        // COALESCE(excluded.x, x) would keep the old value instead — un-completing, un-rating, and clearing a note wouldn't persist.
+        // bulkCellSchema makes every field required so a partial cell fails validation instead of wiping columns.
         set: {
-          // COALESCE(excluded.column, table.column) means "use the new value if it's not null, otherwise keep the existing value."
-          type: sql`COALESCE(excluded.type, ${cells.type})`,
-          pixelId: sql`COALESCE(excluded.pixel_id, ${cells.pixelId})`,
-          value: sql`COALESCE(excluded.value, ${cells.value})`,
-          progress: sql`COALESCE(excluded.progress, ${cells.progress})`,
-          note: sql`COALESCE(excluded.note, ${cells.note})`,
-          colorOverride: sql`COALESCE(excluded.color_override, ${cells.colorOverride})`,
-          completedAt: sql`COALESCE(excluded.completed_at, ${cells.completedAt})`,
-          // direct assignment (no COALESCE) — disabling/pausing the timer needs to explicitly null these out
+          type: sql`excluded.type`,
+          pixelId: sql`excluded.pixel_id`,
+          value: sql`excluded.value`,
+          progress: sql`excluded.progress`,
+          note: sql`excluded.note`,
+          colorOverride: sql`excluded.color_override`,
+          completedAt: sql`excluded.completed_at`,
           timerMinutes: sql`excluded.timer_minutes`,
           timerStartedAt: sql`excluded.timer_started_at`,
           updatedAt: sql`NOW()`,
@@ -185,10 +190,18 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
 
     if (!user.id) throw new Error('Unauthorized')
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
+    await assertGridOwner(gridId, user.id)
+
+    // Each item carries its own gridId, but only the top-level one was verified — ignore theirs.
+    const values = pixelData.map(({ pixelId, sortOrder }) => ({
+      gridId,
+      pixelId,
+      sortOrder,
+    }))
 
     const results = await db
       .insert(gridPixels)
-      .values(pixelData)
+      .values(values)
       .onConflictDoUpdate({
         target: [gridPixels.gridId, gridPixels.pixelId],
         set: {
@@ -217,6 +230,30 @@ export const bulkUpsertPageGrids = createServerFn({ method: 'POST' })
 
     const { pageId, ownerId, gridIds } = data
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
+
+    const page = await db
+      .select({ ownerId: pages.ownerId })
+      .from(pages)
+      .where(eq(pages.id, pageId))
+
+    if (!page[0] || page[0].ownerId !== user.id) {
+      throw new Error('Not Page Owner')
+    }
+
+    const requestedGridIds = new Set(gridIds.map((grid) => grid.id))
+    const ownedGrids = await db
+      .select({ id: grids.id })
+      .from(grids)
+      .where(
+        and(
+          inArray(grids.id, [...requestedGridIds]),
+          eq(grids.ownerId, user.id),
+        ),
+      )
+
+    if (ownedGrids.length !== requestedGridIds.size) {
+      throw new Error('Not Grid Owner')
+    }
 
     const values = gridIds.map((grid) => ({
       pageId: pageId,
@@ -455,34 +492,49 @@ export const updateCell = createServerFn({ method: 'POST' })
   .inputValidator(updateCellSchema)
   .handler(async ({ data, context }) => {
     const { user } = context
-    const { id: cellId, ownerId, note, value, colorOverride } = data
+    const {
+      id: cellId,
+      gridId,
+      value,
+      note,
+      progress,
+      colorOverride,
+      completedAt,
+      timerMinutes,
+      timerStartedAt,
+    } = data
 
-    if (!cellId) throw new Error('missing Cell ID')
     if (!user.id) throw new Error('Not Logged In.')
-    if (user.id !== ownerId) throw new Error('Unauthorized')
 
     // null = intentionally clear
     const values = {
-      note,
       value,
+      note,
+      progress,
       colorOverride,
+      completedAt,
+      timerMinutes,
+      timerStartedAt,
       updatedAt: sql`NOW()`,
     }
 
+    // A plain UPDATE, not an upsert: if the cell was deleted after the editor loaded it, no row matches and nothing is written.
+    // An upsert would re-insert it at its old position. Empty results means the cell no longer exists.
     const results = await db
       .update(cells)
       .set(values)
       .where(
         and(
           eq(cells.id, cellId),
+          eq(cells.gridId, gridId),
           eq(cells.ownerId, user.id), // ownership check
         ),
       )
-      .returning({ id: cells.id, col: cells.col, row: cells.row })
+      .returning()
 
     return {
       success: results.length > 0,
-      processed: results.length,
+      results,
     }
   })
 
@@ -594,6 +646,7 @@ export const deleteGridPixels = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { user } = context
     if (!user.id) throw new Error('Unauthorized')
+    await assertGridOwner(data.gridId, user.id)
 
     const result = await db
       .delete(gridPixels)
@@ -614,6 +667,16 @@ export const deleteGridPixels = createServerFn({ method: 'POST' })
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+// A missing grid and someone else's grid throw the same error, so callers can't probe which grid ids exist.
+async function assertGridOwner(gridId: string, userId: string): Promise<void> {
+  const results = await db
+    .select({ id: grids.id })
+    .from(grids)
+    .where(and(eq(grids.id, gridId), eq(grids.ownerId, userId)))
+
+  if (results.length === 0) throw new Error('Not Grid Owner')
+}
 
 // 'add' or 'remove' groups of values from an array, or replace the entire array with a new set of values with 'set'
 function buildArrayUpdate(

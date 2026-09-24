@@ -3,7 +3,7 @@ import { neon } from '@neondatabase/serverless'
 import { drizzle as neonDrizzle } from 'drizzle-orm/neon-http'
 import * as schema from './schema.ts'
 
-const sql = neon(process.env.NEON_DATABASE_URL!)
+const sql = neon(process.env.NEON_DB_URL!)
 export const db = neonDrizzle({ client: sql, schema: schema })
 
 // export const db = drizzle(process.env.DATABASE_URL!, {

@@ -164,28 +164,28 @@ export const updatableCellFields = z.object({
 
 export type UpdateCellType = z.infer<typeof updatableCellFields>
 
+// Whole-cell edit for one existing cell: every editable field must be present, null allowed, because updateCell writes them all.
+// Not editable here: pixelId (the row decides it), col/row (only compaction moves a cell), type (no UI changes it).
 export const updateCellSchema = z.object({
   id: z.uuid(),
-  ownerId: z.string(),
-  type: z.enum(cellTypeEnum.enumValues),
-  col: z.int().min(0).max(1000),
-  row: z.int().min(0).max(1000),
-  ...updatableCellFields.shape,
+  gridId: z.uuid(),
+  ...updatableCellFields.omit({ pixelId: true, updatedAt: true }).required()
+    .shape,
 })
 
 export const bulkCellSchema = z.object({
-  id: z.uuid().optional(),
   type: z.enum(cellTypeEnum.enumValues),
   col: z.int().min(0).max(1000),
   row: z.int().min(0).max(1000),
-  ...updatableCellFields.shape,
+  // required(): every field must be present, null allowed. bulkUpsertCells assigns them directly, so an omitted field would wipe its column.
+  // updatedAt is omitted because the server always writes NOW().
+  ...updatableCellFields.omit({ updatedAt: true }).required().shape,
 })
 
 export const bulkUpsertCellsSchema = z.object({
   ownerId: z.string(),
   gridId: z.uuid(),
   cells: z.array(bulkCellSchema).min(1).max(365),
-  matchStrategy: z.enum(['position', 'id-only']).default('position'),
 })
 
 export type BulkUpsertCellsInput = z.infer<typeof bulkUpsertCellsSchema>
