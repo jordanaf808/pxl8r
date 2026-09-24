@@ -192,6 +192,9 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
     await assertGridOwner(gridId, user.id)
 
+    // Drizzle throws on an empty insert. Nothing to link is still a successful save, e.g. a grid with no pixels.
+    if (pixelData.length === 0) return { success: true, results: [] }
+
     await assertPixelOwner(
       pixelData.map(({ pixelId }) => pixelId),
       user.id,
