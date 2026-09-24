@@ -192,6 +192,11 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
     if (ownerId !== user.id) throw new Error('Not Grid Owner')
     await assertGridOwner(gridId, user.id)
 
+    await assertPixelOwner(
+      pixelData.map(({ pixelId }) => pixelId),
+      user.id,
+    )
+
     // Each item carries its own gridId, but only the top-level one was verified — ignore theirs.
     const values = pixelData.map(({ pixelId, sortOrder }) => ({
       gridId,
@@ -676,6 +681,21 @@ async function assertGridOwner(gridId: string, userId: string): Promise<void> {
     .where(and(eq(grids.id, gridId), eq(grids.ownerId, userId)))
 
   if (results.length === 0) throw new Error('Not Grid Owner')
+}
+
+async function assertPixelOwner(
+  pixelIds: string[],
+  userId: string,
+): Promise<void> {
+  // A repeated id would be counted twice here but found once.
+  const uniquePixelIds = [...new Set(pixelIds)]
+  const results = await db
+    .select({ id: pixels.id })
+    .from(pixels)
+    .where(and(inArray(pixels.id, uniquePixelIds), eq(pixels.ownerId, userId)))
+
+  if (results.length !== uniquePixelIds.length)
+    throw new Error('Not Pixel Owner')
 }
 
 // 'add' or 'remove' groups of values from an array, or replace the entire array with a new set of values with 'set'
