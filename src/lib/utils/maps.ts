@@ -32,6 +32,25 @@ export function buildGridsByPixelIdMap(
   return result
 }
 
+// Keys cells as `${col}-${row}` for the old GridCard / CreateGridModal canvas.
+// row = the pixel's index in rowPixels; col = the cell's rank among that pixel's cells.
+// Expects cells sorted by (position, createdAt, id), the order getDashboardGridData returns.
+export function keyCellsByPixelRow(
+  cells: Cell[],
+  rowPixels: Pixel[],
+): Map<string, Cell> {
+  const map = new Map<string, Cell>()
+  const nextColByPixelId = new Map<string, number>()
+  cells.forEach((cell) => {
+    const row = rowPixels.findIndex((p) => p.id === cell.pixelId)
+    if (row === -1) return
+    const col = nextColByPixelId.get(cell.pixelId) ?? 0
+    nextColByPixelId.set(cell.pixelId, col + 1)
+    map.set(`${col}-${row}`, cell)
+  })
+  return map
+}
+
 export function flattenCellsByGridId(
   cellsByGridId: Map<string, Cell[]>,
 ): Cell[] {

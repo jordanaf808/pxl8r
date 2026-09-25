@@ -12,7 +12,6 @@ import {
   pageGrids,
 } from './schema'
 import {
-  bulkUpsertCellsSchema,
   updateCellSchema,
   updateGridSchema,
   updatePageGridSchema,
@@ -25,8 +24,7 @@ import type { SQL } from 'drizzle-orm'
 import type {
   NewPage,
   NewGrid,
-  NewPixel,
-  CreateCellsInput,
+  CreatePixelInput,
   bulkGridPixelsInput,
 } from '@/db/types'
 
@@ -60,7 +58,7 @@ export const createPage = createServerFn({ method: 'POST' })
 
 export const createPixel = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator((data: NewPixel) => data)
+  .inputValidator((data: CreatePixelInput) => data)
   .handler(async ({ data, context }) => {
     const { user } = context
     if (!user.id) throw new Error('Unauthorized')
@@ -100,87 +98,6 @@ export const createGrid = createServerFn({ method: 'POST' })
     }
   })
 
-export const createCells = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .inputValidator((data: CreateCellsInput) => data)
-  .handler(async ({ data, context }) => {
-    const { user } = context
-    const { ownerId, gridId, cells: cellsData } = data
-
-    if (!user.id) throw new Error('Not Logged In')
-    if (ownerId !== user.id) throw new Error('Not Grid Owner')
-    await assertGridOwner(gridId, user.id)
-
-    // Spread first: the validator is type-only, so a cell object can carry its own ownerId/gridId.
-    const values = cellsData.map((cell) => ({
-      ...cell,
-      ownerId: user.id,
-      gridId: gridId,
-    }))
-
-    const results = await db.insert(cells).values(values).returning()
-
-    return {
-      success: results.length > 0,
-      results,
-    }
-  })
-
-export const bulkUpsertCells = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .inputValidator(bulkUpsertCellsSchema)
-  .handler(async ({ data, context }) => {
-    const { user } = context
-    const { ownerId, gridId, cells: cellUpserts } = data
-
-    if (!user.id || user.id !== ownerId) throw new Error('Unauthorized')
-    await assertGridOwner(gridId, user.id)
-
-    const values = cellUpserts.map((cell) => ({
-      gridId,
-      ownerId: user.id, // not needed in onConflictDoUpdate(), because we don't change that value
-      pixelId: cell.pixelId ?? null,
-      type: cell.type,
-      col: cell.col,
-      row: cell.row,
-      value: cell.value ?? null,
-      progress: cell.progress,
-      note: cell.note ?? null,
-      colorOverride: cell.colorOverride ?? null,
-      completedAt: cell.completedAt ?? null,
-      timerMinutes: cell.timerMinutes ?? null,
-      timerStartedAt: cell.timerStartedAt ?? null,
-    }))
-
-    const results = await db
-      .insert(cells)
-      .values(values)
-      .onConflictDoUpdate({
-        target: [cells.gridId, cells.col, cells.row],
-        // Callers send the whole cell, never a patch, so null means "clear this" and every field is assigned directly.
-        // COALESCE(excluded.x, x) would keep the old value instead — un-completing, un-rating, and clearing a note wouldn't persist.
-        // bulkCellSchema makes every field required so a partial cell fails validation instead of wiping columns.
-        set: {
-          type: sql`excluded.type`,
-          pixelId: sql`excluded.pixel_id`,
-          value: sql`excluded.value`,
-          progress: sql`excluded.progress`,
-          note: sql`excluded.note`,
-          colorOverride: sql`excluded.color_override`,
-          completedAt: sql`excluded.completed_at`,
-          timerMinutes: sql`excluded.timer_minutes`,
-          timerStartedAt: sql`excluded.timer_started_at`,
-          updatedAt: sql`NOW()`,
-        },
-      })
-      .returning()
-
-    return {
-      success: results.length > 0,
-      results,
-    }
-  })
-
 export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: bulkGridPixelsInput) => data)
@@ -200,11 +117,23 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
       user.id,
     )
 
+    // Read the max once: a subquery inside a multi-row insert would give every new row the same position.
+    const [{ maxPosition }] = await db
+      .select({
+        maxPosition: sql`COALESCE(MAX(${gridPixels.position}), -1)`.mapWith(
+          Number,
+        ),
+      })
+      .from(gridPixels)
+      .where(eq(gridPixels.gridId, gridId))
+
     // Each item carries its own gridId, but only the top-level one was verified — ignore theirs.
-    const values = pixelData.map(({ pixelId, sortOrder }) => ({
+    // position only applies to new rows: the conflict update below never touches it, so re-sent rows keep their order.
+    const values = pixelData.map(({ pixelId, sortOrder }, i) => ({
       gridId,
       pixelId,
       sortOrder,
+      position: maxPosition + 1 + i,
     }))
 
     const results = await db
@@ -221,6 +150,7 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
         gridId: gridPixels.gridId,
         pixelId: gridPixels.pixelId,
         sortOrder: gridPixels.sortOrder,
+        position: gridPixels.position,
       })
 
     return {
