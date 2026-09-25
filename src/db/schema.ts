@@ -10,9 +10,9 @@ import {
   jsonb,
   pgEnum,
   primaryKey,
+  foreignKey,
   index,
   uuid,
-  uniqueIndex,
   check,
   smallint,
   pgTableCreator,
@@ -215,9 +215,9 @@ export const pixels = pgTable(
   'pixels',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    ownerId: text('owner_id').references(() => users.id, {
-      onDelete: 'cascade',
-    }),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description'),
     type: pixelTypeEnum('type').notNull(), // more like a Category than type
@@ -334,6 +334,8 @@ export const gridPixels = pgTable(
       .notNull()
       .references(() => pixels.id, { onDelete: 'cascade' }),
     sortOrder: text('sort_order').notNull().default('alphabetic'), // display order in the legend
+    // Row order within the grid. A sort key: not unique, gaps allowed
+    position: smallint('position').notNull().default(0),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.gridId, t.pixelId] }),
@@ -349,20 +351,19 @@ export const cells = pgTable(
   'cells',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    ownerId: text('owner_id').references(() => users.id, {
-      onDelete: 'cascade',
-    }),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
     gridId: uuid('grid_id')
       .notNull()
       .references(() => grids.id, { onDelete: 'cascade' }),
-    pixelId: uuid('pixel_id').references(() => pixels.id, {
-      onDelete: 'set null',
-    }),
+    pixelId: uuid('pixel_id')
+      .notNull()
+      .references(() => pixels.id, { onDelete: 'cascade' }),
     type: cellTypeEnum('type').notNull(),
 
-    // Grid position — col/row index (0-based)
-    col: smallint('col').notNull(),
-    row: smallint('row').notNull(),
+    // Where the cell sorts within its row (the row is its pixel). A sort key: not unique, gaps allowed
+    position: smallint('position').notNull(),
 
     // Optional metadata per cell
     value: integer('value'), // numeric value if tracking amounts
@@ -387,8 +388,11 @@ export const cells = pgTable(
     gridIdx: index('cells_grid_idx').on(t.gridId),
     // Fast lookup of all cells owned by a user (e.g. getDashboardGridData)
     ownerIdx: index('cells_owner_idx').on(t.ownerId),
-    // Unique constraint: only one cell per grid position per grid
-    positionIdx: uniqueIndex('cells_position_idx').on(t.gridId, t.col, t.row),
+    // A cell's pixel must be linked to its grid. Unlinking the pixel deletes its cells
+    gridPixelFk: foreignKey({
+      columns: [t.gridId, t.pixelId],
+      foreignColumns: [gridPixels.gridId, gridPixels.pixelId],
+    }).onDelete('cascade'),
     // Add check constraint for 0-100 range
     progressRange: check(
       'progress_range',

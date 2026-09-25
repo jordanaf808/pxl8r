@@ -60,12 +60,7 @@ export function useGridState(
     if (gridOwnerId !== userId) throw new Error('You do not own this grid')
     const existingGridPixels = pixelsByGridId.get(gridId)
 
-    const newGridPixelsState: GridPixel[] = []
-    const newGridPixelsDB: {
-      gridId: string
-      pixelId: string
-      sortOrder: string
-    }[] = []
+    const newPixels: Pixel[] = []
 
     pixelIds.forEach((pixelId) => {
       const foundPixel = pixels.find(
@@ -80,31 +75,38 @@ export function useGridState(
       )
       if (foundGridPixel) return
 
-      newGridPixelsState.push({
-        gridId,
-        pixel: foundPixel,
-        sortOrder: 'manual',
-      })
-      newGridPixelsDB.push({
-        gridId,
-        pixelId: foundPixel.id,
-        sortOrder: 'manual',
-      })
+      newPixels.push(foundPixel)
     })
+
+    const results = await bulkUpsertGridPixels({
+      data: {
+        ownerId: userId,
+        gridId,
+        pixelData: newPixels.map((p) => ({
+          gridId,
+          pixelId: p.id,
+          sortOrder: 'manual',
+        })),
+      },
+    })
+
+    // The server assigns position, so state updates after the save instead of before it.
+    const newGridPixelsState: GridPixel[] = results.results.map((gp) => ({
+      gridId: gp.gridId,
+      sortOrder: gp.sortOrder,
+      position: gp.position,
+      pixel: newPixels.find((p) => p.id === gp.pixelId)!,
+    }))
 
     setPixelsByGridId((oldPixelsByGridId) => {
       const newPixelsByGridId = new Map(oldPixelsByGridId)
       if (newGridPixelsState.length > 0) {
         newPixelsByGridId.set(gridId, [
-          ...(existingGridPixels ?? []),
+          ...(oldPixelsByGridId.get(gridId) ?? []),
           ...newGridPixelsState,
         ])
       }
       return newPixelsByGridId
-    })
-
-    const results = await bulkUpsertGridPixels({
-      data: { ownerId: userId, gridId, pixelData: newGridPixelsDB },
     })
 
     return results
@@ -159,11 +161,18 @@ export function useGridState(
 
     setPixelsByGridId((prev) => {
       const newMap = new Map(prev)
-      const newGridPixels = updatedGridPixels.results.map((gp) => ({
-        gridId: gp.gridId,
-        sortOrder: gp.sortOrder,
-        pixel: gridData.pixels.find((p) => p.id === gp.pixelId)!,
-      }))
+      // The server returns rows in the order they were sent (pixel library order), so sort them like getDashboardGridData does.
+      const newGridPixels = updatedGridPixels.results
+        .map((gp) => ({
+          gridId: gp.gridId,
+          sortOrder: gp.sortOrder,
+          position: gp.position,
+          pixel: gridData.pixels.find((p) => p.id === gp.pixelId)!,
+        }))
+        .sort(
+          (a, b) =>
+            a.position - b.position || (a.pixel.id < b.pixel.id ? -1 : 1),
+        )
       newMap.set(gridId, newGridPixels)
       return newMap
     })

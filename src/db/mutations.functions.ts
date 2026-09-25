@@ -24,7 +24,7 @@ import type { SQL } from 'drizzle-orm'
 import type {
   NewPage,
   NewGrid,
-  NewPixel,
+  CreatePixelInput,
   bulkGridPixelsInput,
 } from '@/db/types'
 
@@ -58,7 +58,7 @@ export const createPage = createServerFn({ method: 'POST' })
 
 export const createPixel = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator((data: NewPixel) => data)
+  .inputValidator((data: CreatePixelInput) => data)
   .handler(async ({ data, context }) => {
     const { user } = context
     if (!user.id) throw new Error('Unauthorized')
@@ -117,11 +117,23 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
       user.id,
     )
 
+    // Read the max once: a subquery inside a multi-row insert would give every new row the same position.
+    const [{ maxPosition }] = await db
+      .select({
+        maxPosition: sql`COALESCE(MAX(${gridPixels.position}), -1)`.mapWith(
+          Number,
+        ),
+      })
+      .from(gridPixels)
+      .where(eq(gridPixels.gridId, gridId))
+
     // Each item carries its own gridId, but only the top-level one was verified — ignore theirs.
-    const values = pixelData.map(({ pixelId, sortOrder }) => ({
+    // position only applies to new rows: the conflict update below never touches it, so re-sent rows keep their order.
+    const values = pixelData.map(({ pixelId, sortOrder }, i) => ({
       gridId,
       pixelId,
       sortOrder,
+      position: maxPosition + 1 + i,
     }))
 
     const results = await db
@@ -138,6 +150,7 @@ export const bulkUpsertGridPixels = createServerFn({ method: 'POST' })
         gridId: gridPixels.gridId,
         pixelId: gridPixels.pixelId,
         sortOrder: gridPixels.sortOrder,
+        position: gridPixels.position,
       })
 
     return {

@@ -3,6 +3,7 @@ import { X, Check, Star, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } fro
 import type { Pixel, PixelColor, GridData, Cell, NewGridData } from '@/db/types'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 import { useSession } from '@/lib/auth/auth-client'
+import { keyCellsByPixelRow } from '@/lib/utils/maps'
 import { PixelGrid } from '../PixelGrid'
 import { CountdownTimer } from '../CountdownTimer'
 
@@ -53,11 +54,7 @@ export function CreateGridModal({
   const [columns, setColumns] = useState(gridData?.grid.columns ?? 7)
   const [rows, setRows] = useState(gridData?.grid.rows ?? 4)
   const [cells, setCells] = useState<Map<string, Cell>>(
-    new Map(
-      gridData?.cells
-        .filter((c) => c.pixelId)
-        .map((c) => [`${c.col}-${c.row}`, c]) ?? [],
-    ),
+    keyCellsByPixelRow(gridData?.cells ?? [], gridData?.pixels ?? []),
   )
   const [selectedCell, setSelectedCell] = useState<{
     col: number
@@ -93,13 +90,12 @@ export function CreateGridModal({
           updatedAt: new Date(),
         })
       } else if (cellData && isAssigned) {
-        newCellsMap.set(key, { ...cellData, pixelId: null })
+        newCellsMap.delete(key)
       } else {
         newCellsMap.set(key, {
           id: crypto.randomUUID(),
           pixelId,
-          col,
-          row,
+          position: col,
           gridId,
           type: 'boolean',
           createdAt: new Date(),

@@ -5,6 +5,7 @@ import type { Grid, Cell, Pixel, NewGrid, NewPixel } from './db.types'
 export type GridPixel = {
   gridId: string
   sortOrder: string
+  position: number
   pixel: Pixel
 }
 

@@ -140,7 +140,7 @@ export const updatableCellFields = z.object({
 export type UpdateCellType = z.infer<typeof updatableCellFields>
 
 // Whole-cell edit for one existing cell: every editable field must be present, null allowed, because updateCell writes them all.
-// Not editable here: pixelId (the row decides it), col/row (only compaction moves a cell), type (no UI changes it).
+// Not editable here: pixelId (the row decides it), position (the server assigns it), type (no UI changes it).
 export const updateCellSchema = z.object({
   id: z.uuid(),
   gridId: z.uuid(),
