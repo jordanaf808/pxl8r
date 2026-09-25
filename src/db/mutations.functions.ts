@@ -26,7 +26,6 @@ import type {
   NewPage,
   NewGrid,
   NewPixel,
-  CreateCellsInput,
   bulkGridPixelsInput,
 } from '@/db/types'
 
@@ -93,32 +92,6 @@ export const createGrid = createServerFn({ method: 'POST' })
         ownerId: user.id,
       })
       .returning()
-
-    return {
-      success: results.length > 0,
-      results,
-    }
-  })
-
-export const createCells = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .inputValidator((data: CreateCellsInput) => data)
-  .handler(async ({ data, context }) => {
-    const { user } = context
-    const { ownerId, gridId, cells: cellsData } = data
-
-    if (!user.id) throw new Error('Not Logged In')
-    if (ownerId !== user.id) throw new Error('Not Grid Owner')
-    await assertGridOwner(gridId, user.id)
-
-    // Spread first: the validator is type-only, so a cell object can carry its own ownerId/gridId.
-    const values = cellsData.map((cell) => ({
-      ...cell,
-      ownerId: user.id,
-      gridId: gridId,
-    }))
-
-    const results = await db.insert(cells).values(values).returning()
 
     return {
       success: results.length > 0,

@@ -298,73 +298,6 @@ export function useGridState(
     return deleteCellsResponse
   }
 
-  async function toggleCellComplete(gridId: string, cellId: string) {
-    const oldCellsByGridId = new Map(cellsByGridId)
-    const gridCells = oldCellsByGridId.get(gridId)
-    const cellToUpdate = gridCells?.find((c) => c.id === cellId)
-    if (!gridCells || !cellToUpdate) throw new Error('Grid or Cell not found')
-
-    const completed = !!cellToUpdate.completedAt
-    const updatedCell: Cell = {
-      ...cellToUpdate,
-      completedAt: completed ? null : new Date(),
-      progress: !completed ? 100 : cellToUpdate.progress,
-    }
-    const updatedCells = gridCells.map((c) =>
-      c.id === cellId ? updatedCell : c,
-    )
-
-    setCellsByGridId((prev) => {
-      const newCellsByGridId = new Map(prev)
-      newCellsByGridId.set(gridId, updatedCells)
-      return newCellsByGridId
-    })
-
-    const response = await bulkUpsertCells({
-      data: { ownerId: userId, gridId, cells: [updatedCell] },
-    })
-
-    if (response.success !== true) {
-      setCellsByGridId(() => oldCellsByGridId)
-    }
-
-    return response
-  }
-
-  async function updateCellProgress(
-    gridId: string,
-    cellId: string,
-    progress: number,
-  ) {
-    let updatedCell: Cell | undefined
-    const newCellsByGridId = new Map(cellsByGridId)
-    const cells = newCellsByGridId.get(gridId)
-    const updatedCells = cells?.map((c) => {
-      if (c.id !== cellId) return c
-      updatedCell = {
-        ...c,
-        progress,
-        completedAt: progress === 100 ? new Date() : null,
-      }
-      return updatedCell
-    })
-    if (!updatedCells || !updatedCell) throw new Error('Cell not found')
-    newCellsByGridId.set(gridId, updatedCells)
-
-    const oldCellsByGridId = new Map(cellsByGridId)
-    setCellsByGridId(() => newCellsByGridId)
-
-    const response = await bulkUpsertCells({
-      data: { ownerId: userId, gridId, cells: [updatedCell] },
-    })
-
-    if (response.success !== true) {
-      setCellsByGridId(() => oldCellsByGridId)
-    }
-
-    return response
-  }
-
   return {
     grids,
     cellsByGridId,
@@ -379,7 +312,5 @@ export function useGridState(
     removeGridPixels,
     upsertGridCells,
     removeGridCells,
-    toggleCellComplete,
-    updateCellProgress,
   }
 }

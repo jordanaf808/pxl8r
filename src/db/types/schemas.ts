@@ -10,30 +10,6 @@ import z from 'zod'
 
 // ---- Create schemas ----
 
-export const createCellSchema = z.object({
-  pixelId: z.uuid(),
-  col: z.int().min(0).max(1000),
-  row: z.int().min(0).max(1000),
-  type: z.enum(cellTypeEnum.enumValues),
-  value: z.number(),
-  note: z.string().max(500).optional(),
-  colorOverride: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
-    .optional(),
-  updatedAt: z.nullish(z.coerce.date()),
-  completedAt: z.nullish(z.coerce.date()),
-})
-
-export const createManyCellsSchema = z.object({
-  ownerId: z.string(),
-  gridId: z.uuid(),
-  cells: z.array(createCellSchema).min(1).max(365),
-})
-
-export type CreateCellInput = z.infer<typeof createCellSchema>
-export type CreateCellsInput = z.infer<typeof createManyCellsSchema>
-
 export const gridPixelSchema = z.object({
   gridId: z.uuid(),
   pixelId: z.uuid(),
