@@ -64,20 +64,21 @@ export const getDashboardGridData = createServerFn()
         .select()
         .from(cells)
         .where(eq(cells.ownerId, user.id))
-        .orderBy(cells.row, cells.col),
+        .orderBy(cells.position, cells.createdAt, cells.id),
 
       // All gridPixel entries with their pixel data, for all the user's grids
       db
         .select({
           gridId: gridPixels.gridId,
           sortOrder: gridPixels.sortOrder,
+          position: gridPixels.position,
           pixel: pixels,
         })
         .from(gridPixels)
         .innerJoin(pixels, eq(gridPixels.pixelId, pixels.id))
         .innerJoin(grids, eq(gridPixels.gridId, grids.id))
         .where(eq(grids.ownerId, user.id))
-        .orderBy(gridPixels.sortOrder),
+        .orderBy(gridPixels.position, gridPixels.pixelId),
 
       // Pixels NOT in any grid
       db

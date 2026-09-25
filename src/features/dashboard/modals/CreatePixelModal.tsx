@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import type {
   PixelUnitType,
   PixelTypeType,
-  NewPixel,
+  CreatePixelInput,
   Pixel,
   PixelColor,
   UpdatePixelType,
@@ -48,7 +48,7 @@ const UNIT_SLIDER_STEP: Partial<Record<PixelUnitType, number>> = {
 interface CreatePixelModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (pixel: NewPixel) => void
+  onSubmit: (pixel: CreatePixelInput) => void
   pixelToEdit?: Pixel
   onUpdate?: (pixel: UpdatePixelType) => void
 }

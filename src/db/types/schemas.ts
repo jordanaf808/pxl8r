@@ -1,5 +1,4 @@
 import {
-  cellTypeEnum,
   pixelTypeEnum,
   ColorTypeEnum,
   scaleTypeEnum,
@@ -9,30 +8,6 @@ import {
 import z from 'zod'
 
 // ---- Create schemas ----
-
-export const createCellSchema = z.object({
-  pixelId: z.uuid(),
-  col: z.int().min(0).max(1000),
-  row: z.int().min(0).max(1000),
-  type: z.enum(cellTypeEnum.enumValues),
-  value: z.number(),
-  note: z.string().max(500).optional(),
-  colorOverride: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
-    .optional(),
-  updatedAt: z.nullish(z.coerce.date()),
-  completedAt: z.nullish(z.coerce.date()),
-})
-
-export const createManyCellsSchema = z.object({
-  ownerId: z.string(),
-  gridId: z.uuid(),
-  cells: z.array(createCellSchema).min(1).max(365),
-})
-
-export type CreateCellInput = z.infer<typeof createCellSchema>
-export type CreateCellsInput = z.infer<typeof createManyCellsSchema>
 
 export const gridPixelSchema = z.object({
   gridId: z.uuid(),
@@ -165,28 +140,10 @@ export const updatableCellFields = z.object({
 export type UpdateCellType = z.infer<typeof updatableCellFields>
 
 // Whole-cell edit for one existing cell: every editable field must be present, null allowed, because updateCell writes them all.
-// Not editable here: pixelId (the row decides it), col/row (only compaction moves a cell), type (no UI changes it).
+// Not editable here: pixelId (the row decides it), position (the server assigns it), type (no UI changes it).
 export const updateCellSchema = z.object({
   id: z.uuid(),
   gridId: z.uuid(),
   ...updatableCellFields.omit({ pixelId: true, updatedAt: true }).required()
     .shape,
 })
-
-export const bulkCellSchema = z.object({
-  type: z.enum(cellTypeEnum.enumValues),
-  col: z.int().min(0).max(1000),
-  row: z.int().min(0).max(1000),
-  // required(): every field must be present, null allowed. bulkUpsertCells assigns them directly, so an omitted field would wipe its column.
-  // updatedAt is omitted because the server always writes NOW().
-  ...updatableCellFields.omit({ updatedAt: true }).required().shape,
-})
-
-export const bulkUpsertCellsSchema = z.object({
-  ownerId: z.string(),
-  gridId: z.uuid(),
-  cells: z.array(bulkCellSchema).min(1).max(365),
-})
-
-export type BulkUpsertCellsInput = z.infer<typeof bulkUpsertCellsSchema>
-export type CellUpdateInput = z.infer<typeof bulkCellSchema>

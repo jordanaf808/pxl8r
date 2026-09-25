@@ -4,7 +4,6 @@ import {
   createGrid as createGridServerFn,
   updateGrid as updateGridServerFn,
   deleteGridById as deleteGridByIdServerFn,
-  bulkUpsertCells as bulkUpsertCellsServerFn,
   bulkUpsertGridPixels as bulkUpsertGridPixelsServerFn,
   deleteGridPixels as deleteGridPixelsServerFn,
   deleteManyCellsById as deleteManyCellsByIdServerFn,
@@ -30,7 +29,6 @@ export function useGridState(
   const createGrid = useServerFn(createGridServerFn)
   const updateGrid = useServerFn(updateGridServerFn)
   const deleteGrid = useServerFn(deleteGridByIdServerFn)
-  const bulkUpsertCells = useServerFn(bulkUpsertCellsServerFn)
   const bulkUpsertGridPixels = useServerFn(bulkUpsertGridPixelsServerFn)
   const deleteGridPixels = useServerFn(deleteGridPixelsServerFn)
   const deleteManyCellsById = useServerFn(deleteManyCellsByIdServerFn)
@@ -62,12 +60,7 @@ export function useGridState(
     if (gridOwnerId !== userId) throw new Error('You do not own this grid')
     const existingGridPixels = pixelsByGridId.get(gridId)
 
-    const newGridPixelsState: GridPixel[] = []
-    const newGridPixelsDB: {
-      gridId: string
-      pixelId: string
-      sortOrder: string
-    }[] = []
+    const newPixels: Pixel[] = []
 
     pixelIds.forEach((pixelId) => {
       const foundPixel = pixels.find(
@@ -82,94 +75,61 @@ export function useGridState(
       )
       if (foundGridPixel) return
 
-      newGridPixelsState.push({
-        gridId,
-        pixel: foundPixel,
-        sortOrder: 'manual',
-      })
-      newGridPixelsDB.push({
-        gridId,
-        pixelId: foundPixel.id,
-        sortOrder: 'manual',
-      })
+      newPixels.push(foundPixel)
     })
+
+    const results = await bulkUpsertGridPixels({
+      data: {
+        ownerId: userId,
+        gridId,
+        pixelData: newPixels.map((p) => ({
+          gridId,
+          pixelId: p.id,
+          sortOrder: 'manual',
+        })),
+      },
+    })
+
+    // The server assigns position, so state updates after the save instead of before it.
+    const newGridPixelsState: GridPixel[] = results.results.map((gp) => ({
+      gridId: gp.gridId,
+      sortOrder: gp.sortOrder,
+      position: gp.position,
+      pixel: newPixels.find((p) => p.id === gp.pixelId)!,
+    }))
 
     setPixelsByGridId((oldPixelsByGridId) => {
       const newPixelsByGridId = new Map(oldPixelsByGridId)
       if (newGridPixelsState.length > 0) {
         newPixelsByGridId.set(gridId, [
-          ...(existingGridPixels ?? []),
+          ...(oldPixelsByGridId.get(gridId) ?? []),
           ...newGridPixelsState,
         ])
       }
       return newPixelsByGridId
     })
 
-    const results = await bulkUpsertGridPixels({
-      data: { ownerId: userId, gridId, pixelData: newGridPixelsDB },
-    })
-
     return results
   }
 
   async function createGridHandler(gridData: NewGridData) {
-    const { grid: newGrid, cells: cellsData, pixels: pixelsData } = gridData
+    // New grids start empty: the modal's cell matrix no longer saves.
+    const { grid: newGrid, pixels: pixelsData } = gridData
 
     const createdGrid = await createGrid({ data: newGrid })
     if (createdGrid.success !== true)
       throw new Error('Error creating Grid: ', { cause: createdGrid.results })
     setGrids((prev) => [...createdGrid.results, ...prev])
 
-    const [createdCells, createdGridPixels] = await Promise.all([
-      bulkUpsertCells({
-        data: {
-          ownerId: userId,
-          gridId: createdGrid.results[0].id,
-          cells: cellsData,
-        },
-      }),
-      addGridPixels({
-        gridId: createdGrid.results[0].id,
-        pixelIds: pixelsData.map((p) => p.id).filter(Boolean) as string[],
-      }),
-    ])
+    const createdGridPixels = await addGridPixels({
+      gridId: createdGrid.results[0].id,
+      pixelIds: pixelsData.map((p) => p.id).filter(Boolean) as string[],
+    })
 
-    if (createdCells.success !== true)
-      throw new Error('Error creating Cells for Grid', {
-        cause: createdCells.results,
-      })
     if (createdGridPixels.success !== true)
       throw new Error('Error creating GridPixels for Grid', {
         cause: createdGridPixels.results,
       })
-  }
-
-  async function upsertGridCells({
-    gridId,
-    cellData,
-  }: {
-    gridId: string
-    cellData: Cell[]
-  }) {
-    const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
-    if (gridOwnerId !== userId) throw new Error('You do not own this grid')
-
-    const upsertCellsResponse = await bulkUpsertCells({
-      data: { ownerId: gridOwnerId, gridId, cells: cellData },
-    })
-
-    if (upsertCellsResponse.success !== true)
-      throw new Error('Error upserting cells: ', {
-        cause: upsertCellsResponse.results,
-      })
-
-    setCellsByGridId((oldCellsByGridId) => {
-      const newCellsByGridMap = new Map(oldCellsByGridId)
-      newCellsByGridMap.set(gridId, upsertCellsResponse.results)
-      return newCellsByGridMap
-    })
-
-    return upsertCellsResponse
   }
 
   async function updateGridHandler(gridData: GridData) {
@@ -181,21 +141,16 @@ export function useGridState(
       sortOrder: 'alphabetic',
     }))
 
-    const [updatedGrid, updatedGridCells, updatedGridPixels] =
-      await Promise.all([
-        updateGrid({ data: gridData.grid }),
-        upsertGridCells({ gridId, cellData: gridData.cells }),
-        bulkUpsertGridPixels({
-          data: { ownerId: gridData.grid.ownerId, gridId, pixelData },
-        }),
-      ])
+    // The modal's cell matrix no longer saves.
+    const [updatedGrid, updatedGridPixels] = await Promise.all([
+      updateGrid({ data: gridData.grid }),
+      bulkUpsertGridPixels({
+        data: { ownerId: gridData.grid.ownerId, gridId, pixelData },
+      }),
+    ])
 
     if (updatedGrid.success !== true)
       throw new Error('Error updating grid', { cause: updatedGrid.results })
-    if (updatedGridCells.success !== true)
-      throw new Error('Error updating grid cells', {
-        cause: updatedGridCells.results,
-      })
     if (updatedGridPixels.success !== true)
       throw new Error('Error updating grid pixels', {
         cause: updatedGridPixels.results,
@@ -206,11 +161,18 @@ export function useGridState(
 
     setPixelsByGridId((prev) => {
       const newMap = new Map(prev)
-      const newGridPixels = updatedGridPixels.results.map((gp) => ({
-        gridId: gp.gridId,
-        sortOrder: gp.sortOrder,
-        pixel: gridData.pixels.find((p) => p.id === gp.pixelId)!,
-      }))
+      // The server returns rows in the order they were sent (pixel library order), so sort them like getDashboardGridData does.
+      const newGridPixels = updatedGridPixels.results
+        .map((gp) => ({
+          gridId: gp.gridId,
+          sortOrder: gp.sortOrder,
+          position: gp.position,
+          pixel: gridData.pixels.find((p) => p.id === gp.pixelId)!,
+        }))
+        .sort(
+          (a, b) =>
+            a.position - b.position || (a.pixel.id < b.pixel.id ? -1 : 1),
+        )
       newMap.set(gridId, newGridPixels)
       return newMap
     })
@@ -298,73 +260,6 @@ export function useGridState(
     return deleteCellsResponse
   }
 
-  async function toggleCellComplete(gridId: string, cellId: string) {
-    const oldCellsByGridId = new Map(cellsByGridId)
-    const gridCells = oldCellsByGridId.get(gridId)
-    const cellToUpdate = gridCells?.find((c) => c.id === cellId)
-    if (!gridCells || !cellToUpdate) throw new Error('Grid or Cell not found')
-
-    const completed = !!cellToUpdate.completedAt
-    const updatedCell: Cell = {
-      ...cellToUpdate,
-      completedAt: completed ? null : new Date(),
-      progress: !completed ? 100 : cellToUpdate.progress,
-    }
-    const updatedCells = gridCells.map((c) =>
-      c.id === cellId ? updatedCell : c,
-    )
-
-    setCellsByGridId((prev) => {
-      const newCellsByGridId = new Map(prev)
-      newCellsByGridId.set(gridId, updatedCells)
-      return newCellsByGridId
-    })
-
-    const response = await bulkUpsertCells({
-      data: { ownerId: userId, gridId, cells: [updatedCell] },
-    })
-
-    if (response.success !== true) {
-      setCellsByGridId(() => oldCellsByGridId)
-    }
-
-    return response
-  }
-
-  async function updateCellProgress(
-    gridId: string,
-    cellId: string,
-    progress: number,
-  ) {
-    let updatedCell: Cell | undefined
-    const newCellsByGridId = new Map(cellsByGridId)
-    const cells = newCellsByGridId.get(gridId)
-    const updatedCells = cells?.map((c) => {
-      if (c.id !== cellId) return c
-      updatedCell = {
-        ...c,
-        progress,
-        completedAt: progress === 100 ? new Date() : null,
-      }
-      return updatedCell
-    })
-    if (!updatedCells || !updatedCell) throw new Error('Cell not found')
-    newCellsByGridId.set(gridId, updatedCells)
-
-    const oldCellsByGridId = new Map(cellsByGridId)
-    setCellsByGridId(() => newCellsByGridId)
-
-    const response = await bulkUpsertCells({
-      data: { ownerId: userId, gridId, cells: [updatedCell] },
-    })
-
-    if (response.success !== true) {
-      setCellsByGridId(() => oldCellsByGridId)
-    }
-
-    return response
-  }
-
   return {
     grids,
     cellsByGridId,
@@ -377,9 +272,6 @@ export function useGridState(
     removeGrid,
     addGridPixels,
     removeGridPixels,
-    upsertGridCells,
     removeGridCells,
-    toggleCellComplete,
-    updateCellProgress,
   }
 }

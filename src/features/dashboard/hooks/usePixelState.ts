@@ -5,7 +5,7 @@ import {
   updatePixel as updatePixelServerFn,
   deletePixelById as deletePixelByIdServerFn,
 } from '@/db/mutations.functions'
-import type { Pixel, NewPixel, UpdatePixelType } from '@/db/types'
+import type { Pixel, CreatePixelInput, UpdatePixelType } from '@/db/types'
 import { buildPixelsMap } from '@/lib/utils/maps'
 
 export function usePixelState(
@@ -22,7 +22,7 @@ export function usePixelState(
 
   const pixelsMap = useMemo(() => buildPixelsMap(pixels), [pixels])
 
-  async function createPixelHandler(pixelData: NewPixel) {
+  async function createPixelHandler(pixelData: CreatePixelInput) {
     const createdPixel = await createPixel({ data: pixelData })
     if (createdPixel.success !== true)
       throw new Error('Error creating pixel: ', { cause: createdPixel.results })

@@ -3,6 +3,7 @@ import { Pencil, LayoutGrid, Timer } from 'lucide-react'
 import { PIXEL_COLORS } from '@/db/types'
 import type { Cell, Grid, Pixel } from '@/db/types'
 import { computeGridStats } from '@/lib/utils/stats'
+import { keyCellsByPixelRow } from '@/lib/utils/maps'
 
 interface GridCardProps {
   grid: Grid
@@ -29,13 +30,8 @@ export function GridCard({
 }: GridCardProps) {
   const [isHovered, setIsHovered] = useState(false)
   const cells = useMemo<Map<string, Cell>>(
-    () =>
-      new Map(
-        cellsData
-          ?.filter((c) => c.pixelId)
-          .map((c) => [`${c.col}-${c.row}`, c]) ?? [],
-      ),
-    [cellsData],
+    () => keyCellsByPixelRow(cellsData ?? [], pixels),
+    [cellsData, pixels],
   )
 
   const columns = grid.columns

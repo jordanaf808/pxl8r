@@ -25,6 +25,8 @@ export type Cell = typeof schema.cells.$inferSelect
 export type NewCell = typeof schema.cells.$inferInsert
 export type Pixel = typeof schema.pixels.$inferSelect
 export type NewPixel = typeof schema.pixels.$inferInsert
+// The server sets ownerId from the session, so the client never sends it
+export type CreatePixelInput = Omit<NewPixel, 'ownerId'>
 export type Page = typeof schema.pages.$inferSelect
 export type NewPage = typeof schema.pages.$inferInsert
 export type Template = typeof schema.templates.$inferSelect
