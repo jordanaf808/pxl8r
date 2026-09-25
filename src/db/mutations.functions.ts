@@ -12,7 +12,6 @@ import {
   pageGrids,
 } from './schema'
 import {
-  bulkUpsertCellsSchema,
   updateCellSchema,
   updateGridSchema,
   updatePageGridSchema,
@@ -90,61 +89,6 @@ export const createGrid = createServerFn({ method: 'POST' })
       .values({
         ...data,
         ownerId: user.id,
-      })
-      .returning()
-
-    return {
-      success: results.length > 0,
-      results,
-    }
-  })
-
-export const bulkUpsertCells = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .inputValidator(bulkUpsertCellsSchema)
-  .handler(async ({ data, context }) => {
-    const { user } = context
-    const { ownerId, gridId, cells: cellUpserts } = data
-
-    if (!user.id || user.id !== ownerId) throw new Error('Unauthorized')
-    await assertGridOwner(gridId, user.id)
-
-    const values = cellUpserts.map((cell) => ({
-      gridId,
-      ownerId: user.id, // not needed in onConflictDoUpdate(), because we don't change that value
-      pixelId: cell.pixelId ?? null,
-      type: cell.type,
-      col: cell.col,
-      row: cell.row,
-      value: cell.value ?? null,
-      progress: cell.progress,
-      note: cell.note ?? null,
-      colorOverride: cell.colorOverride ?? null,
-      completedAt: cell.completedAt ?? null,
-      timerMinutes: cell.timerMinutes ?? null,
-      timerStartedAt: cell.timerStartedAt ?? null,
-    }))
-
-    const results = await db
-      .insert(cells)
-      .values(values)
-      .onConflictDoUpdate({
-        target: [cells.gridId, cells.col, cells.row],
-        // Callers send the whole cell, never a patch, so null means "clear this" and every field is assigned directly.
-        // COALESCE(excluded.x, x) would keep the old value instead — un-completing, un-rating, and clearing a note wouldn't persist.
-        // bulkCellSchema makes every field required so a partial cell fails validation instead of wiping columns.
-        set: {
-          type: sql`excluded.type`,
-          pixelId: sql`excluded.pixel_id`,
-          value: sql`excluded.value`,
-          progress: sql`excluded.progress`,
-          note: sql`excluded.note`,
-          colorOverride: sql`excluded.color_override`,
-          completedAt: sql`excluded.completed_at`,
-          timerMinutes: sql`excluded.timer_minutes`,
-          timerStartedAt: sql`excluded.timer_started_at`,
-          updatedAt: sql`NOW()`,
-        },
       })
       .returning()
 

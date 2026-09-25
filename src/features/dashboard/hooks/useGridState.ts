@@ -4,7 +4,6 @@ import {
   createGrid as createGridServerFn,
   updateGrid as updateGridServerFn,
   deleteGridById as deleteGridByIdServerFn,
-  bulkUpsertCells as bulkUpsertCellsServerFn,
   bulkUpsertGridPixels as bulkUpsertGridPixelsServerFn,
   deleteGridPixels as deleteGridPixelsServerFn,
   deleteManyCellsById as deleteManyCellsByIdServerFn,
@@ -30,7 +29,6 @@ export function useGridState(
   const createGrid = useServerFn(createGridServerFn)
   const updateGrid = useServerFn(updateGridServerFn)
   const deleteGrid = useServerFn(deleteGridByIdServerFn)
-  const bulkUpsertCells = useServerFn(bulkUpsertCellsServerFn)
   const bulkUpsertGridPixels = useServerFn(bulkUpsertGridPixelsServerFn)
   const deleteGridPixels = useServerFn(deleteGridPixelsServerFn)
   const deleteManyCellsById = useServerFn(deleteManyCellsByIdServerFn)
@@ -113,63 +111,23 @@ export function useGridState(
   }
 
   async function createGridHandler(gridData: NewGridData) {
-    const { grid: newGrid, cells: cellsData, pixels: pixelsData } = gridData
+    // New grids start empty: the modal's cell matrix no longer saves.
+    const { grid: newGrid, pixels: pixelsData } = gridData
 
     const createdGrid = await createGrid({ data: newGrid })
     if (createdGrid.success !== true)
       throw new Error('Error creating Grid: ', { cause: createdGrid.results })
     setGrids((prev) => [...createdGrid.results, ...prev])
 
-    const [createdCells, createdGridPixels] = await Promise.all([
-      bulkUpsertCells({
-        data: {
-          ownerId: userId,
-          gridId: createdGrid.results[0].id,
-          cells: cellsData,
-        },
-      }),
-      addGridPixels({
-        gridId: createdGrid.results[0].id,
-        pixelIds: pixelsData.map((p) => p.id).filter(Boolean) as string[],
-      }),
-    ])
+    const createdGridPixels = await addGridPixels({
+      gridId: createdGrid.results[0].id,
+      pixelIds: pixelsData.map((p) => p.id).filter(Boolean) as string[],
+    })
 
-    if (createdCells.success !== true)
-      throw new Error('Error creating Cells for Grid', {
-        cause: createdCells.results,
-      })
     if (createdGridPixels.success !== true)
       throw new Error('Error creating GridPixels for Grid', {
         cause: createdGridPixels.results,
       })
-  }
-
-  async function upsertGridCells({
-    gridId,
-    cellData,
-  }: {
-    gridId: string
-    cellData: Cell[]
-  }) {
-    const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
-    if (gridOwnerId !== userId) throw new Error('You do not own this grid')
-
-    const upsertCellsResponse = await bulkUpsertCells({
-      data: { ownerId: gridOwnerId, gridId, cells: cellData },
-    })
-
-    if (upsertCellsResponse.success !== true)
-      throw new Error('Error upserting cells: ', {
-        cause: upsertCellsResponse.results,
-      })
-
-    setCellsByGridId((oldCellsByGridId) => {
-      const newCellsByGridMap = new Map(oldCellsByGridId)
-      newCellsByGridMap.set(gridId, upsertCellsResponse.results)
-      return newCellsByGridMap
-    })
-
-    return upsertCellsResponse
   }
 
   async function updateGridHandler(gridData: GridData) {
@@ -181,21 +139,16 @@ export function useGridState(
       sortOrder: 'alphabetic',
     }))
 
-    const [updatedGrid, updatedGridCells, updatedGridPixels] =
-      await Promise.all([
-        updateGrid({ data: gridData.grid }),
-        upsertGridCells({ gridId, cellData: gridData.cells }),
-        bulkUpsertGridPixels({
-          data: { ownerId: gridData.grid.ownerId, gridId, pixelData },
-        }),
-      ])
+    // The modal's cell matrix no longer saves.
+    const [updatedGrid, updatedGridPixels] = await Promise.all([
+      updateGrid({ data: gridData.grid }),
+      bulkUpsertGridPixels({
+        data: { ownerId: gridData.grid.ownerId, gridId, pixelData },
+      }),
+    ])
 
     if (updatedGrid.success !== true)
       throw new Error('Error updating grid', { cause: updatedGrid.results })
-    if (updatedGridCells.success !== true)
-      throw new Error('Error updating grid cells', {
-        cause: updatedGridCells.results,
-      })
     if (updatedGridPixels.success !== true)
       throw new Error('Error updating grid pixels', {
         cause: updatedGridPixels.results,
@@ -310,7 +263,6 @@ export function useGridState(
     removeGrid,
     addGridPixels,
     removeGridPixels,
-    upsertGridCells,
     removeGridCells,
   }
 }
