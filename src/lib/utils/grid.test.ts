@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Cell, GridPixel, Pixel } from '@/db/types'
-import { buildGridRows } from './grid'
+import { buildGridRows, computeColumnCount } from './grid'
 
 const GRID_ID = 'grid-1'
 const CREATED_AT = new Date('2026-01-01T00:00:00Z')
@@ -160,5 +160,41 @@ describe('buildGridRows', () => {
     const rows = buildGridRows(gridPixels, cells)
 
     expect(rows[1].cells).toEqual([])
+  })
+})
+
+// cellWidth 32 + gap 4: each column takes 36px, and the last one needs no gap
+describe('computeColumnCount', () => {
+  it('shows every filled cell plus one empty slot when the row is longer than what fits', () => {
+    expect(
+      computeColumnCount({
+        perRowMax: 8,
+        containerWidth: 200,
+        cellWidth: 32,
+        gap: 4,
+      }),
+    ).toBe(9)
+  })
+
+  it('fills the container with empty slots when the grid has no cells', () => {
+    expect(
+      computeColumnCount({
+        perRowMax: 0,
+        containerWidth: 580,
+        cellWidth: 32,
+        gap: 4,
+      }),
+    ).toBe(16)
+  })
+
+  it('fills the container with empty slots when the filled cells fit', () => {
+    expect(
+      computeColumnCount({
+        perRowMax: 3,
+        containerWidth: 580,
+        cellWidth: 32,
+        gap: 4,
+      }),
+    ).toBe(16)
   })
 })

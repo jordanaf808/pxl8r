@@ -43,3 +43,24 @@ export function buildGridRows(
       cells: sortedCells.filter((cell) => cell.pixelId === gridPixel.pixel.id),
     }))
 }
+
+interface ColumnCountInput {
+  perRowMax: number
+  containerWidth: number
+  cellWidth: number
+  gap: number
+}
+
+export function computeColumnCount({
+  perRowMax,
+  containerWidth,
+  cellWidth,
+  gap,
+}: ColumnCountInput): number {
+  // n columns take n * cellWidth + (n - 1) * gap, so they fit when
+  // n * (cellWidth + gap) <= containerWidth + gap
+  const fitCount = Math.floor((containerWidth + gap) / (cellWidth + gap))
+
+  // Never hide a filled cell, and keep one empty slot for the hover "+"
+  return Math.max(perRowMax + 1, fitCount)
+}
