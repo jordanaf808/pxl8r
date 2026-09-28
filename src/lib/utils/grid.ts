@@ -32,7 +32,13 @@ export function buildGridRows(
   gridPixels: GridPixel[],
   cells: Cell[],
 ): GridRow[] {
-  const sortedCells = [...cells].sort(compareCells)
+  // Cells go in already sorted, so each pixel's list stays in order
+  const cellsByPixelId = new Map<string, Cell[]>()
+  for (const cell of [...cells].sort(compareCells)) {
+    const pixelCells = cellsByPixelId.get(cell.pixelId)
+    if (pixelCells) pixelCells.push(cell)
+    else cellsByPixelId.set(cell.pixelId, [cell])
+  }
 
   return [...gridPixels]
     .sort(
@@ -40,7 +46,7 @@ export function buildGridRows(
     )
     .map((gridPixel) => ({
       ...gridPixel,
-      cells: sortedCells.filter((cell) => cell.pixelId === gridPixel.pixel.id),
+      cells: cellsByPixelId.get(gridPixel.pixel.id) ?? [],
     }))
 }
 
