@@ -1,16 +1,14 @@
 import { createMiddleware } from '@tanstack/react-start'
-import { getRequest } from '@tanstack/react-start/server'
-import { getSession } from './auth-client'
+import { getRequestHeaders } from '@tanstack/react-start/server'
+import auth from './auth'
 import { redirect } from '@tanstack/react-router'
 
 export const authMiddleware = createMiddleware().server(async ({ next }) => {
-  const { headers } = getRequest()
+  const headers = getRequestHeaders()
 
-  const { data: session } = await getSession({
-    fetchOptions: {
-      headers: headers as HeadersInit,
-    },
-  })
+  // auth.api runs in this process. The browser client in auth-client.ts would
+  // send an HTTP request to this server's own /api/auth/get-session instead
+  const session = await auth.api.getSession({ headers })
 
   // console.log('//// AUTH-MIDDLEWARE - session: ', session)
 
