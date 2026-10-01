@@ -9,8 +9,14 @@ export const getUserId = createServerFn()
     return context.user.id
   })
 
-// We recommend using the client SDK or authClient to handle authentication, rather than server actions with auth.api. see https://better-auth.com/docs/integrations/tanstack because their own examples do that in the server functions below.
-// To protect resources that require authentication, use beforeLoad with a server function. This ensures authentication is checked on every navigation, including client-side navigation via <Link> components.
+// Server code reads the session with auth.api.getSession, which runs in this
+// process. The browser client in auth-client.ts is for the browser (sign in,
+// sign out, useSession). Called on the server, it sends an HTTP request to
+// this app's own /api/auth/get-session.
+// better-auth's guide (https://better-auth.com/docs/integrations/tanstack)
+// recommends the browser client for signing in and up. To protect a route, it
+// says to call a server function like this one from beforeLoad, so the session
+// is checked on every navigation, including client-side ones through <Link>.
 export const getSession = createServerFn({ method: 'GET' }).handler(
   async () => {
     const headers = getRequestHeaders()
