@@ -192,6 +192,20 @@ code {
   background-size: 24px 24px;
 }
 
+/* Graph paper for GridView's cell area: one dot at each slot corner.
+   GridView sets background-size to its slot size. The outline is an inset
+   shadow, not a border: a border would add 2px to the width the slots need */
+.graph-paper {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in srgb, var(--journal-slate) 50%, transparent) 1.3px,
+    transparent 1.4px
+  );
+  background-position: -1px -1px;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--journal-slate) 35%, transparent);
+}
+
 /* Lined paper background */
 .paper-lines {
   background-image: repeating-linear-gradient(
