@@ -18,6 +18,7 @@ import type {
   GridsByPixelIdMap,
 } from '@/db/types'
 import { buildGridsByPixelIdMap, flattenCellsByGridId } from '@/lib/utils/maps'
+import { mergeGridPixels } from '@/lib/utils/grid'
 
 export function useGridState(
   initialGrids: Grid[],
@@ -176,19 +177,18 @@ export function useGridState(
 
     setPixelsByGridId((prev) => {
       const newMap = new Map(prev)
-      // The server returns rows in the order they were sent (pixel library order), so sort them like getDashboardGridData does.
-      const newGridPixels = updatedGridPixels.results
-        .map((gp) => ({
-          gridId: gp.gridId,
-          sortOrder: gp.sortOrder,
-          position: gp.position,
-          pixel: gridData.pixels.find((p) => p.id === gp.pixelId)!,
-        }))
-        .sort(
-          (a, b) =>
-            a.position - b.position || (a.pixel.id < b.pixel.id ? -1 : 1),
-        )
-      newMap.set(gridId, newGridPixels)
+      const savedGridPixels = updatedGridPixels.results.map((gp) => ({
+        gridId: gp.gridId,
+        sortOrder: gp.sortOrder,
+        position: gp.position,
+        pixel: gridData.pixels.find((p) => p.id === gp.pixelId)!,
+      }))
+      // The modal leaves out rows that have no cells, and this save never
+      // removes a link, so rows it didn't send are kept
+      newMap.set(
+        gridId,
+        mergeGridPixels(prev.get(gridId) ?? [], savedGridPixels),
+      )
       return newMap
     })
   }
