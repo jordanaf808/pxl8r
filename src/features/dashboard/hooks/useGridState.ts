@@ -49,15 +49,17 @@ export function useGridState(
 
   // ---- Grid CRUD ----
 
-  async function addGridPixels({
+  // No owner check here, so createGridHandler can link a grid it just created.
+  // That grid isn't in `grids` yet: a function keeps the list from the render
+  // that created it, and setGrids only changes the next render's list.
+  // The server checks ownership either way
+  async function linkGridPixels({
     gridId,
     pixelIds,
   }: {
     gridId: string
     pixelIds: string[]
   }) {
-    const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
-    if (gridOwnerId !== userId) throw new Error('You do not own this grid')
     const existingGridPixels = pixelsByGridId.get(gridId)
 
     const newPixels: Pixel[] = []
@@ -112,6 +114,19 @@ export function useGridState(
     return results
   }
 
+  async function addGridPixels({
+    gridId,
+    pixelIds,
+  }: {
+    gridId: string
+    pixelIds: string[]
+  }) {
+    const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
+    if (gridOwnerId !== userId) throw new Error('You do not own this grid')
+
+    return linkGridPixels({ gridId, pixelIds })
+  }
+
   async function createGridHandler(gridData: NewGridData) {
     // New grids start empty: the modal's cell matrix no longer saves.
     const { grid: newGrid, pixels: pixelsData } = gridData
@@ -121,7 +136,7 @@ export function useGridState(
       throw new Error('Error creating Grid: ', { cause: createdGrid.results })
     setGrids((prev) => [...createdGrid.results, ...prev])
 
-    const createdGridPixels = await addGridPixels({
+    const createdGridPixels = await linkGridPixels({
       gridId: createdGrid.results[0].id,
       pixelIds: pixelsData.map((p) => p.id).filter(Boolean) as string[],
     })
