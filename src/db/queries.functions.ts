@@ -127,7 +127,14 @@ export const getGridsByOwnerId = createServerFn()
     const { user } = context
     if (!user.id) throw new Error('Not Logged In')
 
-    return await db.select().from(grids).where(eq(grids.ownerId, user.id))
+    // Without an ORDER BY, Postgres returns rows in the order it finds them on
+    // disk, and an UPDATE can move a row. Oldest first; Postgres puts a NULL
+    // createdAt last
+    return await db
+      .select()
+      .from(grids)
+      .where(eq(grids.ownerId, user.id))
+      .orderBy(grids.createdAt, grids.id)
   })
 
 export const getGridById = createServerFn()

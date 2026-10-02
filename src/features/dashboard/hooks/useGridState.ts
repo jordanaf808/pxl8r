@@ -135,7 +135,8 @@ export function useGridState(
     const createdGrid = await createGrid({ data: newGrid })
     if (createdGrid.success !== true)
       throw new Error('Error creating Grid: ', { cause: createdGrid.results })
-    setGrids((prev) => [...createdGrid.results, ...prev])
+    // At the end, where getGridsByOwnerId's oldest-first order puts it
+    setGrids((prev) => [...prev, ...createdGrid.results])
 
     const createdGridPixels = await linkGridPixels({
       gridId: createdGrid.results[0].id,
