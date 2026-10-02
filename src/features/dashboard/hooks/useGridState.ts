@@ -20,6 +20,12 @@ import type {
 import { buildGridsByPixelIdMap, flattenCellsByGridId } from '@/lib/utils/maps'
 import { mergeGridPixels } from '@/lib/utils/grid'
 
+function withoutGrid<T>(map: Map<string, T>, gridId: string): Map<string, T> {
+  const next = new Map(map)
+  next.delete(gridId)
+  return next
+}
+
 export function useGridState(
   initialGrids: Grid[],
   initialCellsByGridId: Map<string, Cell[]>,
@@ -198,18 +204,21 @@ export function useGridState(
     const foundGrid = grids.find((g) => g.id === gridId)
     if (foundGrid?.ownerId !== userId)
       throw new Error('Unauthorized or Grid not found.')
-    let oldGridsState: Grid[]
+    const snapshot = { grids, cellsByGridId, pixelsByGridId }
 
-    setGrids((prev) => {
-      oldGridsState = prev
-      return prev.filter((g) => g.id !== gridId)
-    })
+    // The database deletes the grid's cells and pixel links with it. Drop them
+    // here too, or allCells would keep counting the deleted grid's cells
+    setGrids((prev) => prev.filter((g) => g.id !== gridId))
+    setCellsByGridId((prev) => withoutGrid(prev, gridId))
+    setPixelsByGridId((prev) => withoutGrid(prev, gridId))
 
     const results = await deleteGrid({ data: { gridId } })
 
     if (!results.success) {
       console.error('Error deleting Grid: ', { cause: results })
-      setGrids(() => oldGridsState)
+      setGrids(snapshot.grids)
+      setCellsByGridId(snapshot.cellsByGridId)
+      setPixelsByGridId(snapshot.pixelsByGridId)
     }
   }
 
