@@ -86,3 +86,16 @@ export function computeColumnCount({
   // Never hide a filled cell, and keep one empty slot for the hover "+"
   return Math.max(perRowMax + 1, fitCount)
 }
+
+// Which tab to show once a grid is deleted: the next one, or the previous one
+// if it was the last
+export function gridIdAfterDelete(
+  gridIds: string[],
+  deletedId: string,
+): string | null {
+  const remaining = gridIds.filter((gridId) => gridId !== deletedId)
+  const index = gridIds.indexOf(deletedId)
+
+  // With the deleted id gone, the next grid has moved into its index
+  return remaining.at(index) ?? remaining.at(-1) ?? null
+}

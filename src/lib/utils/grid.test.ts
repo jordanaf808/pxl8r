@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildGridRows, computeColumnCount, mergeGridPixels } from './grid'
+import {
+  buildGridRows,
+  computeColumnCount,
+  gridIdAfterDelete,
+  mergeGridPixels,
+} from './grid'
 import { LATER, makeCell, makeGridPixel } from './grid.fixtures'
 
 describe('buildGridRows', () => {
@@ -135,6 +140,24 @@ describe('mergeGridPixels', () => {
     expect(merged.map((gridPixel) => gridPixel.sortOrder)).toEqual([
       'alphabetic',
     ])
+  })
+})
+
+describe('gridIdAfterDelete', () => {
+  it('picks the next grid', () => {
+    expect(gridIdAfterDelete(['grid-a', 'grid-b', 'grid-c'], 'grid-b')).toBe(
+      'grid-c',
+    )
+  })
+
+  it('picks the previous grid when the last one is deleted', () => {
+    expect(gridIdAfterDelete(['grid-a', 'grid-b', 'grid-c'], 'grid-c')).toBe(
+      'grid-b',
+    )
+  })
+
+  it('picks nothing when the only grid is deleted', () => {
+    expect(gridIdAfterDelete(['grid-a'], 'grid-a')).toBeNull()
   })
 })
 

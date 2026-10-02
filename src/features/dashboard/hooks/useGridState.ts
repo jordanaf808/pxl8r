@@ -134,7 +134,8 @@ export function useGridState(
     return linkGridPixels({ gridId, pixelIds })
   }
 
-  async function createGridHandler(gridData: NewGridData) {
+  // Resolves with the new grid's id
+  async function createGridHandler(gridData: NewGridData): Promise<string> {
     // New grids start empty: the modal's cell matrix no longer saves.
     const { grid: newGrid, pixels: pixelsData } = gridData
 
@@ -153,6 +154,8 @@ export function useGridState(
       throw new Error('Error creating GridPixels for Grid', {
         cause: createdGridPixels.results,
       })
+
+    return createdGrid.results[0].id
   }
 
   async function updateGridHandler(gridData: GridData) {
