@@ -140,14 +140,14 @@ export function GridView({
           className="flex items-start justify-between gap-5 pt-5"
           style={{ height: STATS_HEIGHT }}
         >
-          <p className="text-base font-serif text-(--journal-ink) opacity-55 truncate">
+          <p className="text-base font-serif text-(--journal-ink) opacity-75 truncate">
             {grid.description}
           </p>
           <div className="flex items-baseline gap-2.5 shrink-0 text-(--journal-ink)">
             <span className="text-xl font-bold leading-tight">
               {avgProgress}%
             </span>
-            <span className="text-sm font-serif opacity-50">
+            <span className="text-sm font-serif opacity-70">
               {completedCount} / {totalCells} completed
             </span>
 
@@ -189,7 +189,7 @@ export function GridView({
           <div className="w-max min-w-full">
             <div
               aria-hidden="true"
-              className="grid items-center text-center text-xs font-serif text-(--journal-ink) opacity-45"
+              className="grid items-center text-center text-xs font-serif text-(--journal-ink) opacity-70"
               style={{ ...slotColumns, height: LABELS_HEIGHT }}
             >
               {Array.from({ length: columns }, (_, index) => (

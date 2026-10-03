@@ -35,7 +35,7 @@ function AxisRow({ pixel, height }: { pixel: Pixel; height: number }) {
           {pixel.name}
         </span>
         <span
-          className="hidden md:inline text-[10px] font-serif px-1.5 py-0.5 bg-(--journal-tan) text-(--journal-ink) opacity-70 shrink-0 whitespace-nowrap"
+          className="hidden md:inline text-[10px] font-serif px-1.5 py-0.5 bg-(--journal-tan) text-(--journal-ink) shrink-0 whitespace-nowrap"
           style={{ borderRadius: '1px 4px 2px 5px' }}
         >
           {PIXEL_TYPE_LABELS[pixel.type]}
@@ -43,12 +43,12 @@ function AxisRow({ pixel, height }: { pixel: Pixel; height: number }) {
       </div>
 
       {pixel.description && (
-        <p className="col-start-2 text-xs text-(--journal-ink) opacity-50 font-serif truncate leading-snug">
+        <p className="col-start-2 text-xs text-(--journal-ink) opacity-75 font-serif truncate leading-snug">
           {pixel.description}
         </p>
       )}
 
-      <p className="col-start-2 text-[10px] font-serif text-(--journal-ink) opacity-40 truncate leading-tight">
+      <p className="col-start-2 text-[10px] font-serif text-(--journal-ink) opacity-70 truncate leading-tight">
         <span className="capitalize">{pixel.unit}</span>
         {pixel.endGoal != null && ` · goal: ${pixel.endGoal}`}
       </p>
@@ -81,7 +81,7 @@ export function PixelAxis({
           <Layers size={16} className="text-(--journal-ink) opacity-60" />
           <h3 className="text-base font-bold text-(--journal-ink)">Pixels</h3>
           <span
-            className="text-[10px] font-serif px-1.5 py-0.5 bg-(--journal-tan) text-(--journal-ink) opacity-70"
+            className="text-[10px] font-serif px-1.5 py-0.5 bg-(--journal-tan) text-(--journal-ink)"
             style={{ borderRadius: '2px 5px 3px 6px' }}
           >
             {pixelCount}
@@ -103,14 +103,14 @@ export function PixelAxis({
               placeholder="Filter..."
               value={filter}
               onChange={(e) => onFilterChange(e.target.value)}
-              className="bg-transparent text-(--journal-ink) text-xs placeholder:text-(--journal-warm) outline-none w-full min-w-0 font-serif [&::-webkit-search-cancel-button]:hidden"
+              className="bg-transparent text-(--journal-ink) text-xs placeholder:text-(--journal-ink)/70 outline-none w-full min-w-0 font-serif [&::-webkit-search-cancel-button]:hidden"
             />
             {filter && (
               <button
                 type="button"
                 onClick={() => onFilterChange('')}
                 aria-label="Clear filter"
-                className="text-(--journal-ink) opacity-40 hover:opacity-100 transition-opacity cursor-pointer"
+                className="text-(--journal-ink) opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
               >
                 <X size={10} />
               </button>
@@ -127,7 +127,7 @@ export function PixelAxis({
       </ul>
 
       {pixels.length === 0 && (
-        <p className="px-3 py-4 text-xs text-(--journal-ink) opacity-40 font-serif">
+        <p className="px-3 py-4 text-xs text-(--journal-ink) opacity-70 font-serif">
           {filter ? 'No pixels match' : 'No pixels in this grid yet'}
         </p>
       )}
