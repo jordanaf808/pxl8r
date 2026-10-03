@@ -56,17 +56,15 @@ export function useGridState(
 
   // ---- Grid CRUD ----
 
-  // No owner check here, so createGridHandler can link a grid it just created.
-  // That grid isn't in `grids` yet: a function keeps the list from the render
-  // that created it, and setGrids only changes the next render's list.
-  // The server checks ownership either way
-  async function linkGridPixels({
+  async function addGridPixels({
     gridId,
     pixelIds,
   }: {
     gridId: string
     pixelIds: string[]
   }) {
+    const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
+    if (gridOwnerId !== userId) throw new Error('You do not own this grid')
     const existingGridPixels = pixelsByGridId.get(gridId)
 
     const newPixels: Pixel[] = []
@@ -121,41 +119,37 @@ export function useGridState(
     return results
   }
 
-  async function addGridPixels({
-    gridId,
-    pixelIds,
-  }: {
-    gridId: string
-    pixelIds: string[]
-  }) {
-    const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
-    if (gridOwnerId !== userId) throw new Error('You do not own this grid')
-
-    return linkGridPixels({ gridId, pixelIds })
-  }
-
   // Resolves with the new grid's id
   async function createGridHandler(gridData: NewGridData): Promise<string> {
     // New grids start empty: the modal's cell matrix no longer saves.
     const { grid: newGrid, pixels: pixelsData } = gridData
 
-    const createdGrid = await createGrid({ data: newGrid })
-    if (createdGrid.success !== true)
-      throw new Error('Error creating Grid: ', { cause: createdGrid.results })
-    // At the end, where getGridsByOwnerId's oldest-first order puts it
-    setGrids((prev) => [...prev, ...createdGrid.results])
-
-    const createdGridPixels = await linkGridPixels({
-      gridId: createdGrid.results[0].id,
-      pixelIds: pixelsData.map((p) => p.id).filter(Boolean) as string[],
+    // One request creates the grid and links its pixels, in one transaction
+    const created = await createGrid({
+      data: {
+        grid: newGrid,
+        pixelIds: pixelsData.map((p) => p.id).filter(Boolean) as string[],
+      },
     })
+    if (created.success !== true)
+      throw new Error('Error creating Grid: ', { cause: created.results })
+    const createdGrid = created.results[0]
 
-    if (createdGridPixels.success !== true)
-      throw new Error('Error creating GridPixels for Grid', {
-        cause: createdGridPixels.results,
-      })
+    // At the end, where getGridsByOwnerId's oldest-first order puts it
+    setGrids((prev) => [...prev, createdGrid])
+    setPixelsByGridId((prev) =>
+      new Map(prev).set(
+        createdGrid.id,
+        created.gridPixels.map((gp) => ({
+          gridId: gp.gridId,
+          sortOrder: gp.sortOrder,
+          position: gp.position,
+          pixel: pixels.find((p) => p.id === gp.pixelId)!,
+        })),
+      ),
+    )
 
-    return createdGrid.results[0].id
+    return createdGrid.id
   }
 
   async function updateGridHandler(gridData: GridData) {
