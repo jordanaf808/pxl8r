@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Timer } from 'lucide-react'
+import { EllipsisVertical, Timer } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { PIXEL_COLORS } from '@/db/types'
 import type { Cell, Grid, GridPixel, Pixel } from '@/db/types'
 import { buildGridRows } from '@/lib/utils/grid'
@@ -24,6 +31,8 @@ interface GridViewProps {
   // Only 'horizontal' is laid out so far. The vertical layout, for mobile,
   // will key its styles off data-orientation
   orientation: 'horizontal' | 'vertical'
+  onOpenSettings: () => void
+  onDeleteGrid: () => void
 }
 
 function matchesFilter(pixel: Pixel, filter: string): boolean {
@@ -79,6 +88,8 @@ export function GridView({
   gridPixels,
   cells,
   orientation,
+  onOpenSettings,
+  onDeleteGrid,
 }: GridViewProps) {
   const rows = useMemo(
     () => buildGridRows(gridPixels, cells),
@@ -139,6 +150,29 @@ export function GridView({
             <span className="text-sm font-serif opacity-50">
               {completedCount} / {totalCells} completed
             </span>
+
+            {/* Here, not on the active tab: a tab list may only hold tabs, and
+                a button inside one fails the accessibility check for it */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label={`${grid.name} options`}
+                className="self-center -mr-2 p-1 opacity-60 hover:opacity-100 transition-opacity cursor-pointer focus-visible:outline-2 focus-visible:outline-(--journal-ink)"
+              >
+                <EllipsisVertical size={18} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="bg-(--journal-cream) text-(--journal-ink) border-(--journal-warm) font-serif"
+              >
+                <DropdownMenuItem onSelect={onOpenSettings}>
+                  Grid settings…
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-(--journal-warm)" />
+                <DropdownMenuItem variant="destructive" onSelect={onDeleteGrid}>
+                  Delete grid…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

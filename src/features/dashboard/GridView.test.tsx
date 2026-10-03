@@ -64,6 +64,8 @@ describe('GridView', () => {
         gridPixels={gridPixels}
         cells={cells}
         orientation="horizontal"
+        onOpenSettings={() => {}}
+        onDeleteGrid={() => {}}
       />,
     )
 
@@ -100,6 +102,8 @@ describe('GridView', () => {
         gridPixels={gridPixels}
         cells={cells}
         orientation="horizontal"
+        onOpenSettings={() => {}}
+        onDeleteGrid={() => {}}
       />,
     )
     document.body.innerHTML = html
@@ -126,6 +130,8 @@ describe('GridView', () => {
         gridPixels={gridPixels}
         cells={cells}
         orientation="horizontal"
+        onOpenSettings={() => {}}
+        onDeleteGrid={() => {}}
       />,
     )
 

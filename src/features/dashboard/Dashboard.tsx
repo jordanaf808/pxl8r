@@ -151,16 +151,6 @@ export function Dashboard({
             setSelectedGrid(null)
             setIsGroupModalOpen(true)
           }}
-          onOpenSettings={() => {
-            if (!activeGrid) return
-            setSelectedGrid({
-              grid: activeGrid,
-              pixels: activeGridPixels.map((gp) => gp.pixel),
-              cells: activeCells,
-            })
-            setIsGroupModalOpen(true)
-          }}
-          onDeleteGrid={() => setIsDeleteDialogOpen(true)}
         >
           {/* The key mounts a new GridView per tab, so the row filter and the
               sideways scroll start fresh, and the new cell area is measured
@@ -172,6 +162,15 @@ export function Dashboard({
               gridPixels={activeGridPixels}
               cells={activeCells}
               orientation="horizontal"
+              onOpenSettings={() => {
+                setSelectedGrid({
+                  grid: activeGrid,
+                  pixels: activeGridPixels.map((gp) => gp.pixel),
+                  cells: activeCells,
+                })
+                setIsGroupModalOpen(true)
+              }}
+              onDeleteGrid={() => setIsDeleteDialogOpen(true)}
             />
           )}
         </GridTabs>
