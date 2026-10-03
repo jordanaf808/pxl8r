@@ -50,6 +50,22 @@ export function buildGridRows(
     }))
 }
 
+// A grid's rows after a save that only inserts and updates links. A row the
+// save didn't send back is still linked in the database, so it stays
+export function mergeGridPixels(
+  existing: GridPixel[],
+  saved: GridPixel[],
+): GridPixel[] {
+  const savedPixelIds = new Set(saved.map((gridPixel) => gridPixel.pixel.id))
+  const unsent = existing.filter(
+    (gridPixel) => !savedPixelIds.has(gridPixel.pixel.id),
+  )
+
+  return [...unsent, ...saved].sort(
+    (a, b) => a.position - b.position || compareIds(a.pixel.id, b.pixel.id),
+  )
+}
+
 interface ColumnCountInput {
   perRowMax: number
   containerWidth: number
@@ -69,4 +85,17 @@ export function computeColumnCount({
 
   // Never hide a filled cell, and keep one empty slot for the hover "+"
   return Math.max(perRowMax + 1, fitCount)
+}
+
+// Which tab to show once a grid is deleted: the next one, or the previous one
+// if it was the last
+export function gridIdAfterDelete(
+  gridIds: string[],
+  deletedId: string,
+): string | null {
+  const remaining = gridIds.filter((gridId) => gridId !== deletedId)
+  const index = gridIds.indexOf(deletedId)
+
+  // With the deleted id gone, the next grid has moved into its index
+  return remaining.at(index) ?? remaining.at(-1) ?? null
 }

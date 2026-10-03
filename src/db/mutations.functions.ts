@@ -12,6 +12,7 @@ import {
   pageGrids,
 } from './schema'
 import {
+  createGridSchema,
   updateCellSchema,
   updateGridSchema,
   updatePageGridSchema,
@@ -23,7 +24,7 @@ import {
 import type { SQL } from 'drizzle-orm'
 import type {
   NewPage,
-  NewGrid,
+  Grid,
   CreatePixelInput,
   bulkGridPixelsInput,
 } from '@/db/types'
@@ -77,24 +78,59 @@ export const createPixel = createServerFn({ method: 'POST' })
     }
   })
 
+interface CreateGridResult {
+  success: boolean
+  results: Grid[]
+  gridPixels: (typeof gridPixels.$inferSelect)[]
+}
+
+// Creates a grid and links its pixels in one transaction, so a failure can't
+// leave a grid saved without its rows
 export const createGrid = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator((data: NewGrid) => data)
-  .handler(async ({ data, context }) => {
+  .inputValidator(createGridSchema)
+  .handler(async ({ data, context }): Promise<CreateGridResult> => {
     const { user } = context
-    if (!user.id || data.ownerId !== user.id) throw new Error('Unauthorized')
+    if (!user.id) throw new Error('Unauthorized')
 
-    const results = await db
+    const pixelIds = [...new Set(data.pixelIds)]
+    if (pixelIds.length > 0) await assertPixelOwner(pixelIds, user.id)
+
+    // Made here, not by Postgres: statements in a batch can't read each
+    // other's results, so the link insert needs the id before the grid exists
+    const gridId = crypto.randomUUID()
+    const insertGrid = db
       .insert(grids)
-      .values({
-        ...data,
-        ownerId: user.id,
-      })
+      .values({ ...data.grid, id: gridId, ownerId: user.id })
       .returning()
+
+    // Drizzle throws on an empty insert, so a grid with no pixels is one statement
+    if (pixelIds.length === 0) {
+      const results = await insertGrid
+      return { success: results.length > 0, results, gridPixels: [] }
+    }
+
+    // A batch runs as one transaction: both inserts are saved, or neither is.
+    // A new grid has no rows yet, so positions follow the order given
+    const [results, createdGridPixels] = await db.batch([
+      insertGrid,
+      db
+        .insert(gridPixels)
+        .values(
+          pixelIds.map((pixelId, i) => ({
+            gridId,
+            pixelId,
+            sortOrder: 'manual',
+            position: i,
+          })),
+        )
+        .returning(),
+    ])
 
     return {
       success: results.length > 0,
       results,
+      gridPixels: createdGridPixels,
     }
   })
 

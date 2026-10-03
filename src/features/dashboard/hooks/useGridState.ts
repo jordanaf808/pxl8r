@@ -18,6 +18,13 @@ import type {
   GridsByPixelIdMap,
 } from '@/db/types'
 import { buildGridsByPixelIdMap, flattenCellsByGridId } from '@/lib/utils/maps'
+import { mergeGridPixels } from '@/lib/utils/grid'
+
+function withoutGrid<T>(map: Map<string, T>, gridId: string): Map<string, T> {
+  const next = new Map(map)
+  next.delete(gridId)
+  return next
+}
 
 export function useGridState(
   initialGrids: Grid[],
@@ -112,24 +119,37 @@ export function useGridState(
     return results
   }
 
-  async function createGridHandler(gridData: NewGridData) {
+  // Resolves with the new grid's id
+  async function createGridHandler(gridData: NewGridData): Promise<string> {
     // New grids start empty: the modal's cell matrix no longer saves.
     const { grid: newGrid, pixels: pixelsData } = gridData
 
-    const createdGrid = await createGrid({ data: newGrid })
-    if (createdGrid.success !== true)
-      throw new Error('Error creating Grid: ', { cause: createdGrid.results })
-    setGrids((prev) => [...createdGrid.results, ...prev])
-
-    const createdGridPixels = await addGridPixels({
-      gridId: createdGrid.results[0].id,
-      pixelIds: pixelsData.map((p) => p.id).filter(Boolean) as string[],
+    // One request creates the grid and links its pixels, in one transaction
+    const created = await createGrid({
+      data: {
+        grid: newGrid,
+        pixelIds: pixelsData.map((p) => p.id).filter(Boolean) as string[],
+      },
     })
+    if (created.success !== true)
+      throw new Error('Error creating Grid: ', { cause: created.results })
+    const createdGrid = created.results[0]
 
-    if (createdGridPixels.success !== true)
-      throw new Error('Error creating GridPixels for Grid', {
-        cause: createdGridPixels.results,
-      })
+    // At the end, where getGridsByOwnerId's oldest-first order puts it
+    setGrids((prev) => [...prev, createdGrid])
+    setPixelsByGridId((prev) =>
+      new Map(prev).set(
+        createdGrid.id,
+        created.gridPixels.map((gp) => ({
+          gridId: gp.gridId,
+          sortOrder: gp.sortOrder,
+          position: gp.position,
+          pixel: pixels.find((p) => p.id === gp.pixelId)!,
+        })),
+      ),
+    )
+
+    return createdGrid.id
   }
 
   async function updateGridHandler(gridData: GridData) {
@@ -161,19 +181,18 @@ export function useGridState(
 
     setPixelsByGridId((prev) => {
       const newMap = new Map(prev)
-      // The server returns rows in the order they were sent (pixel library order), so sort them like getDashboardGridData does.
-      const newGridPixels = updatedGridPixels.results
-        .map((gp) => ({
-          gridId: gp.gridId,
-          sortOrder: gp.sortOrder,
-          position: gp.position,
-          pixel: gridData.pixels.find((p) => p.id === gp.pixelId)!,
-        }))
-        .sort(
-          (a, b) =>
-            a.position - b.position || (a.pixel.id < b.pixel.id ? -1 : 1),
-        )
-      newMap.set(gridId, newGridPixels)
+      const savedGridPixels = updatedGridPixels.results.map((gp) => ({
+        gridId: gp.gridId,
+        sortOrder: gp.sortOrder,
+        position: gp.position,
+        pixel: gridData.pixels.find((p) => p.id === gp.pixelId)!,
+      }))
+      // The modal leaves out rows that have no cells, and this save never
+      // removes a link, so rows it didn't send are kept
+      newMap.set(
+        gridId,
+        mergeGridPixels(prev.get(gridId) ?? [], savedGridPixels),
+      )
       return newMap
     })
   }
@@ -182,18 +201,21 @@ export function useGridState(
     const foundGrid = grids.find((g) => g.id === gridId)
     if (foundGrid?.ownerId !== userId)
       throw new Error('Unauthorized or Grid not found.')
-    let oldGridsState: Grid[]
+    const snapshot = { grids, cellsByGridId, pixelsByGridId }
 
-    setGrids((prev) => {
-      oldGridsState = prev
-      return prev.filter((g) => g.id !== gridId)
-    })
+    // The database deletes the grid's cells and pixel links with it. Drop them
+    // here too, or allCells would keep counting the deleted grid's cells
+    setGrids((prev) => prev.filter((g) => g.id !== gridId))
+    setCellsByGridId((prev) => withoutGrid(prev, gridId))
+    setPixelsByGridId((prev) => withoutGrid(prev, gridId))
 
     const results = await deleteGrid({ data: { gridId } })
 
     if (!results.success) {
       console.error('Error deleting Grid: ', { cause: results })
-      setGrids(() => oldGridsState)
+      setGrids(snapshot.grids)
+      setCellsByGridId(snapshot.cellsByGridId)
+      setPixelsByGridId(snapshot.pixelsByGridId)
     }
   }
 

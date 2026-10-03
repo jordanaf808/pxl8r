@@ -29,6 +29,22 @@ export const bulkGridPixelsSchema = z.object({
 export type gridPixelInput = z.infer<typeof gridPixelSchema>
 export type bulkGridPixelsInput = z.infer<typeof bulkGridPixelsSchema>
 
+// A new grid and the pixels to link to it. Fields the server sets (id, owner,
+// timestamps, each link's position) aren't listed, so zod strips them
+export const createGridSchema = z.object({
+  grid: z.object({
+    name: z.string().min(1).max(66),
+    description: z.string().max(333).nullable().optional(),
+    isPublic: z.boolean().nullable().optional(),
+    columns: z.int().min(0).max(1000).optional(),
+    rows: z.int().min(0).max(1000).optional(),
+    scaleUnit: z.enum(unitTypeEnum.enumValues).nullable().optional(),
+    scaleLabel: z.string().max(66).nullable().optional(),
+    theme: z.enum(themeTypeEnum.enumValues).nullable().optional(),
+  }),
+  pixelIds: z.array(z.uuid()).max(365),
+})
+
 // ---- Update schemas ----
 
 export const updatableUserFields = z.object({
