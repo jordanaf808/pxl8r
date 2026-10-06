@@ -12,7 +12,15 @@ export function useReturnFocus() {
 
   return {
     onOpenAutoFocus: () => {
-      openerRef.current = document.activeElement
+      const opener = document.activeElement
+      // A menu item is gone by the time the dialog closes, because its menu
+      // closes as the dialog opens. A menu is labelled by the button that
+      // opened it, so that button is remembered instead
+      const menu = opener?.closest('[role="menu"]')
+      const menuButton = menu
+        ? document.getElementById(menu.getAttribute('aria-labelledby') ?? '')
+        : null
+      openerRef.current = menuButton ?? opener
     },
     onCloseAutoFocus: (event: Event) => {
       event.preventDefault()
