@@ -233,24 +233,49 @@ export function useGridState(
   }) {
     const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
     if (gridOwnerId !== userId) throw new Error('You do not own this grid')
-    let oldPixelsByGridId: Map<string, GridPixel[]>
 
-    setPixelsByGridId((prev) => {
-      oldPixelsByGridId = new Map(prev)
-      const newPixelsByGridId = new Map(prev)
-      const oldGridPixels = oldPixelsByGridId.get(gridId)
-      if (!oldGridPixels) throw new Error('cant find GridPixels')
+    const removedRows = (pixelsByGridId.get(gridId) ?? []).filter((gp) =>
+      pixelIds.includes(gp.pixel.id),
+    )
+    // The database deletes a row's cells with it. Drop them here too, or
+    // allCells and the grid's header would keep counting them until a reload
+    const removedCells = (cellsByGridId.get(gridId) ?? []).filter((c) =>
+      pixelIds.includes(c.pixelId),
+    )
 
-      newPixelsByGridId.set(
+    setPixelsByGridId((prev) =>
+      new Map(prev).set(
         gridId,
-        oldGridPixels.filter((gp) => !pixelIds.includes(gp.pixel.id)),
+        (prev.get(gridId) ?? []).filter(
+          (gp) => !pixelIds.includes(gp.pixel.id),
+        ),
+      ),
+    )
+    setCellsByGridId((prev) =>
+      new Map(prev).set(
+        gridId,
+        (prev.get(gridId) ?? []).filter((c) => !pixelIds.includes(c.pixelId)),
+      ),
+    )
+
+    try {
+      return await deleteGridPixels({ data: { gridId, pixelIds } })
+    } catch (error) {
+      // Only what was removed goes back, as in removeGridCells
+      setPixelsByGridId((prev) =>
+        new Map(prev).set(gridId, [
+          ...(prev.get(gridId) ?? []),
+          ...removedRows,
+        ]),
       )
-      return newPixelsByGridId
-    })
-
-    const results = await deleteGridPixels({ data: { gridId, pixelIds } })
-
-    return results
+      setCellsByGridId((prev) =>
+        new Map(prev).set(gridId, [
+          ...(prev.get(gridId) ?? []),
+          ...removedCells,
+        ]),
+      )
+      throw error
+    }
   }
 
   async function removeGridCells({
