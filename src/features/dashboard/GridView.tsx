@@ -154,19 +154,23 @@ export function GridView({
           boxShadow: '2px 3px 0px var(--journal-warm)',
         }}
       >
+        {/* The description takes the room the stats leave. On a phone that's
+            almost none, and stats that couldn't shrink would stick out past
+            the panel and widen the whole page */}
         <div
-          className="flex items-start justify-between gap-5 pt-5"
+          className="flex items-start gap-5 pt-5"
           style={{ height: STATS_HEIGHT }}
         >
-          <p className="text-base font-serif text-(--journal-ink) opacity-75 truncate">
+          <p className="flex-1 min-w-0 text-base font-serif text-(--journal-ink) opacity-75 truncate">
             {grid.description}
           </p>
-          <div className="flex items-baseline gap-2.5 shrink-0 text-(--journal-ink)">
-            <span className="text-xl font-bold leading-tight">
+          <div className="flex items-baseline gap-2.5 min-w-0 text-(--journal-ink)">
+            <span className="shrink-0 text-xl font-bold leading-tight">
               {avgProgress}%
             </span>
-            <span className="text-sm font-serif opacity-70">
-              {completedCount} / {totalCells} completed
+            <span className="text-sm font-serif opacity-70 truncate">
+              {completedCount} / {totalCells}
+              <span className="max-sm:sr-only"> completed</span>
             </span>
 
             {/* Here, not on the active tab: a tab list may only hold tabs, and
@@ -174,7 +178,7 @@ export function GridView({
             <DropdownMenu>
               <DropdownMenuTrigger
                 aria-label={`${grid.name} options`}
-                className="self-center -mr-2 p-1 opacity-60 hover:opacity-100 transition-opacity cursor-pointer focus-visible:outline-2 focus-visible:outline-(--journal-ink)"
+                className="self-center shrink-0 -mr-2 p-1 opacity-60 hover:opacity-100 transition-opacity cursor-pointer focus-visible:outline-2 focus-visible:outline-(--journal-ink)"
               >
                 <EllipsisVertical size={18} />
               </DropdownMenuTrigger>
