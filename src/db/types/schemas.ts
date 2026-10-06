@@ -163,3 +163,5 @@ export const updateCellSchema = z.object({
   ...updatableCellFields.omit({ pixelId: true, updatedAt: true }).required()
     .shape,
 })
+
+export type UpdateCellInput = z.infer<typeof updateCellSchema>

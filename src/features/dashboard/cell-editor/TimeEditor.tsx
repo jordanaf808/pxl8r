@@ -1,0 +1,53 @@
+import type { ValueEditorProps } from './types'
+
+// No cell has this type yet, so nothing shows this editor. It's the form from
+// CreateGridModal, moved as it was, with its known bugs
+export function TimeEditor({ value, pixel, onChange }: ValueEditorProps) {
+  const endGoal = pixel.endGoal ?? 100
+  const fillPct = Math.min(100, ((value ?? 0) / endGoal) * 100)
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="text-xs font-serif text-(--journal-ink) opacity-50">
+          duration
+        </span>
+        <span className="text-sm font-sans text-(--journal-ink)">
+          <span className="font-bold">{value ?? 0}</span>
+          <span className="opacity-40">
+            {' '}
+            / {endGoal} {pixel.unit}
+          </span>
+        </span>
+      </div>
+      <div
+        className="relative h-2 w-full rounded-full overflow-hidden"
+        style={{ background: 'var(--journal-warm)' }}
+      >
+        <div
+          className="absolute inset-y-0 left-0 transition-all"
+          style={{
+            width: `${fillPct}%`,
+            background: 'var(--journal-ink)',
+            borderRadius: 'inherit',
+          }}
+        />
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={endGoal}
+        value={value ?? 0}
+        onChange={(e) => {
+          const newValue = Number(e.target.value)
+          onChange({
+            value: newValue,
+            progress: (newValue / endGoal) * 100,
+            completedAt: newValue === endGoal ? null : new Date(),
+          })
+        }}
+        className="w-full mt-1 cursor-pointer accent-(--journal-ink)"
+      />
+    </div>
+  )
+}

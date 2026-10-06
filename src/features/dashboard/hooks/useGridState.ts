@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import {
   createGrid as createGridServerFn,
   updateGrid as updateGridServerFn,
+  updateCell as updateCellServerFn,
   deleteGridById as deleteGridByIdServerFn,
   bulkUpsertGridPixels as bulkUpsertGridPixelsServerFn,
   deleteGridPixels as deleteGridPixelsServerFn,
@@ -16,6 +17,7 @@ import type {
   GridData,
   NewGridData,
   GridsByPixelIdMap,
+  UpdateCellInput,
 } from '@/db/types'
 import { buildGridsByPixelIdMap, flattenCellsByGridId } from '@/lib/utils/maps'
 import { mergeGridPixels } from '@/lib/utils/grid'
@@ -39,10 +41,13 @@ export function useGridState(
   const bulkUpsertGridPixels = useServerFn(bulkUpsertGridPixelsServerFn)
   const deleteGridPixels = useServerFn(deleteGridPixelsServerFn)
   const deleteManyCellsById = useServerFn(deleteManyCellsByIdServerFn)
+  const updateCell = useServerFn(updateCellServerFn)
 
   const [grids, setGrids] = useState<Grid[]>(initialGrids)
   const [cellsByGridId, setCellsByGridId] = useState(initialCellsByGridId)
   const [pixelsByGridId, setPixelsByGridId] = useState(initialPixelsByGridId)
+  // The last cell save sent. The next one waits for it
+  const lastCellSave = useRef<Promise<unknown>>(Promise.resolve())
 
   const allCells = useMemo(
     () => flattenCellsByGridId(cellsByGridId),
@@ -259,27 +264,67 @@ export function useGridState(
     const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
     if (gridOwnerId !== userId) throw new Error('You do not own this grid')
 
+    const removedCells = (cellsByGridId.get(gridId) ?? []).filter((c) =>
+      cellIds.includes(c.id),
+    )
+
     setCellsByGridId((prev) => {
-      const newCellsByGridMap = new Map(prev)
-      const gridCells = newCellsByGridMap.get(gridId)
+      const gridCells = prev.get(gridId)
       if (!gridCells || gridCells.length === 0) {
         console.error('no grid cells found')
         return prev
       }
-      cellData.forEach(({ cellId }) => {
-        newCellsByGridMap.set(
-          gridId,
-          gridCells.filter((c) => c.id !== cellId),
-        )
+      return new Map(prev).set(
+        gridId,
+        gridCells.filter((c) => !cellIds.includes(c.id)),
+      )
+    })
+
+    try {
+      return await deleteManyCellsById({
+        data: { gridOwnerId, gridId, cellIds },
       })
-      return newCellsByGridMap
+    } catch (error) {
+      // Only the removed cells go back. Restoring a copy of the whole map
+      // would also undo a cell save that landed while the delete was out
+      setCellsByGridId((prev) =>
+        new Map(prev).set(gridId, [
+          ...(prev.get(gridId) ?? []),
+          ...removedCells,
+        ]),
+      )
+      throw error
+    }
+  }
+
+  // Resolves with the saved cell, or null when the cell no longer exists
+  async function updateCellHandler(
+    update: UpdateCellInput,
+  ): Promise<Cell | null> {
+    // updateCell writes every field of the cell, so of two saves the one that
+    // reaches the database last wins on all of them, and requests sent close
+    // together can arrive in either order. Each save is sent only after the
+    // one before it has come back, failed or not
+    const request = lastCellSave.current.then(() =>
+      updateCell({ data: update }),
+    )
+    lastCellSave.current = request.catch(() => undefined)
+
+    const { results } = await request
+    const savedCell = results.at(0) ?? null
+
+    // No row came back, so the cell was deleted after the editor loaded it
+    setCellsByGridId((prev) => {
+      const gridCells = prev.get(update.gridId) ?? []
+      return new Map(prev).set(
+        update.gridId,
+        savedCell
+          ? gridCells.map((c) => (c.id === savedCell.id ? savedCell : c))
+          : gridCells.filter((c) => c.id !== update.id),
+      )
     })
 
-    const deleteCellsResponse = await deleteManyCellsById({
-      data: { gridOwnerId, gridId, cellIds },
-    })
-
-    return deleteCellsResponse
+    return savedCell
   }
 
   return {
@@ -295,5 +340,6 @@ export function useGridState(
     addGridPixels,
     removeGridPixels,
     removeGridCells,
+    updateCellHandler,
   }
 }
