@@ -559,9 +559,15 @@ export const deleteManyCellsById = createServerFn({ method: 'POST' })
     const { user } = context
     if (!user.id) throw new Error('Not Logged In')
 
-    return await db
+    const result = await db
       .delete(cells)
       .where(and(inArray(cells.id, data.cellIds), eq(cells.ownerId, user.id)))
+      .returning({ id: cells.id })
+
+    return {
+      success: result.length > 0,
+      result,
+    }
   })
 
 export const deletePixelById = createServerFn({ method: 'POST' })

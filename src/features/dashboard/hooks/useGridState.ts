@@ -259,27 +259,37 @@ export function useGridState(
     const gridOwnerId = grids.find((g) => g.id === gridId)?.ownerId
     if (gridOwnerId !== userId) throw new Error('You do not own this grid')
 
+    const removedCells = (cellsByGridId.get(gridId) ?? []).filter((c) =>
+      cellIds.includes(c.id),
+    )
+
     setCellsByGridId((prev) => {
-      const newCellsByGridMap = new Map(prev)
-      const gridCells = newCellsByGridMap.get(gridId)
+      const gridCells = prev.get(gridId)
       if (!gridCells || gridCells.length === 0) {
         console.error('no grid cells found')
         return prev
       }
-      cellData.forEach(({ cellId }) => {
-        newCellsByGridMap.set(
-          gridId,
-          gridCells.filter((c) => c.id !== cellId),
-        )
+      return new Map(prev).set(
+        gridId,
+        gridCells.filter((c) => !cellIds.includes(c.id)),
+      )
+    })
+
+    try {
+      return await deleteManyCellsById({
+        data: { gridOwnerId, gridId, cellIds },
       })
-      return newCellsByGridMap
-    })
-
-    const deleteCellsResponse = await deleteManyCellsById({
-      data: { gridOwnerId, gridId, cellIds },
-    })
-
-    return deleteCellsResponse
+    } catch (error) {
+      // Only the removed cells go back. Restoring a copy of the whole map
+      // would also undo a cell save that landed while the delete was out
+      setCellsByGridId((prev) =>
+        new Map(prev).set(gridId, [
+          ...(prev.get(gridId) ?? []),
+          ...removedCells,
+        ]),
+      )
+      throw error
+    }
   }
 
   return {
