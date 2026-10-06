@@ -33,6 +33,15 @@ interface GridViewProps {
   orientation: 'horizontal' | 'vertical'
   onOpenSettings: () => void
   onDeleteGrid: () => void
+  onEditCell: (editing: EditingCell) => void
+}
+
+/** What the cell editor needs to open on a cell */
+export interface EditingCell {
+  cell: Cell
+  pixel: Pixel
+  /** The cell's place in its row, counted from 1 */
+  column: number
 }
 
 function matchesFilter(pixel: Pixel, filter: string): boolean {
@@ -42,10 +51,18 @@ function matchesFilter(pixel: Pixel, filter: string): boolean {
   )
 }
 
-function FilledCell({ cell, pixel }: { cell: Cell; pixel: Pixel }) {
+function FilledCell({
+  cell,
+  pixel,
+  column,
+  onEdit,
+}: EditingCell & { onEdit: () => void }) {
   return (
-    <div
-      className="relative overflow-hidden"
+    <button
+      type="button"
+      onClick={onEdit}
+      aria-label={`${pixel.name}, column ${column}${cell.completedAt ? ', completed' : ''}`}
+      className="relative overflow-hidden transition-all cursor-pointer hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--journal-ink)"
       style={{
         width: CELL_SIZE,
         height: CELL_SIZE,
@@ -79,7 +96,7 @@ function FilledCell({ cell, pixel }: { cell: Cell; pixel: Pixel }) {
           />
         </div>
       )}
-    </div>
+    </button>
   )
 }
 
@@ -90,6 +107,7 @@ export function GridView({
   orientation,
   onOpenSettings,
   onDeleteGrid,
+  onEditCell,
 }: GridViewProps) {
   const rows = useMemo(
     () => buildGridRows(gridPixels, cells),
@@ -178,7 +196,8 @@ export function GridView({
 
         {/* The cell area. It takes its width from the panel, holds only the
             slot columns, and scrolls sideways when a row is longer than fits.
-            Focusable so the keyboard can scroll it while cells aren't buttons */}
+            Focusable so the keyboard can scroll it while empty slots aren't
+            buttons */}
         <div
           ref={ref}
           role="region"
@@ -222,7 +241,20 @@ export function GridView({
                         data-filled={cell !== undefined}
                         className="flex items-center justify-center"
                       >
-                        {cell && <FilledCell cell={cell} pixel={row.pixel} />}
+                        {cell && (
+                          <FilledCell
+                            cell={cell}
+                            pixel={row.pixel}
+                            column={index + 1}
+                            onEdit={() =>
+                              onEditCell({
+                                cell,
+                                pixel: row.pixel,
+                                column: index + 1,
+                              })
+                            }
+                          />
+                        )}
                       </div>
                     )
                   })}

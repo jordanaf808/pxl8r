@@ -66,6 +66,7 @@ describe('GridView', () => {
         orientation="horizontal"
         onOpenSettings={() => {}}
         onDeleteGrid={() => {}}
+        onEditCell={() => {}}
       />,
     )
 
@@ -104,6 +105,7 @@ describe('GridView', () => {
         orientation="horizontal"
         onOpenSettings={() => {}}
         onDeleteGrid={() => {}}
+        onEditCell={() => {}}
       />,
     )
     document.body.innerHTML = html
@@ -132,6 +134,7 @@ describe('GridView', () => {
         orientation="horizontal"
         onOpenSettings={() => {}}
         onDeleteGrid={() => {}}
+        onEditCell={() => {}}
       />,
     )
 

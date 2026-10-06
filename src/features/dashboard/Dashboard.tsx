@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { CreatePixelModal } from './modals/CreatePixelModal'
 import { CreateGridModal } from './modals/CreateGridModal'
+import { CellEditorModal } from './modals/CellEditorModal'
 import { StatsBar } from './StatsBar'
 import { GridTabs } from './GridTabs'
 import { GridView } from './GridView'
+import type { EditingCell } from './GridView'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,6 +68,8 @@ export function Dashboard({
     createGridHandler,
     updateGridHandler,
     removeGrid,
+    removeGridCells,
+    updateCellHandler,
   } = useGridState(
     userData.grids,
     userData.gridsData.cellsByGridId,
@@ -85,6 +89,7 @@ export function Dashboard({
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedGrid, setSelectedGrid] = useState<GridData | null>(null)
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
 
   const activeGrid = grids.find((g) => g.id === activeGridId)
   const activeGridPixels = pixelsByGridId.get(activeGridId ?? '') ?? []
@@ -171,6 +176,7 @@ export function Dashboard({
                 setIsGroupModalOpen(true)
               }}
               onDeleteGrid={() => setIsDeleteDialogOpen(true)}
+              onEditCell={setEditingCell}
             />
           )}
         </GridTabs>
@@ -243,6 +249,17 @@ export function Dashboard({
         onUpdate={updateGridHandler}
         onCreatePixel={() => setIsPixelModalOpen(true)}
       />
+
+      {editingCell && activeGrid && (
+        <CellEditorModal
+          key={editingCell.cell.id}
+          {...editingCell}
+          gridName={activeGrid.name}
+          onSave={updateCellHandler}
+          onRemove={removeGridCells}
+          onClose={() => setEditingCell(null)}
+        />
+      )}
 
       <AlertDialog
         open={isDeleteDialogOpen}
