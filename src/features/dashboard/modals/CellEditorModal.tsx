@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import type { Cell, UpdateCellInput } from '@/db/types'
 import { CellEditor } from '../CellEditor'
 import type { CellEditorHandle } from '../CellEditor'
+import { useReturnFocus } from '../hooks/useReturnFocus'
 import type { EditingCell } from '../GridView'
 
 interface CellEditorModalProps extends EditingCell {
@@ -26,6 +27,8 @@ export function CellEditorModal({
   onClose,
 }: CellEditorModalProps) {
   const editorRef = useRef<CellEditorHandle>(null)
+  // Any cell can open this dialog, so focus goes back to the one that did
+  const returnFocus = useReturnFocus()
 
   return (
     // Escape, a click outside and the close button all ask the dialog to
@@ -39,15 +42,18 @@ export function CellEditorModal({
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
+        {...returnFocus}
         className="block sm:max-w-110 max-h-[90vh] overflow-y-auto px-6 pt-5.5 pb-5 bg-(--journal-cream) border-2 border-(--journal-ink)"
         style={{
           borderRadius: '2px 8px 4px 12px',
           boxShadow: '2px 2px 0 var(--journal-warm)',
         }}
       >
-        {/* The editor shows the pixel's name as its own heading, so this one
-            is only for the dialog's accessible name */}
-        <DialogTitle className="sr-only">Edit cell: {pixel.name}</DialogTitle>
+        {/* The editor shows the pixel's name as its own heading. This is only
+            the dialog's accessible name, so it isn't a second heading */}
+        <DialogTitle asChild>
+          <span className="sr-only">Edit cell: {pixel.name}</span>
+        </DialogTitle>
         <CellEditor
           ref={editorRef}
           cell={cell}

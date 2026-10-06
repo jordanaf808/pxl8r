@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useReturnFocus } from '../hooks/useReturnFocus'
 import { DANGER_COLOR } from './styles'
 
 interface DeleteCellDialogProps {
@@ -21,6 +22,8 @@ export function DeleteCellDialog({
   onCancel,
   onConfirm,
 }: DeleteCellDialogProps) {
+  const returnFocus = useReturnFocus()
+
   return (
     <AlertDialog
       open={isOpen}
@@ -28,7 +31,10 @@ export function DeleteCellDialog({
         if (!open) onCancel()
       }}
     >
-      <AlertDialogContent className="sm:max-w-sm bg-(--journal-cream) text-(--journal-ink) border-2 border-(--journal-ink)">
+      <AlertDialogContent
+        {...returnFocus}
+        className="sm:max-w-sm bg-(--journal-cream) text-(--journal-ink) border-2 border-(--journal-ink)"
+      >
         <AlertDialogHeader>
           <AlertDialogTitle className="text-xl">
             Delete this cell?

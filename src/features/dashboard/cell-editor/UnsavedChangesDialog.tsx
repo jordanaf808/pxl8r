@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useReturnFocus } from '../hooks/useReturnFocus'
 import { DANGER_COLOR } from './styles'
 
 interface UnsavedChangesDialogProps {
@@ -24,6 +25,8 @@ export function UnsavedChangesDialog({
   onDiscard,
   onSave,
 }: UnsavedChangesDialogProps) {
+  const returnFocus = useReturnFocus()
+
   return (
     <AlertDialog
       open={isOpen}
@@ -31,7 +34,10 @@ export function UnsavedChangesDialog({
         if (!open) onKeepEditing()
       }}
     >
-      <AlertDialogContent className="sm:max-w-sm bg-(--journal-cream) text-(--journal-ink) border-2 border-(--journal-ink)">
+      <AlertDialogContent
+        {...returnFocus}
+        className="sm:max-w-sm bg-(--journal-cream) text-(--journal-ink) border-2 border-(--journal-ink)"
+      >
         <AlertDialogHeader>
           <AlertDialogTitle className="text-xl">
             Save your changes?
