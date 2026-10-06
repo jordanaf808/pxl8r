@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildGridRows,
-  computeColumnCount,
-  gridIdAfterDelete,
-  mergeGridPixels,
-} from './grid'
+import { buildGridRows, computeColumnCount, gridIdAfterDelete } from './grid'
 import { LATER, makeCell, makeGridPixel } from './grid.fixtures'
 
 describe('buildGridRows', () => {
@@ -100,46 +95,6 @@ describe('buildGridRows', () => {
     const rows = buildGridRows(gridPixels, cells)
 
     expect(rows[1].cells).toEqual([])
-  })
-})
-
-describe('mergeGridPixels', () => {
-  it('keeps a row the save did not send back', () => {
-    const existing = [
-      makeGridPixel({ pixelId: 'pixel-a', position: 0 }),
-      makeGridPixel({ pixelId: 'pixel-b', position: 1 }),
-    ]
-    const saved = [
-      makeGridPixel({ pixelId: 'pixel-a', position: 0 }),
-      makeGridPixel({ pixelId: 'pixel-c', position: 2 }),
-    ]
-
-    const merged = mergeGridPixels(existing, saved)
-
-    expect(merged.map((gridPixel) => gridPixel.pixel.id)).toEqual([
-      'pixel-a',
-      'pixel-b',
-      'pixel-c',
-    ])
-  })
-
-  it('takes the saved copy of a row both lists hold', () => {
-    const existing = [
-      makeGridPixel({ pixelId: 'pixel-a', position: 0, sortOrder: 'manual' }),
-    ]
-    const saved = [
-      makeGridPixel({
-        pixelId: 'pixel-a',
-        position: 0,
-        sortOrder: 'alphabetic',
-      }),
-    ]
-
-    const merged = mergeGridPixels(existing, saved)
-
-    expect(merged.map((gridPixel) => gridPixel.sortOrder)).toEqual([
-      'alphabetic',
-    ])
   })
 })
 

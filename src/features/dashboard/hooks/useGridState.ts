@@ -14,13 +14,11 @@ import type {
   Cell,
   Pixel,
   GridPixel,
-  GridData,
   NewGridData,
   GridsByPixelIdMap,
   UpdateCellInput,
 } from '@/db/types'
 import { buildGridsByPixelIdMap, flattenCellsByGridId } from '@/lib/utils/maps'
-import { mergeGridPixels } from '@/lib/utils/grid'
 
 function withoutGrid<T>(map: Map<string, T>, gridId: string): Map<string, T> {
   const next = new Map(map)
@@ -48,6 +46,8 @@ export function useGridState(
   const [pixelsByGridId, setPixelsByGridId] = useState(initialPixelsByGridId)
   // The last cell save sent. The next one waits for it
   const lastCellSave = useRef<Promise<unknown>>(Promise.resolve())
+  // The same for a write to a grid's own fields or to its rows
+  const lastGridWrite = useRef<Promise<unknown>>(Promise.resolve())
 
   const allCells = useMemo(
     () => flattenCellsByGridId(cellsByGridId),
@@ -60,6 +60,15 @@ export function useGridState(
   )
 
   // ---- Grid CRUD ----
+
+  // Grid settings saves each change as it's made, so two writes can be out at
+  // once, and requests sent close together can arrive in either order. Each
+  // is sent only after the one before it has come back, failed or not
+  function afterLastGridWrite<T>(send: () => Promise<T>): Promise<T> {
+    const request = lastGridWrite.current.then(send)
+    lastGridWrite.current = request.catch(() => undefined)
+    return request
+  }
 
   async function addGridPixels({
     gridId,
@@ -90,17 +99,21 @@ export function useGridState(
       newPixels.push(foundPixel)
     })
 
-    const results = await bulkUpsertGridPixels({
-      data: {
-        ownerId: userId,
-        gridId,
-        pixelData: newPixels.map((p) => ({
+    // In order: the server gives a new row the grid's highest position plus
+    // one, so two adds read at the same moment would get the same position
+    const results = await afterLastGridWrite(() =>
+      bulkUpsertGridPixels({
+        data: {
+          ownerId: userId,
           gridId,
-          pixelId: p.id,
-          sortOrder: 'manual',
-        })),
-      },
-    })
+          pixelData: newPixels.map((p) => ({
+            gridId,
+            pixelId: p.id,
+            sortOrder: 'manual',
+          })),
+        },
+      }),
+    )
 
     // The server assigns position, so state updates after the save instead of before it.
     const newGridPixelsState: GridPixel[] = results.results.map((gp) => ({
@@ -157,49 +170,17 @@ export function useGridState(
     return createdGrid.id
   }
 
-  async function updateGridHandler(gridData: GridData) {
-    const gridId = gridData.grid.id
+  // Saves the grid's own fields. Its rows are saved by addGridPixels and
+  // removeGridPixels
+  async function updateGridHandler(grid: Grid): Promise<void> {
+    // In order: updateGrid writes every field it's sent, so of two saves the
+    // one that reaches the database last wins on all of them
+    const updated = await afterLastGridWrite(() => updateGrid({ data: grid }))
+    if (updated.success !== true)
+      throw new Error('Error updating grid', { cause: updated.results })
 
-    const pixelData = gridData.pixels.map((p) => ({
-      gridId,
-      pixelId: p.id,
-      sortOrder: 'alphabetic',
-    }))
-
-    // The modal's cell matrix no longer saves.
-    const [updatedGrid, updatedGridPixels] = await Promise.all([
-      updateGrid({ data: gridData.grid }),
-      bulkUpsertGridPixels({
-        data: { ownerId: gridData.grid.ownerId, gridId, pixelData },
-      }),
-    ])
-
-    if (updatedGrid.success !== true)
-      throw new Error('Error updating grid', { cause: updatedGrid.results })
-    if (updatedGridPixels.success !== true)
-      throw new Error('Error updating grid pixels', {
-        cause: updatedGridPixels.results,
-      })
-
-    const updatedGridData = updatedGrid.results[0]
-    setGrids((prev) => prev.map((g) => (g.id === gridId ? updatedGridData : g)))
-
-    setPixelsByGridId((prev) => {
-      const newMap = new Map(prev)
-      const savedGridPixels = updatedGridPixels.results.map((gp) => ({
-        gridId: gp.gridId,
-        sortOrder: gp.sortOrder,
-        position: gp.position,
-        pixel: gridData.pixels.find((p) => p.id === gp.pixelId)!,
-      }))
-      // The modal leaves out rows that have no cells, and this save never
-      // removes a link, so rows it didn't send are kept
-      newMap.set(
-        gridId,
-        mergeGridPixels(prev.get(gridId) ?? [], savedGridPixels),
-      )
-      return newMap
-    })
+    const savedGrid = updated.results[0]
+    setGrids((prev) => prev.map((g) => (g.id === savedGrid.id ? savedGrid : g)))
   }
 
   async function removeGrid(gridId: string) {
