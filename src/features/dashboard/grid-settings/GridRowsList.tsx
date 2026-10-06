@@ -98,16 +98,20 @@ export function GridRowsList({
                   borderRadius: '1px 3px 2px 4px',
                 }}
               />
-              <span className="flex-1 min-w-0 text-sm font-bold truncate">
-                {pixel.name}
-              </span>
-              {cellCount !== undefined && (
-                <span className="shrink-0 text-xs font-serif opacity-70">
-                  {cellCount === 0
-                    ? 'No cells yet'
-                    : countLabel(cellCount, 'cell')}
+              {/* On a phone the count goes under the name. Beside it, the
+                  name had about 110px and an 18-letter one was cut short */}
+              <div className="flex flex-col flex-1 min-w-0 sm:flex-row sm:items-center sm:gap-2.5">
+                <span className="text-sm font-bold leading-tight truncate sm:flex-1">
+                  {pixel.name}
                 </span>
-              )}
+                {cellCount !== undefined && (
+                  <span className="shrink-0 text-xs font-serif leading-tight opacity-70">
+                    {cellCount === 0
+                      ? 'No cells yet'
+                      : countLabel(cellCount, 'cell')}
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 data-row-control={pixel.id}
