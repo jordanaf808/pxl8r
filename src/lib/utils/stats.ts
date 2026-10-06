@@ -30,7 +30,7 @@ export function computeGlobalStats(
       ? Math.round(
           completedWithTime.reduce((sum, c) => {
             const created = new Date(c.createdAt!).getTime()
-            const completed = new Date(c.updatedAt!).getTime()
+            const completed = new Date(c.completedAt!).getTime()
             return sum + (completed - created) / (1000 * 60 * 60 * 24)
           }, 0) / completedWithTime.length,
         )
