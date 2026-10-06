@@ -216,39 +216,42 @@ export function CellEditor({
           <Trash2 size={16} aria-hidden="true" />
           Delete cell
         </button>
-        <span className="flex-1" />
-        {/* Always in the page, so a screen reader hears the text when it changes */}
-        <span
-          role="status"
-          className="flex items-center gap-1.5 text-[13px] font-semibold"
-        >
-          {editor.busyLabel}
-          {!editor.isBusy && editor.hasUnsavedEdit && (
-            <>
-              <span
-                aria-hidden="true"
-                className="w-2 h-2 rounded-full bg-(--journal-gold)"
-              />
-              Unsaved
-            </>
-          )}
-        </span>
-        <button
-          type="button"
-          onClick={editor.cancel}
-          className={OUTLINE_BUTTON}
-          style={{ borderRadius: BUTTON_RADIUS }}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={editor.save}
-          className={PRIMARY_BUTTON}
-          style={{ borderRadius: BUTTON_RADIUS }}
-        >
-          Save
-        </button>
+        {/* One group, so on a narrow screen it wraps to its own row together
+            instead of leaving Save alone on the next one */}
+        <div className="flex items-center gap-2.5 ml-auto">
+          {/* Always in the page, so a screen reader hears the text when it changes */}
+          <span
+            role="status"
+            className="flex items-center gap-1.5 text-[13px] font-semibold"
+          >
+            {editor.busyLabel}
+            {!editor.isBusy && editor.hasUnsavedEdit && (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="w-2 h-2 rounded-full bg-(--journal-gold)"
+                />
+                Unsaved
+              </>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={editor.cancel}
+            className={OUTLINE_BUTTON}
+            style={{ borderRadius: BUTTON_RADIUS }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={editor.save}
+            className={PRIMARY_BUTTON}
+            style={{ borderRadius: BUTTON_RADIUS }}
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       <UnsavedChangesDialog
