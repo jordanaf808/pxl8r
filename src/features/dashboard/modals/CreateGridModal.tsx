@@ -25,6 +25,7 @@ interface CreateGridModalProps {
   onCreate: (gridData: NewGridData) => Promise<void>
   onSaveGrid: (grid: Grid) => Promise<unknown>
   onAddPixels: (link: GridLink) => Promise<unknown>
+  onRemovePixels: (link: GridLink) => Promise<unknown>
   onNewPixel: () => void
   onClose: () => void
 }
@@ -36,6 +37,7 @@ export function CreateGridModal({
   onCreate,
   onSaveGrid,
   onAddPixels,
+  onRemovePixels,
   onNewPixel,
   onClose,
 }: CreateGridModalProps) {
@@ -100,6 +102,9 @@ export function CreateGridModal({
             onSaveGrid={onSaveGrid}
             onAddPixel={(pixelId) =>
               onAddPixels({ gridId: settings.grid.id, pixelIds: [pixelId] })
+            }
+            onRemovePixel={(pixelId) =>
+              onRemovePixels({ gridId: settings.grid.id, pixelIds: [pixelId] })
             }
             onNewPixel={onNewPixel}
             onClose={requestClose}

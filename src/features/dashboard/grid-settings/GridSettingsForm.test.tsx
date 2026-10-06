@@ -6,15 +6,24 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { GridSettingsForm } from './GridSettingsForm'
-import { makeGrid, makeGridPixel, makePixel } from '@/lib/utils/grid.fixtures'
+import {
+  makeCell,
+  makeGrid,
+  makeGridPixel,
+  makePixel,
+} from '@/lib/utils/grid.fixtures'
 
 const grid = makeGrid()
 const rows = [
   {
     ...makeGridPixel({ pixelId: 'pixel-a', position: 0, name: 'Morning run' }),
-    cells: [],
+    cells: [
+      makeCell({ id: 'cell-a', pixelId: 'pixel-a', position: 0 }),
+      makeCell({ id: 'cell-b', pixelId: 'pixel-a', position: 1 }),
+    ],
   },
 ]
 const library = [
@@ -26,6 +35,7 @@ function renderForm() {
   const handlers = {
     onSaveGrid: vi.fn().mockResolvedValue(undefined),
     onAddPixel: vi.fn().mockResolvedValue(undefined),
+    onRemovePixel: vi.fn().mockResolvedValue(undefined),
   }
   render(
     <GridSettingsForm
@@ -103,5 +113,21 @@ describe('GridSettingsForm', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Add Stretch' })).toBeTruthy(),
     )
+  })
+
+  it('removes a row only once the warning is confirmed', () => {
+    const { onRemovePixel } = renderForm()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Morning run' }))
+    expect(onRemovePixel).not.toHaveBeenCalled()
+
+    const warning = screen.getByRole('alertdialog', {
+      name: 'Remove “Morning run” from this grid?',
+    })
+    expect(warning.textContent).toContain('Its 2 cells are deleted with it.')
+    fireEvent.click(within(warning).getByRole('button', { name: 'Remove row' }))
+
+    expect(onRemovePixel).toHaveBeenCalledTimes(1)
+    expect(onRemovePixel).toHaveBeenCalledWith('pixel-a')
   })
 })

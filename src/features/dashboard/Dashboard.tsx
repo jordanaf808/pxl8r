@@ -65,6 +65,7 @@ export function Dashboard({
     updateGridHandler,
     removeGrid,
     addGridPixels,
+    removeGridPixels,
     removeGridCells,
     updateCellHandler,
   } = useGridState(
@@ -240,6 +241,7 @@ export function Dashboard({
           onCreate={handleCreateGrid}
           onSaveGrid={updateGridHandler}
           onAddPixels={addGridPixels}
+          onRemovePixels={removeGridPixels}
           onNewPixel={() => setIsPixelModalOpen(true)}
           onClose={() => setGridModal(null)}
         />

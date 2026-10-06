@@ -31,6 +31,7 @@ interface GridSettingsFormProps {
   /** Each rejects when its save fails */
   onSaveGrid: (grid: Grid) => Promise<unknown>
   onAddPixel: (pixelId: string) => Promise<unknown>
+  onRemovePixel: (pixelId: string) => Promise<unknown>
   onNewPixel: () => void
   onClose: () => void
   ref?: Ref<GridSettingsFormHandle>
@@ -39,7 +40,7 @@ interface GridSettingsFormProps {
 /**
  * Every change here is saved as it's made, and there's no Cancel: the name
  * and the description when their field loses focus, a pixel when its Add
- * button is clicked.
+ * button is clicked, a row's removal once its warning is confirmed.
  */
 export function GridSettingsForm({
   grid,
@@ -47,6 +48,7 @@ export function GridSettingsForm({
   pixels,
   onSaveGrid,
   onAddPixel,
+  onRemovePixel,
   onNewPixel,
   onClose,
   ref,
@@ -123,6 +125,17 @@ export function GridSettingsForm({
     }
   }
 
+  async function removePixel(pixel: Pixel): Promise<void> {
+    setError(null)
+    try {
+      await onRemovePixel(pixel.id)
+    } catch {
+      setError(
+        `“${pixel.name}” wasn’t removed, so it’s back in the list. Check your connection, then try again.`,
+      )
+    }
+  }
+
   // Escape and a click outside close the dialog without the field losing
   // focus first, so the host asks for what's typed to be saved
   useImperativeHandle(ref, () => ({
@@ -164,6 +177,8 @@ export function GridSettingsForm({
           pixel: row.pixel,
           cellCount: row.cells.length,
         }))}
+        onRemove={(pixel) => void removePixel(pixel)}
+        asksBeforeRemoving
       />
 
       {error && (

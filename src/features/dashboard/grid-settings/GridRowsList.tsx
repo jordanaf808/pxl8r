@@ -1,10 +1,11 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { PIXEL_COLORS } from '@/db/types'
 import type { Pixel } from '@/db/types'
 import { countLabel } from '@/lib/utils/format'
 import { BUTTON_RADIUS, FOCUS_RING } from '../cell-editor/styles'
 import { useListFocus } from '../hooks/useListFocus'
+import { RemoveRowDialog } from './RemoveRowDialog'
 
 export interface GridRowItem {
   pixel: Pixel
@@ -12,19 +13,36 @@ export interface GridRowItem {
   cellCount?: number
 }
 
+interface RowToRemove {
+  pixel: Pixel
+  cellCount: number
+  index: number
+}
+
 interface GridRowsListProps {
   /** In row order */
   rows: GridRowItem[]
-  /** Left out, rows can't be removed here */
-  onRemove?: (pixel: Pixel) => void
+  onRemove: (pixel: Pixel) => void
+  /**
+   * Shows a warning before removing. For a saved grid, where a row's cells
+   * are deleted with it and can't be brought back
+   */
+  asksBeforeRemoving?: boolean
 }
 
-export function GridRowsList({ rows, onRemove }: GridRowsListProps) {
+export function GridRowsList({
+  rows,
+  onRemove,
+  asksBeforeRemoving = false,
+}: GridRowsListProps) {
   const headingRef = useRef<HTMLHeadingElement>(null)
-  const { listRef, noteLeavingRow } = useListFocus<HTMLOListElement>(
+  const { listRef, noteLeavingRow, focusRow } = useListFocus<HTMLOListElement>(
     rows.map((row) => row.pixel.id),
     headingRef,
   )
+  // Kept once the warning closes, so its text doesn't empty while it fades out
+  const [rowToRemove, setRowToRemove] = useState<RowToRemove | null>(null)
+  const [isWarningOpen, setIsWarningOpen] = useState(false)
 
   return (
     <section className="flex flex-col gap-2">
@@ -90,26 +108,44 @@ export function GridRowsList({ rows, onRemove }: GridRowsListProps) {
                     : countLabel(cellCount, 'cell')}
                 </span>
               )}
-              {onRemove ? (
-                <button
-                  type="button"
-                  data-row-control={pixel.id}
-                  aria-label={`Remove ${pixel.name}`}
-                  onClick={() => {
-                    noteLeavingRow(pixel.id)
-                    onRemove(pixel)
-                  }}
-                  className={`flex items-center justify-center shrink-0 w-9 h-9 rounded-sm cursor-pointer hover:bg-(--journal-tan) ${FOCUS_RING}`}
-                >
-                  <X size={16} aria-hidden="true" />
-                </button>
-              ) : (
-                // Keeps the cell count off the box's edge
-                <span className="w-2 shrink-0" />
-              )}
+              <button
+                type="button"
+                data-row-control={pixel.id}
+                aria-label={`Remove ${pixel.name}`}
+                onClick={() => {
+                  if (asksBeforeRemoving) {
+                    setRowToRemove({ pixel, cellCount: cellCount ?? 0, index })
+                    setIsWarningOpen(true)
+                    return
+                  }
+                  noteLeavingRow(pixel.id)
+                  onRemove(pixel)
+                }}
+                className={`flex items-center justify-center shrink-0 w-9 h-9 rounded-sm cursor-pointer hover:bg-(--journal-tan) ${FOCUS_RING}`}
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
             </li>
           ))}
         </ol>
+      )}
+
+      {rowToRemove && (
+        <RemoveRowDialog
+          isOpen={isWarningOpen}
+          pixelName={rowToRemove.pixel.name}
+          cellCount={rowToRemove.cellCount}
+          onCancel={() => setIsWarningOpen(false)}
+          onConfirm={() => {
+            setIsWarningOpen(false)
+            onRemove(rowToRemove.pixel)
+          }}
+          // After Cancel, back to the row's own button. After a removal that
+          // row is gone, so to the row now in its place
+          onClosed={() =>
+            focusRow({ id: rowToRemove.pixel.id, index: rowToRemove.index })
+          }
+        />
       )}
     </section>
   )

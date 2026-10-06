@@ -240,7 +240,12 @@ export function useGridState(
     )
 
     try {
-      return await deleteGridPixels({ data: { gridId, pixelIds } })
+      // In order: a removed pixel is back in the list to add at once. If its
+      // add reached the server before this delete, the delete would then take
+      // the new row
+      return await afterLastGridWrite(() =>
+        deleteGridPixels({ data: { gridId, pixelIds } }),
+      )
     } catch (error) {
       // Only what was removed goes back, as in removeGridCells
       setPixelsByGridId((prev) =>
