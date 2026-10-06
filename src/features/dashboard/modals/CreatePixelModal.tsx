@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import type {
   PixelUnitType,
@@ -18,6 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { useReturnFocus } from '../hooks/useReturnFocus'
 
 const UNIT_SLIDER_MAX: Partial<Record<PixelUnitType, number>> = {
   minute: 240,
@@ -68,6 +71,7 @@ export function CreatePixelModal({
   const [endGoal, setEndGoal] = useState(pixelToEdit?.endGoal ?? 30)
   const [color, setColor] = useState<PixelColor>(pixelToEdit?.color ?? 'sage')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const returnFocus = useReturnFocus()
 
   if (!isOpen) return null
 
@@ -118,38 +122,48 @@ export function CreatePixelModal({
   ][]
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-[var(--journal-ink)]/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div
-        className="relative bg-[var(--journal-cream)] sketch-border w-full max-w-lg max-h-[90vh] overflow-y-auto animate-float-in"
+    // A Radix dialog, so this form can open above Grid settings, which is one
+    // too. A dialog blocks clicks and focus on everything outside itself, and
+    // only another Radix dialog counts as being on top of it
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <DialogContent
+        showCloseButton={false}
+        {...returnFocus}
+        className="block sm:max-w-lg max-h-[90vh] overflow-y-auto p-0 bg-[var(--journal-cream)] sketch-border"
         style={{ transform: 'rotate(-0.5deg)' }}
       >
-        {/* Close button */}
         <button
+          type="button"
+          aria-label="Close"
           onClick={onClose}
           className="absolute top-4 right-4 text-[var(--journal-ink)] opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
         >
-          <X size={22} />
+          <X size={22} aria-hidden="true" />
         </button>
 
         <div className="p-6 md:p-8">
           {/* Header */}
           <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-3xl md:text-4xl font-bold text-[var(--journal-ink)]">
-              {isEditing ? 'Edit Pixel' : 'New Pixel'}
-            </h2>
+            {/* The bare Radix parts: the ones in ui/dialog add their own text
+                size and color, which would change this heading and subtitle */}
+            <DialogPrimitive.Title asChild>
+              <h2 className="text-3xl md:text-4xl font-bold text-[var(--journal-ink)]">
+                {isEditing ? 'Edit Pixel' : 'New Pixel'}
+              </h2>
+            </DialogPrimitive.Title>
           </div>
-          <p className="text-[var(--journal-ink)] opacity-50 font-serif mb-4">
-            {isEditing
-              ? 'update your pixel details'
-              : 'sketch out a new goal or task'}
-          </p>
+          <DialogPrimitive.Description asChild>
+            <p className="text-[var(--journal-ink)] opacity-50 font-serif mb-4">
+              {isEditing
+                ? 'update your pixel details'
+                : 'sketch out a new goal or task'}
+            </p>
+          </DialogPrimitive.Description>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name */}
@@ -325,7 +339,7 @@ export function CreatePixelModal({
             </button>
           </form>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
