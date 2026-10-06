@@ -50,22 +50,6 @@ export function buildGridRows(
     }))
 }
 
-// A grid's rows after a save that only inserts and updates links. A row the
-// save didn't send back is still linked in the database, so it stays
-export function mergeGridPixels(
-  existing: GridPixel[],
-  saved: GridPixel[],
-): GridPixel[] {
-  const savedPixelIds = new Set(saved.map((gridPixel) => gridPixel.pixel.id))
-  const unsent = existing.filter(
-    (gridPixel) => !savedPixelIds.has(gridPixel.pixel.id),
-  )
-
-  return [...unsent, ...saved].sort(
-    (a, b) => a.position - b.position || compareIds(a.pixel.id, b.pixel.id),
-  )
-}
-
 interface ColumnCountInput {
   perRowMax: number
   containerWidth: number

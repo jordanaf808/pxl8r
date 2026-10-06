@@ -20,13 +20,13 @@ import {
 import { buttonVariants } from '@/components/ui/button'
 import { usePixelState } from '@/features/dashboard/hooks/usePixelState'
 import { useGridState } from '@/features/dashboard/hooks/useGridState'
+import { countLabel } from '@/lib/utils/format'
 import { gridIdAfterDelete } from '@/lib/utils/grid'
 import type {
   Pixel,
   NewUser,
   Grid,
   Page,
-  GridData,
   NewGridData,
   DashboardGridDataReturn,
 } from '@/db/types'
@@ -43,10 +43,6 @@ interface DashboardProps {
   initialGridId: string | undefined
   /** Called on every tab change, so the route can copy it into `?grid=` */
   onActiveGridChange: (gridId: string | null) => void
-}
-
-function countLabel(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`
 }
 
 export function Dashboard({
@@ -68,6 +64,8 @@ export function Dashboard({
     createGridHandler,
     updateGridHandler,
     removeGrid,
+    addGridPixels,
+    removeGridPixels,
     removeGridCells,
     updateCellHandler,
   } = useGridState(
@@ -86,9 +84,9 @@ export function Dashboard({
       grids.find((g) => g.id === initialGridId)?.id ?? grids.at(0)?.id ?? null,
   )
   const [isPixelModalOpen, setIsPixelModalOpen] = useState(false)
-  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
+  // 'settings' is always for the active grid: its options menu opens it
+  const [gridModal, setGridModal] = useState<'new' | 'settings' | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedGrid, setSelectedGrid] = useState<GridData | null>(null)
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
 
   const activeGrid = grids.find((g) => g.id === activeGridId)
@@ -152,10 +150,7 @@ export function Dashboard({
           grids={grids}
           activeGridId={activeGridId}
           onSelectGrid={selectGrid}
-          onNewGrid={() => {
-            setSelectedGrid(null)
-            setIsGroupModalOpen(true)
-          }}
+          onNewGrid={() => setGridModal('new')}
         >
           {/* The key mounts a new GridView per tab, so the row filter and the
               sideways scroll start fresh, and the new cell area is measured
@@ -167,14 +162,7 @@ export function Dashboard({
               gridPixels={activeGridPixels}
               cells={activeCells}
               orientation="horizontal"
-              onOpenSettings={() => {
-                setSelectedGrid({
-                  grid: activeGrid,
-                  pixels: activeGridPixels.map((gp) => gp.pixel),
-                  cells: activeCells,
-                })
-                setIsGroupModalOpen(true)
-              }}
+              onOpenSettings={() => setGridModal('settings')}
               onDeleteGrid={() => setIsDeleteDialogOpen(true)}
               onEditCell={setEditingCell}
             />
@@ -234,21 +222,30 @@ export function Dashboard({
         onSubmit={createPixelHandler}
       />
 
-      {/* Create Grid / Grid settings Modal */}
-      <CreateGridModal
-        key={selectedGrid?.grid.id ?? 'new'}
-        isOpen={isGroupModalOpen}
-        onClose={() => {
-          setIsGroupModalOpen(false)
-          setSelectedGrid(null)
-        }}
-        onSubmit={handleCreateGrid}
-        userId={user.id}
-        pixels={pixels}
-        gridData={selectedGrid}
-        onUpdate={updateGridHandler}
-        onCreatePixel={() => setIsPixelModalOpen(true)}
-      />
+      {/* New grid, or Grid settings for the active grid. It gets the grid as
+          it is now, not a copy from when it opened: each change is saved as
+          it's made, and the lists show what the server sent back */}
+      {gridModal !== null && (
+        <CreateGridModal
+          userId={user.id}
+          pixels={pixels}
+          settings={
+            gridModal === 'settings' && activeGrid
+              ? {
+                  grid: activeGrid,
+                  gridPixels: activeGridPixels,
+                  cells: activeCells,
+                }
+              : null
+          }
+          onCreate={handleCreateGrid}
+          onSaveGrid={updateGridHandler}
+          onAddPixels={addGridPixels}
+          onRemovePixels={removeGridPixels}
+          onNewPixel={() => setIsPixelModalOpen(true)}
+          onClose={() => setGridModal(null)}
+        />
+      )}
 
       {editingCell && activeGrid && (
         <CellEditorModal
