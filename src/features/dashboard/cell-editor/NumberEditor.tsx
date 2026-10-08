@@ -1,10 +1,12 @@
+import { useId } from 'react'
 import { PIXEL_UNIT_LABELS } from '@/db/types'
 import { getValueFields } from './getValueFields'
 import type { ValueEditorProps } from './types'
 
 // No cell has this type yet, so nothing shows this editor. It's the form from
-// CreateGridModal, moved as it was, with its known bugs
+// CreateGridModal, moved as it was
 export function NumberEditor({ value, pixel, onChange }: ValueEditorProps) {
+  const sliderId = useId()
   const endGoal = pixel.endGoal ?? 100
   const unit = PIXEL_UNIT_LABELS[pixel.unit].toLowerCase()
   const fillPct = Math.min(100, ((value ?? 0) / endGoal) * 100)
@@ -12,9 +14,12 @@ export function NumberEditor({ value, pixel, onChange }: ValueEditorProps) {
   return (
     <div>
       <div className="flex items-baseline justify-between mb-2">
-        <span className="text-xs font-serif text-(--journal-ink) opacity-50">
+        <label
+          htmlFor={sliderId}
+          className="text-xs font-serif text-(--journal-ink) opacity-50"
+        >
           value
-        </span>
+        </label>
         <span className="text-sm font-sans text-(--journal-ink)">
           <span className="font-bold">{value ?? 0}</span>
           <span className="opacity-40">
@@ -40,10 +45,13 @@ export function NumberEditor({ value, pixel, onChange }: ValueEditorProps) {
         />
       </div>
       <input
+        id={sliderId}
         type="range"
         min={0}
         max={endGoal}
         value={value ?? 0}
+        // Without this a screen reader says only the number
+        aria-valuetext={`${value ?? 0} of ${endGoal} ${unit}`}
         onChange={(e) =>
           onChange(getValueFields(Number(e.target.value), endGoal))
         }
