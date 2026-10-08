@@ -1,3 +1,4 @@
+import { getValueFields } from './getValueFields'
 import type { ValueEditorProps } from './types'
 
 // No cell has this type yet, so nothing shows this editor. It's the form from
@@ -41,14 +42,9 @@ export function NumberEditor({ value, pixel, onChange }: ValueEditorProps) {
         min={0}
         max={endGoal}
         value={value ?? 0}
-        onChange={(e) => {
-          const newValue = Number(e.target.value)
-          onChange({
-            value: newValue,
-            progress: (newValue / endGoal) * 100,
-            completedAt: newValue === endGoal ? null : new Date(),
-          })
-        }}
+        onChange={(e) =>
+          onChange(getValueFields(Number(e.target.value), endGoal))
+        }
         className="w-full mt-1 cursor-pointer accent-(--journal-ink)"
       />
     </div>

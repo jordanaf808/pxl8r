@@ -84,3 +84,46 @@ describe('CellEditor', () => {
     expect(onRemove).toHaveBeenCalledTimes(1)
   })
 })
+
+describe.each([
+  { type: 'numeric', unit: 'miles' },
+  { type: 'time', unit: 'minute' },
+] as const)('CellEditor with a $type cell', ({ type, unit }) => {
+  it.each([
+    { amount: 1, goal: 3, progress: 33, isCompleted: false },
+    { amount: 3, goal: 3, progress: 100, isCompleted: true },
+    // (29 / 100) * 100 is 28.999999999999996, which rounds down to 28
+    { amount: 29, goal: 100, progress: 29, isCompleted: false },
+  ])(
+    'saves $amount of $goal as progress $progress',
+    async ({ amount, goal, progress, isCompleted }) => {
+      const onSave = vi.fn().mockResolvedValue(cell)
+      const onClose = vi.fn()
+      render(
+        <CellEditor
+          cell={{ ...cell, type }}
+          pixel={{ ...pixel, unit, endGoal: goal }}
+          gridName="Daily goals"
+          column={1}
+          onSave={onSave}
+          onRemove={vi.fn()}
+          onClose={onClose}
+        />,
+      )
+
+      fireEvent.change(screen.getByRole('slider'), {
+        target: { value: String(amount) },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          value: amount,
+          progress,
+          completedAt: isCompleted ? expect.any(Date) : null,
+        }),
+      )
+    },
+  )
+})
