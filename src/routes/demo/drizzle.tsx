@@ -4,14 +4,17 @@ import { db } from '@/db/index'
 import { desc } from 'drizzle-orm'
 import { users as usersSchema } from '@/db/schema'
 import type { User } from '@/db/schema'
+import { adminMiddleware } from '@/lib/auth/admin-middleware'
 
 const getUsers = createServerFn({
   method: 'GET',
-}).handler(async () => {
-  return await db.query.users.findMany({
-    orderBy: [desc(usersSchema.createdAt)],
-  })
 })
+  .middleware([adminMiddleware])
+  .handler(async () => {
+    return await db.query.users.findMany({
+      orderBy: [desc(usersSchema.createdAt)],
+    })
+  })
 
 // const createTodo = createServerFn({
 //   method: 'POST',
