@@ -86,9 +86,25 @@ describe('CellEditor', () => {
 })
 
 describe.each([
-  { type: 'numeric', unit: 'miles' },
-  { type: 'time', unit: 'minute' },
-] as const)('CellEditor with a $type cell', ({ type, unit }) => {
+  { type: 'numeric', unit: 'miles', goalText: '/ 3 miles' },
+  { type: 'time', unit: 'minute', goalText: '/ 3 minutes' },
+] as const)('CellEditor with a $type cell', ({ type, unit, goalText }) => {
+  it('shows the goal with its unit', () => {
+    render(
+      <CellEditor
+        cell={{ ...cell, type }}
+        pixel={{ ...pixel, unit, endGoal: 3 }}
+        gridName="Daily goals"
+        column={1}
+        onSave={vi.fn()}
+        onRemove={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(goalText)).toBeTruthy()
+  })
+
   it.each([
     { amount: 1, goal: 3, progress: 33, isCompleted: false },
     { amount: 3, goal: 3, progress: 100, isCompleted: true },

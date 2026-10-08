@@ -1,3 +1,4 @@
+import { PIXEL_UNIT_LABELS } from '@/db/types'
 import { getValueFields } from './getValueFields'
 import type { ValueEditorProps } from './types'
 
@@ -5,6 +6,7 @@ import type { ValueEditorProps } from './types'
 // CreateGridModal, moved as it was, with its known bugs
 export function TimeEditor({ value, pixel, onChange }: ValueEditorProps) {
   const endGoal = pixel.endGoal ?? 100
+  const unit = PIXEL_UNIT_LABELS[pixel.unit].toLowerCase()
   const fillPct = Math.min(100, ((value ?? 0) / endGoal) * 100)
 
   return (
@@ -17,7 +19,7 @@ export function TimeEditor({ value, pixel, onChange }: ValueEditorProps) {
           <span className="font-bold">{value ?? 0}</span>
           <span className="opacity-40">
             {' '}
-            / {endGoal} {pixel.unit}
+            / {endGoal} {unit}
           </span>
         </span>
       </div>
