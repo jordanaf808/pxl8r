@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { PIXEL_UNIT_LABELS } from '@/db/types'
 import { getValueFields } from './getValueFields'
+import { FOCUS_RING } from './styles'
 import type { ValueEditorProps } from './types'
 
 // No cell has this type yet, so nothing shows this editor. It's the form from
@@ -55,7 +56,7 @@ export function NumberEditor({ value, pixel, onChange }: ValueEditorProps) {
         onChange={(e) =>
           onChange(getValueFields(Number(e.target.value), endGoal))
         }
-        className="w-full mt-1 cursor-pointer accent-(--journal-ink)"
+        className={`w-full mt-1 cursor-pointer accent-(--journal-ink) ${FOCUS_RING}`}
       />
     </div>
   )
