@@ -16,13 +16,13 @@ export function NumberEditor({ value, pixel, onChange }: ValueEditorProps) {
       <div className="flex items-baseline justify-between mb-2">
         <label
           htmlFor={sliderId}
-          className="text-xs font-serif text-(--journal-ink) opacity-50"
+          className="text-xs font-serif text-(--journal-ink) opacity-75"
         >
           value
         </label>
         <span className="text-sm font-sans text-(--journal-ink)">
           <span className="font-bold">{value ?? 0}</span>
-          <span className="opacity-40">
+          <span className="opacity-75">
             {' '}
             / {endGoal} {unit}
           </span>
