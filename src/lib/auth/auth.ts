@@ -35,6 +35,14 @@ const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  // Email sign-up doesn't ask anyone to prove they own the address. So a
+  // GitHub sign-in isn't added to an existing user just because the emails
+  // match. linkSocial(), from a signed-in session, still works.
+  account: {
+    accountLinking: {
+      disableImplicitLinking: true,
+    },
+  },
   socialProviders: {
     github: {
       clientId: process.env.GITHUB_AUTH_ID!,
