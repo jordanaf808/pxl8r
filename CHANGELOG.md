@@ -10,6 +10,11 @@ Work merged via PRs #1-#3 on 2026-09-18 was authored between 2026-06-26 and 2026
 
 ## Unreleased
 
+### Security
+
+- **TanStack Start XSS (CVE-2026-102989)**: `@tanstack/react-start` 1.163.2 was in the affected range of an unauthenticated reflected XSS in server-function responses. Upgraded to 1.168.61, with `start-server-core` 1.169.40 (`ff91d07`, 2026-10-22). It stays on 1.168 because `react-start` 1.169 requires Vite 8. `react-router` and `router-plugin` are pinned to exact versions, and a pnpm override in `pnpm-workspace.yaml` pins `router-core`, so there is one copy of each. Remove the override when `react-start` moves to 1.169.
+- **Node.js 24.22.1**: the October 21 Node.js security release fixed 10 CVEs, including a Brotli decoder out-of-bounds write (CVE-2026-111497). No code change: production was rebuilt on Netlify on 2026-10-22 and now builds with 24.22.1 (it was 24.21.0). The functions that serve requests run on AWS Lambda's `nodejs24.x` runtime, which AWS patches.
+
 ### Known issues
 
 - **Paused timers round up to a whole minute.** `onPause` in `CreateGridModal.tsx` stores `Math.ceil(remainingSeconds / 60)` into the integer `timerMinutes`, so the seconds are lost.
