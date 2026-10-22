@@ -83,7 +83,9 @@ export function makeCell({
     completedAt: null,
     timerMinutes: null,
     timerStartedAt: null,
+    timerElapsedSeconds: 0,
     colorOverride: null,
+    rating: null,
     createdAt,
     updatedAt: createdAt,
   }
