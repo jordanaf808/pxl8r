@@ -101,6 +101,30 @@ describe('CellEditor', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ rating }))
   })
 
+  it('plays the sweep only on the press that completes the cell', () => {
+    const { container } = render(
+      <CellEditor
+        cell={{ ...cell, completedAt: new Date('2026-01-03T00:00:00Z') }}
+        pixel={pixel}
+        gridName="Daily goals"
+        column={1}
+        onSave={vi.fn()}
+        onRemove={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    )
+    const sweepBands = () => container.querySelectorAll('.complete-sweep')
+
+    // Opened on a completed cell, the button is filled with no sweep
+    expect(sweepBands()).toHaveLength(0)
+    const button = screen.getByRole('button', { name: 'Completed' })
+    fireEvent.click(button)
+    expect(sweepBands()).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Complete' }))
+    // Three bands, then the pixel's color
+    expect(sweepBands()).toHaveLength(4)
+  })
+
   it('removes the cell only once the delete is confirmed', async () => {
     const onRemove = vi.fn().mockResolvedValue(undefined)
     const onClose = vi.fn()
