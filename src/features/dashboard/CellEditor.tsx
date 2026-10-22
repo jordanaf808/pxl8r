@@ -6,7 +6,6 @@ import type { Cell, Pixel } from '@/db/types'
 import { CompleteButton } from './cell-editor/CompleteButton'
 import { DeleteCellDialog } from './cell-editor/DeleteCellDialog'
 import { NumberEditor } from './cell-editor/NumberEditor'
-import { RatingEditor } from './cell-editor/RatingEditor'
 import { RatingInput } from './cell-editor/RatingInput'
 import { TimeEditor } from './cell-editor/TimeEditor'
 import { UnsavedChangesDialog } from './cell-editor/UnsavedChangesDialog'
@@ -31,7 +30,9 @@ const VALUE_EDITORS: Record<
 > = {
   boolean: CompleteButton,
   numeric: NumberEditor,
-  rating: RatingEditor,
+  // Every cell has a rating, so this type has no editor of its own. No cell
+  // has it; it leaves the database's list of cell types in Phase 3
+  rating: CompleteButton,
   time: TimeEditor,
 }
 
