@@ -3,7 +3,7 @@ import type { ReactNode, Ref } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 import type { Cell, Pixel } from '@/db/types'
-import { CheckboxEditor } from './cell-editor/CheckboxEditor'
+import { CompleteButton } from './cell-editor/CompleteButton'
 import { DeleteCellDialog } from './cell-editor/DeleteCellDialog'
 import { NumberEditor } from './cell-editor/NumberEditor'
 import { RatingEditor } from './cell-editor/RatingEditor'
@@ -27,7 +27,7 @@ const VALUE_EDITORS: Record<
   Cell['type'],
   (props: ValueEditorProps) => ReactNode
 > = {
-  boolean: CheckboxEditor,
+  boolean: CompleteButton,
   numeric: NumberEditor,
   rating: RatingEditor,
   time: TimeEditor,
@@ -146,13 +146,6 @@ export function CellEditor({
         </button>
       </div>
 
-      <ValueEditor
-        value={form.value}
-        completedAt={form.completedAt}
-        pixel={pixel}
-        onChange={editor.editValue}
-      />
-
       <div className="flex flex-col gap-1.5">
         <div className="flex items-baseline justify-between">
           <label htmlFor={noteId} className="text-[13px] font-semibold">
@@ -195,6 +188,13 @@ export function CellEditor({
           Add timer
         </button>
       )}
+
+      <ValueEditor
+        value={form.value}
+        completedAt={form.completedAt}
+        pixel={pixel}
+        onChange={editor.editValue}
+      />
 
       {editor.error && (
         <p

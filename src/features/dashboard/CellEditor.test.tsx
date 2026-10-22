@@ -35,7 +35,7 @@ describe('CellEditor', () => {
     )
 
     fireEvent.click(
-      screen.getByRole('checkbox', { name: 'Morning run completed' }),
+      screen.getByRole('button', { name: 'Complete', pressed: false }),
     )
     fireEvent.change(screen.getByRole('textbox', { name: 'Note' }), {
       target: { value: 'Felt slow at the start' },
@@ -89,11 +89,12 @@ describe('CellEditor', () => {
       />,
     )
 
-    if (untick) {
-      fireEvent.click(
-        screen.getByRole('checkbox', { name: 'Morning run completed' }),
-      )
-    }
+    // Opened on a completed cell, the button is already pressed
+    const complete = screen.getByRole('button', {
+      name: 'Completed',
+      pressed: true,
+    })
+    if (untick) fireEvent.click(complete)
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
