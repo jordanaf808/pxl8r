@@ -8,3 +8,9 @@ allowBuilds:
   unrs-resolver: true
   '@prisma/engines': true
   prisma: true
+
+# One router-core for every TanStack package. Without this, the devtools and
+# ssr-query peers resolve to a newer copy than react-router@1.170.42 uses.
+# Remove when react-start moves past 1.168 (needs Vite 8).
+overrides:
+  '@tanstack/router-core': 1.171.35
