@@ -151,6 +151,7 @@ export const updatableCellFields = z.object({
   completedAt: z.nullish(z.coerce.date()),
   timerMinutes: z.int().min(1).max(120).nullish(),
   timerStartedAt: z.nullish(z.coerce.date()),
+  rating: z.int().min(1).max(5).nullish(),
 })
 
 export type UpdateCellType = z.infer<typeof updatableCellFields>

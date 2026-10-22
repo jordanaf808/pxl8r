@@ -21,7 +21,14 @@ function fieldsOf(cell: Cell): CellFields {
     completedAt: cell.completedAt,
     timerMinutes: cell.timerMinutes,
     timerStartedAt: cell.timerStartedAt,
+    rating: cell.rating,
   }
+}
+
+// The form keeps the stars when a cell is un-completed, so completing it again
+// shows them. Only a completed cell saves a rating
+function fieldsToSave(form: CellFields): CellFields {
+  return { ...form, rating: form.completedAt ? form.rating : null }
 }
 
 function timerOf(fields: TimerFields): TimerFields {
@@ -80,6 +87,7 @@ export function useCellEditor({
     form.progress !== saved.progress ||
     form.note !== saved.note ||
     !isSameTime(form.completedAt, saved.completedAt) ||
+    fieldsToSave(form).rating !== saved.rating ||
     (form.timerMinutes === null) !== (saved.timerMinutes === null)
 
   // Start, Pause and a change to the minutes are saved at once. The save
@@ -125,7 +133,7 @@ export function useCellEditor({
   }
 
   function save() {
-    void runAndClose(async () => (await onSave(form)) !== null, {
+    void runAndClose(async () => (await onSave(fieldsToSave(form))) !== null, {
       busy: 'Saving…',
       failure: 'Your changes couldn’t be saved. Try again.',
     })

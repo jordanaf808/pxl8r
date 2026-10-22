@@ -19,7 +19,7 @@ afterEach(() => {
 })
 
 describe('CellEditor', () => {
-  it('sends all seven fields on Save, the edited ones with their new values', async () => {
+  it('sends all eight fields on Save, the edited ones with their new values', async () => {
     const onSave = vi.fn().mockResolvedValue(cell)
     const onClose = vi.fn()
     render(
@@ -52,7 +52,52 @@ describe('CellEditor', () => {
       colorOverride: null,
       timerMinutes: null,
       timerStartedAt: null,
+      rating: null,
     })
+  })
+
+  it.each([
+    {
+      action: 'keeps the rating of a completed cell',
+      untick: false,
+      rating: 4,
+    },
+    {
+      action: 'saves no rating once the cell is un-completed',
+      untick: true,
+      rating: null,
+    },
+  ])('$action', async ({ untick, rating }) => {
+    const ratedCell = {
+      ...cell,
+      value: 100,
+      progress: 100,
+      completedAt: new Date('2026-01-03T00:00:00Z'),
+      rating: 4,
+    }
+    const onSave = vi.fn().mockResolvedValue(ratedCell)
+    const onClose = vi.fn()
+    render(
+      <CellEditor
+        cell={ratedCell}
+        pixel={pixel}
+        gridName="Daily goals"
+        column={1}
+        onSave={onSave}
+        onRemove={vi.fn()}
+        onClose={onClose}
+      />,
+    )
+
+    if (untick) {
+      fireEvent.click(
+        screen.getByRole('checkbox', { name: 'Morning run completed' }),
+      )
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ rating }))
   })
 
   it('removes the cell only once the delete is confirmed', async () => {
