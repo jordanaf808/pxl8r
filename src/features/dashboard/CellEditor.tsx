@@ -13,6 +13,7 @@ import { UnsavedChangesDialog } from './cell-editor/UnsavedChangesDialog'
 import {
   BUTTON_RADIUS,
   DANGER_COLOR,
+  EDITOR_SAVE_BUTTON,
   FOCUS_RING,
   OUTLINE_BUTTON,
   PRIMARY_BUTTON,
@@ -252,7 +253,7 @@ export function CellEditor({
           <button
             type="button"
             onClick={editor.save}
-            className={PRIMARY_BUTTON}
+            className={EDITOR_SAVE_BUTTON}
             style={{ borderRadius: BUTTON_RADIUS }}
           >
             Save
