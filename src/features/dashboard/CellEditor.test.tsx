@@ -219,3 +219,81 @@ describe.each([
     )
   },
 )
+
+describe('CellEditor rating', () => {
+  const ratedCell = {
+    ...cell,
+    value: 100,
+    progress: 100,
+    completedAt: new Date('2026-01-03T00:00:00Z'),
+    rating: 4,
+  }
+
+  function renderEditor(editedCell = cell) {
+    const onSave = vi.fn().mockResolvedValue(editedCell)
+    const onClose = vi.fn()
+    render(
+      <CellEditor
+        cell={editedCell}
+        pixel={pixel}
+        gridName="Daily goals"
+        column={1}
+        onSave={onSave}
+        onRemove={vi.fn()}
+        onClose={onClose}
+      />,
+    )
+    return { onSave, onClose }
+  }
+
+  async function saveAndGetRating({
+    onSave,
+    onClose,
+  }: ReturnType<typeof renderEditor>) {
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    return onSave.mock.calls[0][0].rating
+  }
+
+  it('keeps the stars out of reach until the cell is completed', () => {
+    renderEditor()
+    // Testing Library doesn't treat inert as hidden, so the row's attribute
+    // is what shows that Tab skips the stars
+    const rating = screen.getByRole('group', { name: 'Rating' })
+    expect(rating.closest('[inert]')).not.toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Complete' }))
+    expect(rating.closest('[inert]')).toBeNull()
+  })
+
+  it('saves the stars chosen once the cell is completed', async () => {
+    const editor = renderEditor()
+    fireEvent.click(screen.getByRole('button', { name: 'Complete' }))
+    fireEvent.click(screen.getByRole('button', { name: '4 stars' }))
+    expect(screen.getByText('4 of 5')).toBeTruthy()
+
+    expect(await saveAndGetRating(editor)).toBe(4)
+  })
+
+  it('clears the rating when the chosen star is pressed again', async () => {
+    const editor = renderEditor(ratedCell)
+    fireEvent.click(
+      screen.getByRole('button', { name: '4 stars', pressed: true }),
+    )
+    expect(screen.getByText('Not rated')).toBeTruthy()
+
+    expect(await saveAndGetRating(editor)).toBeNull()
+  })
+
+  it('shows the same stars when a cell is un-completed and completed again', () => {
+    renderEditor(ratedCell)
+    fireEvent.click(screen.getByRole('button', { name: 'Completed' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Complete' }))
+
+    expect(
+      screen
+        .getByRole('button', { name: '4 stars' })
+        .getAttribute('aria-pressed'),
+    ).toBe('true')
+  })
+})

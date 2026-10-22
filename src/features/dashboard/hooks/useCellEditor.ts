@@ -196,6 +196,8 @@ export function useCellEditor({
     editValue,
     editNote: (note: string) =>
       setForm((prev) => ({ ...prev, note: note || null })),
+    editRating: (rating: number | null) =>
+      setForm((prev) => ({ ...prev, rating })),
     addTimer: () =>
       setForm((prev) => ({
         ...prev,

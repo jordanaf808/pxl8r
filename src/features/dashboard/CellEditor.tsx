@@ -7,6 +7,7 @@ import { CompleteButton } from './cell-editor/CompleteButton'
 import { DeleteCellDialog } from './cell-editor/DeleteCellDialog'
 import { NumberEditor } from './cell-editor/NumberEditor'
 import { RatingEditor } from './cell-editor/RatingEditor'
+import { RatingInput } from './cell-editor/RatingInput'
 import { TimeEditor } from './cell-editor/TimeEditor'
 import { UnsavedChangesDialog } from './cell-editor/UnsavedChangesDialog'
 import {
@@ -194,6 +195,11 @@ export function CellEditor({
         completedAt={form.completedAt}
         pixel={pixel}
         onChange={editor.editValue}
+      />
+      <RatingInput
+        isOpen={form.completedAt !== null}
+        rating={form.rating}
+        onChange={editor.editRating}
       />
 
       {editor.error && (

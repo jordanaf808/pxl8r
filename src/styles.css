@@ -51,6 +51,17 @@
   --journal-sage: #5b8a72;
   --journal-gold: #c9963a;
   --journal-slate: #6b83a6;
+  /* Each about 3:1 on cream: a control's state needs 3:1 (WCAG 1.4.11) */
+  --journal-star: color-mix(
+    in srgb,
+    var(--journal-gold) 85%,
+    var(--journal-ink)
+  );
+  --journal-star-empty: color-mix(
+    in srgb,
+    var(--journal-ink) 54%,
+    var(--journal-cream)
+  );
 }
 
 /* Chalkboard dark mode */
@@ -99,6 +110,12 @@
   --journal-sage: #7baa92;
   --journal-gold: #ddb05a;
   --journal-slate: #8ba3c6;
+  --journal-star: var(--journal-gold);
+  --journal-star-empty: color-mix(
+    in srgb,
+    var(--journal-ink) 45%,
+    var(--journal-cream)
+  );
 }
 
 @theme inline {
