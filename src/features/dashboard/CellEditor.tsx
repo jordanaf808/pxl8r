@@ -178,7 +178,8 @@ export function CellEditor({
           timerElapsedSeconds={form.timerElapsedSeconds}
           onStart={editor.startTimer}
           onPause={editor.pauseTimer}
-          onDisable={editor.removeTimer}
+          onReset={editor.resetTimer}
+          onRemove={editor.removeTimer}
           onEditMinutes={editor.editTimerMinutes}
         />
       ) : (

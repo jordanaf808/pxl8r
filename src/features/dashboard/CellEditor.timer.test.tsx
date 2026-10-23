@@ -44,9 +44,9 @@ describe('CellEditor timer', () => {
   it('keeps the length on pause and saves the seconds run', () => {
     const onSave = renderEditor(timerCell)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start timer' }))
     vi.setSystemTime(START.getTime() + 50_000)
-    fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pause timer' }))
 
     expect(onSave).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -60,8 +60,36 @@ describe('CellEditor timer', () => {
   it('counts on from the seconds already run', () => {
     renderEditor({ ...timerCell, timerElapsedSeconds: 50 })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Resume timer' }))
 
     expect(screen.getByText('29:10')).toBeTruthy()
+  })
+
+  it('shows the input again on Reset and saves zero seconds run', () => {
+    const onSave = renderEditor({ ...timerCell, timerElapsedSeconds: 50 })
+    expect(screen.queryByRole('textbox', { name: 'Timer' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset timer' }))
+
+    expect(screen.getByRole('textbox', { name: 'Timer' })).toBeTruthy()
+    expect(onSave).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        timerMinutes: 30,
+        timerStartedAt: null,
+        timerElapsedSeconds: 0,
+      }),
+    )
+  })
+
+  it('reads “time’s up” at 0:00, with nothing for play to do', () => {
+    renderEditor({
+      ...timerCell,
+      timerStartedAt: new Date(START.getTime() - 31 * 60_000),
+    })
+
+    expect(screen.getByText('0:00')).toBeTruthy()
+    expect(screen.getByText('time’s up')).toBeTruthy()
+    const play = screen.getByRole('button', { name: 'Start timer' })
+    expect(play.hasAttribute('disabled')).toBe(true)
   })
 })

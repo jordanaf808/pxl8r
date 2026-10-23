@@ -82,7 +82,7 @@ export function useCellEditor({
     fieldsToSave(form).rating !== saved.rating ||
     (form.timerMinutes === null) !== (saved.timerMinutes === null)
 
-  // Start, Pause and a change to the minutes are saved at once. The save
+  // Start, Pause, Reset and a change to the minutes are saved at once. The save
   // carries the timer as the form shows it and the last saved value of every
   // other field, so pressing Start doesn't save a half-typed note
   function saveTimer(timer: TimerFields) {
@@ -220,6 +220,12 @@ export function useCellEditor({
         timerElapsedSeconds: form.timerElapsedSeconds,
       }),
     pauseTimer,
+    resetTimer: () =>
+      saveTimer({
+        timerMinutes: form.timerMinutes,
+        timerStartedAt: null,
+        timerElapsedSeconds: 0,
+      }),
     editTimerMinutes: (minutes: number) =>
       saveTimer({
         timerMinutes: minutes,

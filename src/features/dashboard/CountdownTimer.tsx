@@ -1,7 +1,8 @@
 import { useId, useState } from 'react'
-import { Pause, Play, Timer, X } from 'lucide-react'
+import { Pause, Play, RotateCcw, Timer, Trash } from 'lucide-react'
 import { useCountdown } from './hooks/useCountdown'
 import { FOCUS_RING } from './cell-editor/styles'
+import { TimerButton } from './cell-editor/TimerButton'
 
 const MIN_MINUTES = 1
 const MAX_MINUTES = 120
@@ -16,9 +17,11 @@ interface CountdownTimerProps {
   timerMinutes: number
   timerStartedAt: Date | null
   timerElapsedSeconds: number
+  /** Starts the timer, or resumes it after a pause */
   onStart: () => void
   onPause: () => void
-  onDisable: () => void
+  onReset: () => void
+  onRemove: () => void
   /** Called when the minutes field loses focus or on Enter, and only with a changed number */
   onEditMinutes: (minutes: number) => void
 }
@@ -29,14 +32,18 @@ export function CountdownTimer({
   timerElapsedSeconds,
   onStart,
   onPause,
-  onDisable,
+  onReset,
+  onRemove,
   onEditMinutes,
 }: CountdownTimerProps) {
-  const { remainingSeconds, isRunning } = useCountdown({
+  const { remainingSeconds, isRunning, isFinished } = useCountdown({
     timerMinutes,
     timerStartedAt,
     timerElapsedSeconds,
   })
+  // Paused, the time left shows in the input's place. A reset brings the
+  // input back, because it sets the seconds run to zero
+  const isStarted = isRunning || timerElapsedSeconds > 0
   const minutesId = useId()
   // What's typed in the minutes field and not reported yet. While it's null
   // the field shows timerMinutes
@@ -60,12 +67,14 @@ export function CountdownTimer({
     >
       <Timer size={18} className="shrink-0" aria-hidden="true" />
 
-      {isRunning ? (
+      {isStarted ? (
         <>
           <span className="text-[22px] font-bold tabular-nums">
             {formatTime(remainingSeconds)}
           </span>
-          <span className="text-[13px] font-serif opacity-70">left</span>
+          <span className="text-[13px] font-serif opacity-70">
+            {isFinished ? 'time’s up' : 'left'}
+          </span>
         </>
       ) : (
         <>
@@ -93,31 +102,47 @@ export function CountdownTimer({
 
       <span className="flex-1" />
 
-      <button
-        type="button"
-        onClick={isRunning ? onPause : onStart}
-        className={`flex items-center gap-1.5 h-9 px-3 text-sm font-semibold border-[1.5px] border-(--journal-ink) cursor-pointer disabled:cursor-default disabled:opacity-50 ${FOCUS_RING} ${
-          isRunning
-            ? 'bg-transparent text-(--journal-ink)'
-            : 'bg-(--journal-ink) text-(--journal-paper)'
-        }`}
-        style={{ borderRadius: '2px 6px 3px 7px' }}
-      >
-        {isRunning ? (
-          <Pause size={12} fill="currentColor" aria-hidden="true" />
+      {/* The three buttons keep their places in every state. One with
+          nothing to do is dimmed, so nothing moves under the pointer */}
+      <div className="flex items-center gap-1">
+        {isRunning && !isFinished ? (
+          <TimerButton
+            name="Pause timer"
+            hoverLabel="Pause"
+            variant="outline"
+            onClick={onPause}
+          >
+            <Pause size={14} fill="currentColor" aria-hidden="true" />
+          </TimerButton>
         ) : (
-          <Play size={12} fill="currentColor" aria-hidden="true" />
+          <TimerButton
+            name={isStarted && !isFinished ? 'Resume timer' : 'Start timer'}
+            hoverLabel={isStarted && !isFinished ? 'Resume' : 'Start'}
+            variant="filled"
+            onClick={onStart}
+            disabled={isFinished}
+          >
+            <Play size={14} fill="currentColor" aria-hidden="true" />
+          </TimerButton>
         )}
-        {isRunning ? 'Pause' : 'Start'}
-      </button>
-      <button
-        type="button"
-        onClick={onDisable}
-        className={`flex items-center justify-center w-9 h-9 rounded-sm cursor-pointer hover:bg-(--journal-tan) disabled:cursor-default disabled:opacity-50 ${FOCUS_RING}`}
-        aria-label="Remove timer"
-      >
-        <X size={16} aria-hidden="true" />
-      </button>
+        <TimerButton
+          name="Reset timer"
+          hoverLabel="Reset"
+          variant="plain"
+          onClick={onReset}
+          disabled={!isStarted}
+        >
+          <RotateCcw size={16} aria-hidden="true" />
+        </TimerButton>
+        <TimerButton
+          name="Remove timer"
+          hoverLabel="Remove"
+          variant="plain"
+          onClick={onRemove}
+        >
+          <Trash size={16} aria-hidden="true" />
+        </TimerButton>
+      </div>
     </div>
   )
 }
