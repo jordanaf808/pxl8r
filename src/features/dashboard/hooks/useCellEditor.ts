@@ -52,17 +52,6 @@ function isSameTimer(a: TimerFields, b: TimerFields): boolean {
   )
 }
 
-// What a pause saves as the timer's new length: the time left, in whole minutes
-function minutesLeft(
-  timerMinutes: number,
-  startedAt: Date,
-  now: number,
-): number {
-  const elapsedSeconds = Math.floor((now - startedAt.getTime()) / 1000)
-  const remainingSeconds = Math.max(0, timerMinutes * 60 - elapsedSeconds)
-  return Math.max(1, Math.ceil(remainingSeconds / 60))
-}
-
 export function useCellEditor({
   cell,
   defaultTimerMinutes,
@@ -179,13 +168,21 @@ export function useCellEditor({
     setForm((prev) => ({ ...prev, ...fields, completedAt }))
   }
 
+  // A pause adds the run that's ending to the seconds already run. The length
+  // the timer was set to stays as it is
   function pauseTimer() {
-    const { timerMinutes, timerStartedAt } = form
+    const { timerMinutes, timerStartedAt, timerElapsedSeconds } = form
     if (timerMinutes === null || timerStartedAt === null) return
+    const runSeconds = Math.floor(
+      (Date.now() - timerStartedAt.getTime()) / 1000,
+    )
     saveTimer({
-      timerMinutes: minutesLeft(timerMinutes, timerStartedAt, Date.now()),
+      timerMinutes,
       timerStartedAt: null,
-      timerElapsedSeconds: form.timerElapsedSeconds,
+      timerElapsedSeconds: Math.min(
+        timerMinutes * 60,
+        timerElapsedSeconds + runSeconds,
+      ),
     })
   }
 

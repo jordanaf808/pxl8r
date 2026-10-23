@@ -175,6 +175,7 @@ export function CellEditor({
         <CountdownTimer
           timerMinutes={form.timerMinutes}
           timerStartedAt={form.timerStartedAt}
+          timerElapsedSeconds={form.timerElapsedSeconds}
           onStart={editor.startTimer}
           onPause={editor.pauseTimer}
           onDisable={editor.removeTimer}

@@ -15,6 +15,7 @@ function formatTime(totalSeconds: number) {
 interface CountdownTimerProps {
   timerMinutes: number
   timerStartedAt: Date | null
+  timerElapsedSeconds: number
   onStart: () => void
   onPause: () => void
   onDisable: () => void
@@ -25,6 +26,7 @@ interface CountdownTimerProps {
 export function CountdownTimer({
   timerMinutes,
   timerStartedAt,
+  timerElapsedSeconds,
   onStart,
   onPause,
   onDisable,
@@ -33,6 +35,7 @@ export function CountdownTimer({
   const { remainingSeconds, isRunning } = useCountdown({
     timerMinutes,
     timerStartedAt,
+    timerElapsedSeconds,
   })
   const minutesId = useId()
   // What's typed in the minutes field and not reported yet. While it's null
