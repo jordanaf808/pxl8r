@@ -476,6 +476,7 @@ export const updateCell = createServerFn({ method: 'POST' })
       completedAt,
       timerMinutes,
       timerStartedAt,
+      timerElapsedSeconds,
       rating,
     } = data
 
@@ -490,6 +491,7 @@ export const updateCell = createServerFn({ method: 'POST' })
       completedAt,
       timerMinutes,
       timerStartedAt,
+      timerElapsedSeconds,
       rating,
       updatedAt: sql`NOW()`,
     }

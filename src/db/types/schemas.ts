@@ -151,6 +151,8 @@ export const updatableCellFields = z.object({
   completedAt: z.nullish(z.coerce.date()),
   timerMinutes: z.int().min(1).max(120).nullish(),
   timerStartedAt: z.nullish(z.coerce.date()),
+  // Not nullish: the column is NOT NULL. 7,200 is a 120-minute timer run out
+  timerElapsedSeconds: z.int().min(0).max(7200).optional(),
   rating: z.int().min(1).max(5).nullish(),
 })
 

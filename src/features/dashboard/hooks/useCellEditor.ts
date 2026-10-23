@@ -21,6 +21,7 @@ function fieldsOf(cell: Cell): CellFields {
     completedAt: cell.completedAt,
     timerMinutes: cell.timerMinutes,
     timerStartedAt: cell.timerStartedAt,
+    timerElapsedSeconds: cell.timerElapsedSeconds,
     rating: cell.rating,
   }
 }
@@ -35,6 +36,7 @@ function timerOf(fields: TimerFields): TimerFields {
   return {
     timerMinutes: fields.timerMinutes,
     timerStartedAt: fields.timerStartedAt,
+    timerElapsedSeconds: fields.timerElapsedSeconds,
   }
 }
 
@@ -45,7 +47,8 @@ function isSameTime(a: Date | null, b: Date | null): boolean {
 function isSameTimer(a: TimerFields, b: TimerFields): boolean {
   return (
     a.timerMinutes === b.timerMinutes &&
-    isSameTime(a.timerStartedAt, b.timerStartedAt)
+    isSameTime(a.timerStartedAt, b.timerStartedAt) &&
+    a.timerElapsedSeconds === b.timerElapsedSeconds
   )
 }
 
@@ -182,6 +185,7 @@ export function useCellEditor({
     saveTimer({
       timerMinutes: minutesLeft(timerMinutes, timerStartedAt, Date.now()),
       timerStartedAt: null,
+      timerElapsedSeconds: form.timerElapsedSeconds,
     })
   }
 
@@ -203,21 +207,28 @@ export function useCellEditor({
         ...prev,
         timerMinutes: defaultTimerMinutes,
         timerStartedAt: null,
+        timerElapsedSeconds: 0,
       })),
     removeTimer: () =>
       setForm((prev) => ({
         ...prev,
         timerMinutes: null,
         timerStartedAt: null,
+        timerElapsedSeconds: 0,
       })),
     startTimer: () =>
       saveTimer({
         timerMinutes: form.timerMinutes,
         timerStartedAt: new Date(),
+        timerElapsedSeconds: form.timerElapsedSeconds,
       }),
     pauseTimer,
     editTimerMinutes: (minutes: number) =>
-      saveTimer({ timerMinutes: minutes, timerStartedAt: null }),
+      saveTimer({
+        timerMinutes: minutes,
+        timerStartedAt: null,
+        timerElapsedSeconds: form.timerElapsedSeconds,
+      }),
     save,
     cancel,
     // Escape, a click outside and the close button all come through here

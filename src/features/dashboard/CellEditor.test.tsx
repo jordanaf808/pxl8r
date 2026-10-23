@@ -19,7 +19,7 @@ afterEach(() => {
 })
 
 describe('CellEditor', () => {
-  it('sends all eight fields on Save, the edited ones with their new values', async () => {
+  it('sends all nine fields on Save, the edited ones with their new values', async () => {
     const onSave = vi.fn().mockResolvedValue(cell)
     const onClose = vi.fn()
     render(
@@ -52,6 +52,7 @@ describe('CellEditor', () => {
       colorOverride: null,
       timerMinutes: null,
       timerStartedAt: null,
+      timerElapsedSeconds: 0,
       rating: null,
     })
   })
