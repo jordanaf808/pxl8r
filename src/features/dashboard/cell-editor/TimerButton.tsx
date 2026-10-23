@@ -40,12 +40,15 @@ export function TimerButton({
   return (
     <Tooltip delayDuration={HOVER_LABEL_DELAY_MS}>
       <TooltipTrigger asChild>
+        {/* aria-disabled, not disabled: Reset and play turn off while they
+            have focus (a reset, or 0:00), and the browser drops focus from a
+            disabled button onto the page */}
         <button
           type="button"
           aria-label={name}
-          onClick={onClick}
-          disabled={disabled}
-          className={`flex items-center justify-center w-9 h-9 cursor-pointer disabled:cursor-default disabled:opacity-35 ${VARIANTS[variant]} ${FOCUS_RING}`}
+          aria-disabled={disabled || undefined}
+          onClick={disabled ? undefined : onClick}
+          className={`flex items-center justify-center w-9 h-9 cursor-pointer aria-disabled:cursor-default aria-disabled:opacity-35 disabled:cursor-default disabled:opacity-35 ${VARIANTS[variant]} ${FOCUS_RING}`}
           style={{
             borderRadius: variant === 'plain' ? '4px' : '2px 6px 3px 7px',
           }}

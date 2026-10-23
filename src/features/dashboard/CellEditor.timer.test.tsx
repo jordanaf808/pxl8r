@@ -89,7 +89,7 @@ describe('CellEditor timer', () => {
   })
 
   it('reads “time’s up” at 0:00, with nothing for play to do', () => {
-    renderEditor({
+    const onSave = renderEditor({
       ...timerCell,
       timerStartedAt: new Date(START.getTime() - 31 * 60_000),
     })
@@ -97,7 +97,9 @@ describe('CellEditor timer', () => {
     expect(screen.getByText('0:00')).toBeTruthy()
     expect(screen.getByText('time’s up')).toBeTruthy()
     const play = screen.getByRole('button', { name: 'Start timer' })
-    expect(play.hasAttribute('disabled')).toBe(true)
+    expect(play.getAttribute('aria-disabled')).toBe('true')
+    fireEvent.click(play)
+    expect(onSave).not.toHaveBeenCalled()
   })
 })
 
