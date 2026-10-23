@@ -3,15 +3,16 @@ import type { ReactNode, Ref } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 import type { Cell, Pixel } from '@/db/types'
-import { CheckboxEditor } from './cell-editor/CheckboxEditor'
+import { CompleteButton } from './cell-editor/CompleteButton'
 import { DeleteCellDialog } from './cell-editor/DeleteCellDialog'
 import { NumberEditor } from './cell-editor/NumberEditor'
-import { RatingEditor } from './cell-editor/RatingEditor'
+import { RatingInput } from './cell-editor/RatingInput'
 import { TimeEditor } from './cell-editor/TimeEditor'
 import { UnsavedChangesDialog } from './cell-editor/UnsavedChangesDialog'
 import {
   BUTTON_RADIUS,
   DANGER_COLOR,
+  EDITOR_SAVE_BUTTON,
   FOCUS_RING,
   OUTLINE_BUTTON,
   PRIMARY_BUTTON,
@@ -27,9 +28,11 @@ const VALUE_EDITORS: Record<
   Cell['type'],
   (props: ValueEditorProps) => ReactNode
 > = {
-  boolean: CheckboxEditor,
+  boolean: CompleteButton,
   numeric: NumberEditor,
-  rating: RatingEditor,
+  // Every cell has a rating, so this type has no editor of its own. No cell
+  // has it; it leaves the database's list of cell types in Phase 3
+  rating: CompleteButton,
   time: TimeEditor,
 }
 
@@ -146,13 +149,6 @@ export function CellEditor({
         </button>
       </div>
 
-      <ValueEditor
-        value={form.value}
-        completedAt={form.completedAt}
-        pixel={pixel}
-        onChange={editor.editValue}
-      />
-
       <div className="flex flex-col gap-1.5">
         <div className="flex items-baseline justify-between">
           <label htmlFor={noteId} className="text-[13px] font-semibold">
@@ -195,6 +191,18 @@ export function CellEditor({
           Add timer
         </button>
       )}
+
+      <ValueEditor
+        value={form.value}
+        completedAt={form.completedAt}
+        pixel={pixel}
+        onChange={editor.editValue}
+      />
+      <RatingInput
+        isOpen={form.completedAt !== null}
+        rating={form.rating}
+        onChange={editor.editRating}
+      />
 
       {editor.error && (
         <p
@@ -246,7 +254,7 @@ export function CellEditor({
           <button
             type="button"
             onClick={editor.save}
-            className={PRIMARY_BUTTON}
+            className={EDITOR_SAVE_BUTTON}
             style={{ borderRadius: BUTTON_RADIUS }}
           >
             Save

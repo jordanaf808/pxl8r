@@ -376,7 +376,10 @@ export const cells = pgTable(
     timerStartedAt: timestamp('timer_started_at', { withTimezone: true }).default(
       sql`NULL`,
     ), // non-null = timer currently running
+    // Seconds the timer has run before its current start, added up at each pause
+    timerElapsedSeconds: integer('timer_elapsed_seconds').default(0).notNull(),
     colorOverride: text('color_override'), // if user overrides the pixel color for this cell
+    rating: smallint('rating'), // 1-5 stars, or null when not rated
 
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
@@ -398,6 +401,7 @@ export const cells = pgTable(
       'progress_range',
       sql`${t.progress} >= 0 AND ${t.progress} <= 100`,
     ),
+    ratingRange: check('rating_range', sql`${t.rating} BETWEEN 1 AND 5`),
   }),
 )
 

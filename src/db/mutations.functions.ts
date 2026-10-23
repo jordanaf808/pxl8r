@@ -476,6 +476,7 @@ export const updateCell = createServerFn({ method: 'POST' })
       completedAt,
       timerMinutes,
       timerStartedAt,
+      rating,
     } = data
 
     if (!user.id) throw new Error('Not Logged In.')
@@ -489,6 +490,7 @@ export const updateCell = createServerFn({ method: 'POST' })
       completedAt,
       timerMinutes,
       timerStartedAt,
+      rating,
       updatedAt: sql`NOW()`,
     }
 

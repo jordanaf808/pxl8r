@@ -27,7 +27,6 @@ const UNIT_SLIDER_MAX: Partial<Record<PixelUnitType, number>> = {
   hour: 72,
   day: 365,
   percent: 100,
-  rating: 5,
   count: 500,
   reps: 500,
   steps: 5000,
@@ -115,7 +114,11 @@ export function CreatePixelModal({
   }
 
   const pixelTypes = pixelTypeEnum.enumValues
-  const pixelUnits = unitTypeEnum.enumValues
+  // Every cell has a rating now, so it isn't a unit to choose. The value stays
+  // in the database's list for pixels that already have it
+  const pixelUnits = unitTypeEnum.enumValues.filter(
+    (option) => option !== 'rating',
+  )
   const pixelColors = Object.entries(PIXEL_COLORS) as [
     PixelColor,
     { bg: string; text: string; label: string },
