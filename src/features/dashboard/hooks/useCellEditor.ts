@@ -52,6 +52,12 @@ function isSameTimer(a: TimerFields, b: TimerFields): boolean {
   )
 }
 
+const NO_TIMER = {
+  timerMinutes: null,
+  timerStartedAt: null,
+  timerElapsedSeconds: 0,
+} satisfies TimerFields
+
 export function useCellEditor({
   cell,
   defaultTimerMinutes,
@@ -59,12 +65,15 @@ export function useCellEditor({
   onRemove,
   onClose,
 }: UseCellEditorOptions) {
-  // The cell as it was when the editor opened. Cancel writes its timer back
-  const [opened] = useState(() => fieldsOf(cell))
+  // The cell as it was when the editor opened. Cancel writes its timer back,
+  // except after a removal the user confirmed
+  const [opened, setOpened] = useState(() => fieldsOf(cell))
   // What the database holds, counting timer saves that are still on their way
   const [saved, setSaved] = useState(opened)
   const [form, setForm] = useState(opened)
-  const [popup, setPopup] = useState<'unsaved' | 'delete' | null>(null)
+  const [popup, setPopup] = useState<
+    'unsaved' | 'delete' | 'removeTimer' | null
+  >(null)
   const [busyLabel, setBusyLabel] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isGone, setIsGone] = useState(false)
@@ -72,8 +81,8 @@ export function useCellEditor({
   const confirmedTimer = useRef(timerOf(opened))
 
   const isBusy = busyLabel !== null
-  // A started or paused timer is already saved, so it doesn't count. A timer
-  // added or removed waits for Save, so it does
+  // A started, paused or removed timer is already saved, so it doesn't count.
+  // A timer added waits for Save, so it does
   const hasUnsavedEdit =
     form.value !== saved.value ||
     form.progress !== saved.progress ||
@@ -206,13 +215,18 @@ export function useCellEditor({
         timerStartedAt: null,
         timerElapsedSeconds: 0,
       })),
-    removeTimer: () =>
-      setForm((prev) => ({
-        ...prev,
-        timerMinutes: null,
-        timerStartedAt: null,
-        timerElapsedSeconds: 0,
-      })),
+    // A timer added in this editor and never saved goes without asking:
+    // nothing was saved for it, so nothing is lost
+    requestRemoveTimer: () => {
+      if (saved.timerMinutes === null)
+        setForm((prev) => ({ ...prev, ...NO_TIMER }))
+      else setPopup('removeTimer')
+    },
+    confirmRemoveTimer: () => {
+      setPopup(null)
+      saveTimer(NO_TIMER)
+      setOpened((prev) => ({ ...prev, ...NO_TIMER }))
+    },
     startTimer: () =>
       saveTimer({
         timerMinutes: form.timerMinutes,

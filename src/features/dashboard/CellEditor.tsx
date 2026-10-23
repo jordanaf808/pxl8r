@@ -1,4 +1,4 @@
-import { useId, useImperativeHandle } from 'react'
+import { useEffect, useId, useImperativeHandle, useRef } from 'react'
 import type { ReactNode, Ref } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
@@ -7,6 +7,7 @@ import { CompleteButton } from './cell-editor/CompleteButton'
 import { DeleteCellDialog } from './cell-editor/DeleteCellDialog'
 import { NumberEditor } from './cell-editor/NumberEditor'
 import { RatingInput } from './cell-editor/RatingInput'
+import { RemoveTimerDialog } from './cell-editor/RemoveTimerDialog'
 import { TimeEditor } from './cell-editor/TimeEditor'
 import { UnsavedChangesDialog } from './cell-editor/UnsavedChangesDialog'
 import {
@@ -89,6 +90,16 @@ export function CellEditor({
   // The host can't see the form, so it can't tell whether closing would lose
   // an edit. It asks, and the editor decides
   useImperativeHandle(ref, () => ({ requestClose: editor.requestClose }))
+
+  // Removing the timer takes away the bin button that had focus, which would
+  // drop focus on the page. Add timer takes its place, so focus goes there
+  const addTimerRef = useRef<HTMLButtonElement>(null)
+  const hadTimer = useRef(form.timerMinutes !== null)
+  useEffect(() => {
+    const hasTimer = form.timerMinutes !== null
+    if (hadTimer.current && !hasTimer) addTimerRef.current?.focus()
+    hadTimer.current = hasTimer
+  }, [form.timerMinutes])
 
   if (editor.isGone) {
     return (
@@ -179,11 +190,12 @@ export function CellEditor({
           onStart={editor.startTimer}
           onPause={editor.pauseTimer}
           onReset={editor.resetTimer}
-          onRemove={editor.removeTimer}
+          onRemove={editor.requestRemoveTimer}
           onEditMinutes={editor.editTimerMinutes}
         />
       ) : (
         <button
+          ref={addTimerRef}
           type="button"
           onClick={editor.addTimer}
           className={`flex items-center justify-center gap-1.5 w-full h-10.5 text-sm font-serif border-[1.5px] border-dashed border-(--journal-ink)/60 cursor-pointer hover:bg-(--journal-paper) disabled:cursor-default ${FOCUS_RING}`}
@@ -274,6 +286,11 @@ export function CellEditor({
         isOpen={editor.popup === 'delete'}
         onCancel={editor.dismissPopup}
         onConfirm={editor.confirmDelete}
+      />
+      <RemoveTimerDialog
+        isOpen={editor.popup === 'removeTimer'}
+        onCancel={editor.dismissPopup}
+        onConfirm={editor.confirmRemoveTimer}
       />
     </fieldset>
   )

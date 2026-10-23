@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { CellEditor } from './CellEditor'
 import { makeCell, makePixel } from '@/lib/utils/grid.fixtures'
 import type { Cell } from '@/db/types'
@@ -91,5 +98,79 @@ describe('CellEditor timer', () => {
     expect(screen.getByText('time’s up')).toBeTruthy()
     const play = screen.getByRole('button', { name: 'Start timer' })
     expect(play.hasAttribute('disabled')).toBe(true)
+  })
+})
+
+describe('CellEditor timer removal', () => {
+  function openRemovePopup() {
+    fireEvent.click(screen.getByRole('button', { name: 'Remove timer' }))
+    return screen.getByRole('alertdialog', { name: 'Remove this timer?' })
+  }
+
+  it('asks first, then saves the removal at once', () => {
+    const onSave = renderEditor({ ...timerCell, timerElapsedSeconds: 50 })
+
+    const popup = openRemovePopup()
+    expect(onSave).not.toHaveBeenCalled()
+    fireEvent.click(within(popup).getByRole('button', { name: 'Remove timer' }))
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(onSave).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        timerMinutes: null,
+        timerStartedAt: null,
+        timerElapsedSeconds: 0,
+      }),
+    )
+    // The bin that had focus is gone, so focus moves to its replacement
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Add timer' }),
+    )
+  })
+
+  it('keeps the timer when the popup is answered “Keep it”', () => {
+    const onSave = renderEditor(timerCell)
+
+    fireEvent.click(
+      within(openRemovePopup()).getByRole('button', { name: 'Keep it' }),
+    )
+
+    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Remove timer' })).toBeTruthy()
+  })
+
+  it('removes a timer that was never saved without asking', () => {
+    const onSave = renderEditor({ ...timerCell, timerMinutes: null })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add timer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove timer' }))
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Add timer' })).toBeTruthy()
+  })
+
+  it('doesn’t bring a removed timer back on Cancel', async () => {
+    const onClose = vi.fn()
+    const onSave = vi.fn().mockResolvedValue(timerCell)
+    render(
+      <CellEditor
+        cell={timerCell}
+        pixel={pixel}
+        gridName="Daily goals"
+        column={1}
+        onSave={onSave}
+        onRemove={vi.fn()}
+        onClose={onClose}
+      />,
+    )
+
+    fireEvent.click(
+      within(openRemovePopup()).getByRole('button', { name: 'Remove timer' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    expect(onSave).toHaveBeenCalledTimes(1)
   })
 })
