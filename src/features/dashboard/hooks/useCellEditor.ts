@@ -21,6 +21,7 @@ function fieldsOf(cell: Cell): CellFields {
     completedAt: cell.completedAt,
     timerMinutes: cell.timerMinutes,
     timerStartedAt: cell.timerStartedAt,
+    timerElapsedSeconds: cell.timerElapsedSeconds,
     rating: cell.rating,
   }
 }
@@ -35,6 +36,7 @@ function timerOf(fields: TimerFields): TimerFields {
   return {
     timerMinutes: fields.timerMinutes,
     timerStartedAt: fields.timerStartedAt,
+    timerElapsedSeconds: fields.timerElapsedSeconds,
   }
 }
 
@@ -45,20 +47,16 @@ function isSameTime(a: Date | null, b: Date | null): boolean {
 function isSameTimer(a: TimerFields, b: TimerFields): boolean {
   return (
     a.timerMinutes === b.timerMinutes &&
-    isSameTime(a.timerStartedAt, b.timerStartedAt)
+    isSameTime(a.timerStartedAt, b.timerStartedAt) &&
+    a.timerElapsedSeconds === b.timerElapsedSeconds
   )
 }
 
-// What a pause saves as the timer's new length: the time left, in whole minutes
-function minutesLeft(
-  timerMinutes: number,
-  startedAt: Date,
-  now: number,
-): number {
-  const elapsedSeconds = Math.floor((now - startedAt.getTime()) / 1000)
-  const remainingSeconds = Math.max(0, timerMinutes * 60 - elapsedSeconds)
-  return Math.max(1, Math.ceil(remainingSeconds / 60))
-}
+const NO_TIMER = {
+  timerMinutes: null,
+  timerStartedAt: null,
+  timerElapsedSeconds: 0,
+} satisfies TimerFields
 
 export function useCellEditor({
   cell,
@@ -67,12 +65,15 @@ export function useCellEditor({
   onRemove,
   onClose,
 }: UseCellEditorOptions) {
-  // The cell as it was when the editor opened. Cancel writes its timer back
-  const [opened] = useState(() => fieldsOf(cell))
+  // The cell as it was when the editor opened. Cancel writes its timer back,
+  // except after a removal the user confirmed
+  const [opened, setOpened] = useState(() => fieldsOf(cell))
   // What the database holds, counting timer saves that are still on their way
   const [saved, setSaved] = useState(opened)
   const [form, setForm] = useState(opened)
-  const [popup, setPopup] = useState<'unsaved' | 'delete' | null>(null)
+  const [popup, setPopup] = useState<
+    'unsaved' | 'delete' | 'removeTimer' | null
+  >(null)
   const [busyLabel, setBusyLabel] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isGone, setIsGone] = useState(false)
@@ -80,8 +81,8 @@ export function useCellEditor({
   const confirmedTimer = useRef(timerOf(opened))
 
   const isBusy = busyLabel !== null
-  // A started or paused timer is already saved, so it doesn't count. A timer
-  // added or removed waits for Save, so it does
+  // A started, paused or removed timer is already saved, so it doesn't count.
+  // A timer added waits for Save, so it does
   const hasUnsavedEdit =
     form.value !== saved.value ||
     form.progress !== saved.progress ||
@@ -90,7 +91,7 @@ export function useCellEditor({
     fieldsToSave(form).rating !== saved.rating ||
     (form.timerMinutes === null) !== (saved.timerMinutes === null)
 
-  // Start, Pause and a change to the minutes are saved at once. The save
+  // Start, Pause, Reset and a change to the minutes are saved at once. The save
   // carries the timer as the form shows it and the last saved value of every
   // other field, so pressing Start doesn't save a half-typed note
   function saveTimer(timer: TimerFields) {
@@ -176,12 +177,21 @@ export function useCellEditor({
     setForm((prev) => ({ ...prev, ...fields, completedAt }))
   }
 
+  // A pause adds the run that's ending to the seconds already run. The length
+  // the timer was set to stays as it is
   function pauseTimer() {
-    const { timerMinutes, timerStartedAt } = form
+    const { timerMinutes, timerStartedAt, timerElapsedSeconds } = form
     if (timerMinutes === null || timerStartedAt === null) return
+    const runSeconds = Math.floor(
+      (Date.now() - timerStartedAt.getTime()) / 1000,
+    )
     saveTimer({
-      timerMinutes: minutesLeft(timerMinutes, timerStartedAt, Date.now()),
+      timerMinutes,
       timerStartedAt: null,
+      timerElapsedSeconds: Math.min(
+        timerMinutes * 60,
+        timerElapsedSeconds + runSeconds,
+      ),
     })
   }
 
@@ -203,21 +213,39 @@ export function useCellEditor({
         ...prev,
         timerMinutes: defaultTimerMinutes,
         timerStartedAt: null,
+        timerElapsedSeconds: 0,
       })),
-    removeTimer: () =>
-      setForm((prev) => ({
-        ...prev,
-        timerMinutes: null,
-        timerStartedAt: null,
-      })),
+    // A timer added in this editor and never saved goes without asking:
+    // nothing was saved for it, so nothing is lost
+    requestRemoveTimer: () => {
+      if (saved.timerMinutes === null)
+        setForm((prev) => ({ ...prev, ...NO_TIMER }))
+      else setPopup('removeTimer')
+    },
+    confirmRemoveTimer: () => {
+      setPopup(null)
+      saveTimer(NO_TIMER)
+      setOpened((prev) => ({ ...prev, ...NO_TIMER }))
+    },
     startTimer: () =>
       saveTimer({
         timerMinutes: form.timerMinutes,
         timerStartedAt: new Date(),
+        timerElapsedSeconds: form.timerElapsedSeconds,
       }),
     pauseTimer,
+    resetTimer: () =>
+      saveTimer({
+        timerMinutes: form.timerMinutes,
+        timerStartedAt: null,
+        timerElapsedSeconds: 0,
+      }),
     editTimerMinutes: (minutes: number) =>
-      saveTimer({ timerMinutes: minutes, timerStartedAt: null }),
+      saveTimer({
+        timerMinutes: minutes,
+        timerStartedAt: null,
+        timerElapsedSeconds: form.timerElapsedSeconds,
+      }),
     save,
     cancel,
     // Escape, a click outside and the close button all come through here
