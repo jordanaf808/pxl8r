@@ -9,6 +9,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useReturnFocus } from '../hooks/useReturnFocus'
+import { FOCUS_RING } from './styles'
+
+// The alert dialog's own ring is a half-transparent shadow, 1.8:1 on cream.
+// Its buttons set outline-none, which outline-2 alone can't undo
+const POPUP_FOCUS_RING = `${FOCUS_RING} focus-visible:outline-solid focus-visible:ring-0`
 
 interface RemoveTimerDialogProps {
   isOpen: boolean
@@ -43,10 +48,12 @@ export function RemoveTimerDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="font-serif">Keep it</AlertDialogCancel>
+          <AlertDialogCancel className={`font-serif ${POPUP_FOCUS_RING}`}>
+            Keep it
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="font-serif text-(--journal-paper)"
+            className={`font-serif text-(--journal-paper) ${POPUP_FOCUS_RING}`}
             style={{ backgroundColor: 'var(--journal-ink)' }}
           >
             Remove timer
