@@ -40,6 +40,7 @@ function renderModal() {
   const sent = {
     created: [] as CreateCellInput[],
     removed: [] as unknown[],
+    deletes: 0,
     closes: 0,
   }
 
@@ -59,6 +60,10 @@ function renderModal() {
         onSaveCell={async () => null}
         onRemoveCell={async (removal) => {
           sent.removed.push(removal)
+        }}
+        onUpdatePixel={async () => {}}
+        onDeleteRow={() => {
+          sent.deletes += 1
         }}
         onClose={() => {
           sent.closes += 1

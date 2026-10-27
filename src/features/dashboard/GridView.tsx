@@ -6,6 +6,7 @@ import type {
   GridPixel,
   Pixel,
   UpdateCellInput,
+  UpdatePixelType,
 } from '@/db/types'
 import { buildGridRows } from '@/lib/utils/grid'
 import { DANGER_COLOR } from './cell-editor/styles'
@@ -43,6 +44,11 @@ interface GridViewProps {
     gridId: string
     cellData: { cellId: string; pixelId: string }[]
   }) => Promise<unknown>
+  onUpdatePixel: (pixel: UpdatePixelType) => Promise<void>
+  onDeleteRow: (removal: {
+    gridId: string
+    pixelIds: string[]
+  }) => Promise<unknown>
 }
 
 /** What the cell editor needs to open on a cell */
@@ -71,16 +77,19 @@ export function GridView({
   onCreateCell,
   onSaveCell,
   onRemoveCell,
+  onUpdatePixel,
+  onDeleteRow,
 }: GridViewProps) {
-  const [addFailed, setAddFailed] = useState(false)
+  // A failed add or delete, shown under the cells
+  const [failure, setFailure] = useState<string | null>(null)
 
   async function addCell(pixelId: string): Promise<void> {
-    setAddFailed(false)
+    setFailure(null)
     try {
       await onCreateCell({ gridId: grid.id, pixelId })
     } catch (error) {
       console.error('Error adding a cell', error)
-      setAddFailed(true)
+      setFailure('The cell couldn’t be added. Try again.')
     }
   }
 
@@ -115,6 +124,18 @@ export function GridView({
   function openRowModal(pixelId: string) {
     const index = visibleRows.findIndex((row) => row.pixel.id === pixelId)
     setOpenRowAt({ id: pixelId, index })
+  }
+
+  // The row leaves the screen at once and comes back if the delete fails
+  async function deleteRow(pixelId: string): Promise<void> {
+    setOpenRowAt(undefined)
+    setFailure(null)
+    try {
+      await onDeleteRow({ gridId: grid.id, pixelIds: [pixelId] })
+    } catch (error) {
+      console.error('Error deleting a row', error)
+      setFailure('The row couldn’t be deleted. Try again.')
+    }
   }
 
   const slotColumns = {
@@ -241,13 +262,13 @@ export function GridView({
 
         {/* Under the cells, not in the header: the header's height is what
             keeps the axis rows level with the cell rows */}
-        {addFailed && (
+        {failure && (
           <p
             role="alert"
             className="pt-3 text-sm font-serif"
             style={{ color: DANGER_COLOR }}
           >
-            The cell couldn’t be added. Try again.
+            {failure}
           </p>
         )}
       </div>
@@ -261,6 +282,8 @@ export function GridView({
           onCreateCell={onCreateCell}
           onSaveCell={onSaveCell}
           onRemoveCell={onRemoveCell}
+          onUpdatePixel={onUpdatePixel}
+          onDeleteRow={() => deleteRow(openRow.pixel.id)}
           onClose={() => setOpenRowAt(undefined)}
           // Back to the row's label. With the row gone, focusRow picks the
           // label now in its place, or the one before it (#124)

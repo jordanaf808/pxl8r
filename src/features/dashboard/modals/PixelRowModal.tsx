@@ -2,13 +2,21 @@ import { useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { PIXEL_UNIT_LABELS } from '@/db/types'
-import type { Cell, CreateCellInput, UpdateCellInput } from '@/db/types'
+import type {
+  Cell,
+  CreateCellInput,
+  UpdateCellInput,
+  UpdatePixelType,
+} from '@/db/types'
 import type { GridRow } from '@/lib/utils/grid'
 import { CellEditor } from '../CellEditor'
 import type { CellEditorHandle } from '../CellEditor'
 import { DANGER_COLOR, FOCUS_RING } from '../cell-editor/styles'
+import { RemoveRowDialog } from '../grid-settings/RemoveRowDialog'
 import { PixelHeader } from '../PixelHeader'
+import { RowMenu } from '../pixel-row/RowMenu'
 import { RowStats } from '../pixel-row/RowStats'
+import { CreatePixelModal } from './CreatePixelModal'
 
 interface PixelRowModalProps {
   /** The row as it is now, so the stats follow each save */
@@ -24,6 +32,9 @@ interface PixelRowModalProps {
     gridId: string
     cellData: { cellId: string; pixelId: string }[]
   }) => Promise<unknown>
+  onUpdatePixel: (pixel: UpdatePixelType) => Promise<void>
+  /** Takes the row out of the grid. The host closes the modal */
+  onDeleteRow: () => void
   onClose: () => void
   /** Called once the modal has closed. The host places focus */
   onClosed: () => void
@@ -36,6 +47,8 @@ export function PixelRowModal({
   onCreateCell,
   onSaveCell,
   onRemoveCell,
+  onUpdatePixel,
+  onDeleteRow,
   onClose,
   onClosed,
 }: PixelRowModalProps) {
@@ -44,7 +57,10 @@ export function PixelRowModal({
   const [newCell, setNewCell] = useState<Cell | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [addFailed, setAddFailed] = useState(false)
+  const [isEditingPixel, setIsEditingPixel] = useState(false)
+  const [isDeleteWarningOpen, setIsDeleteWarningOpen] = useState(false)
   const editorRef = useRef<CellEditorHandle>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
 
   // With the editor open, closing could lose an edit, so the editor decides
   function requestClose() {
@@ -97,6 +113,13 @@ export function PixelRowModal({
             pixel={pixel}
             subtitle={`${gridName} · row ${rowNumber}`}
             onClose={requestClose}
+            actions={
+              <RowMenu
+                triggerRef={menuButtonRef}
+                onEditPixel={() => setIsEditingPixel(true)}
+                onDeleteRow={() => setIsDeleteWarningOpen(true)}
+              />
+            }
           />
 
           {(pixel.description || pixel.endGoal !== null) && (
@@ -172,6 +195,31 @@ export function PixelRowModal({
             </>
           )}
         </div>
+
+        {/* A Radix dialog too, so it stacks on this one. It changes the pixel
+            in every grid that has it */}
+        {isEditingPixel && (
+          <CreatePixelModal
+            isOpen
+            pixelToEdit={pixel}
+            onUpdate={onUpdatePixel}
+            // Only used for a new pixel
+            onSubmit={() => {}}
+            onClose={() => setIsEditingPixel(false)}
+          />
+        )}
+
+        {/* The same warning as Grid settings' (#125) */}
+        <RemoveRowDialog
+          isOpen={isDeleteWarningOpen}
+          pixelName={pixel.name}
+          cellCount={row.cells.length}
+          onCancel={() => setIsDeleteWarningOpen(false)}
+          onConfirm={onDeleteRow}
+          // After Cancel, back to the ⋯ button. After Delete row the modal
+          // has gone with the button, and GridView places focus
+          onClosed={() => menuButtonRef.current?.focus()}
+        />
       </DialogContent>
     </Dialog>
   )

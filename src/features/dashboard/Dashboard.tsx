@@ -51,7 +51,7 @@ export function Dashboard({
   initialGridId,
   onActiveGridChange,
 }: DashboardProps) {
-  const { pixels, createPixelHandler } = usePixelState(
+  const { pixels, createPixelHandler, updatePixelHandler } = usePixelState(
     userData.pixels,
     userData.gridsData.ungroupedPixels,
   )
@@ -169,6 +169,8 @@ export function Dashboard({
               onCreateCell={createCellHandler}
               onSaveCell={updateCellHandler}
               onRemoveCell={removeGridCells}
+              onUpdatePixel={updatePixelHandler}
+              onDeleteRow={removeGridPixels}
             />
           )}
         </GridTabs>

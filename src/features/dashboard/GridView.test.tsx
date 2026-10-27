@@ -67,6 +67,8 @@ const baseProps: ComponentProps<typeof GridView> = {
   onCreateCell: createNothing,
   onSaveCell: async () => null,
   onRemoveCell: async () => {},
+  onUpdatePixel: async () => {},
+  onDeleteRow: async () => {},
 }
 
 beforeEach(() => {
@@ -243,5 +245,32 @@ describe('GridView', () => {
     expect(
       screen.getByRole('dialog', { name: 'Row: Read a book' }),
     ).toBeTruthy()
+  })
+
+  it('deletes a row from its modal, after a warning that counts its cells', async () => {
+    const deleted: unknown[] = []
+    render(
+      <GridView
+        {...baseProps}
+        onDeleteRow={async (removal) => {
+          deleted.push(removal)
+        }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Morning run' }))
+    // Radix opens its menu on a pointer press or a key, not on a click
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Row options' }), {
+      key: 'Enter',
+    })
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'Delete row…' }),
+    )
+
+    const warning = await screen.findByRole('alertdialog')
+    expect(warning.textContent).toContain('Its 3 cells are deleted with it.')
+    fireEvent.click(within(warning).getByRole('button', { name: 'Remove row' }))
+
+    expect(deleted).toEqual([{ gridId: GRID_ID, pixelIds: ['pixel-a'] }])
   })
 })

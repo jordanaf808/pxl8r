@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
 import type { Pixel } from '@/db/types'
@@ -8,9 +9,16 @@ interface PixelHeaderProps {
   /** The line under the name */
   subtitle: string
   onClose: () => void
+  /** Shown before Close, such as the row modal's ⋯ menu */
+  actions?: ReactNode
 }
 
-export function PixelHeader({ pixel, subtitle, onClose }: PixelHeaderProps) {
+export function PixelHeader({
+  pixel,
+  subtitle,
+  onClose,
+  actions,
+}: PixelHeaderProps) {
   return (
     <div className="flex items-start gap-2.5">
       <span
@@ -31,6 +39,7 @@ export function PixelHeader({ pixel, subtitle, onClose }: PixelHeaderProps) {
       >
         {PIXEL_TYPE_LABELS[pixel.type]}
       </span>
+      {actions}
       <button
         type="button"
         aria-label="Close"
