@@ -111,6 +111,8 @@ export function PixelAxis({
   listRef,
   headingRef,
 }: PixelAxisProps) {
+  const filterId = useId()
+
   return (
     // No scroll of its own: scrolled alone, its rows would slide past the
     // cell rows. The page scrolls both boxes together
@@ -152,6 +154,8 @@ export function PixelAxis({
               className="text-(--journal-ink) opacity-40 shrink-0"
             />
             <input
+              id={filterId}
+              name="pixel-filter"
               type="search"
               aria-label="Filter pixels"
               placeholder="Filter..."
