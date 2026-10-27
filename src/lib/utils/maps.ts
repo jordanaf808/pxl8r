@@ -32,6 +32,24 @@ export function buildGridsByPixelIdMap(
   return result
 }
 
+// Each grid row holds its own copy of its pixel, and a pixel edit changes only
+// the pixel list. Rows look their pixel up there, so the edit shows everywhere
+export function withCurrentPixels(
+  pixelsByGridId: Map<string, GridPixel[]>,
+  pixels: Pixel[],
+): Map<string, GridPixel[]> {
+  const pixelsById = buildPixelsMap(pixels)
+  const result = new Map<string, GridPixel[]>()
+  pixelsByGridId.forEach((gridPixels, gridId) => {
+    const current = gridPixels.map((gp) => ({
+      ...gp,
+      pixel: pixelsById.get(gp.pixel.id) ?? gp.pixel,
+    }))
+    result.set(gridId, current)
+  })
+  return result
+}
+
 // Keys cells as `${col}-${row}` for the old GridCard / CreateGridModal canvas.
 // row = the pixel's index in rowPixels; col = the cell's rank among that pixel's cells.
 // Expects cells sorted by (position, createdAt, id), the order getDashboardGridData returns.

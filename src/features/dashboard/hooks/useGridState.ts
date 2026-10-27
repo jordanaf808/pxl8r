@@ -18,7 +18,11 @@ import type {
   GridsByPixelIdMap,
   UpdateCellInput,
 } from '@/db/types'
-import { buildGridsByPixelIdMap, flattenCellsByGridId } from '@/lib/utils/maps'
+import {
+  buildGridsByPixelIdMap,
+  flattenCellsByGridId,
+  withCurrentPixels,
+} from '@/lib/utils/maps'
 
 function withoutGrid<T>(map: Map<string, T>, gridId: string): Map<string, T> {
   const next = new Map(map)
@@ -57,6 +61,11 @@ export function useGridState(
   const gridsByPixelId = useMemo<GridsByPixelIdMap>(
     () => buildGridsByPixelIdMap(pixelsByGridId, grids),
     [pixelsByGridId, grids],
+  )
+
+  const currentPixelsByGridId = useMemo(
+    () => withCurrentPixels(pixelsByGridId, pixels),
+    [pixelsByGridId, pixels],
   )
 
   // ---- Grid CRUD ----
@@ -341,7 +350,7 @@ export function useGridState(
   return {
     grids,
     cellsByGridId,
-    pixelsByGridId,
+    pixelsByGridId: currentPixelsByGridId,
     setPixelsByGridId,
     gridsByPixelId,
     allCells,
