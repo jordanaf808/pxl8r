@@ -88,9 +88,10 @@ function AxisRow({ pixel, height, onOpen }: AxisRowProps) {
           </span>
         )}
 
+        {/* At 70%, this line fell to 4.4:1 on the button's hover tint */}
         <span
           id={goalId}
-          className="col-start-2 text-[10px] font-serif text-(--journal-ink) opacity-70 truncate leading-tight"
+          className="col-start-2 text-[10px] font-serif text-(--journal-ink) opacity-75 truncate leading-tight"
         >
           <span className="capitalize">{pixel.unit}</span>
           {pixel.endGoal != null && ` · goal: ${pixel.endGoal}`}
