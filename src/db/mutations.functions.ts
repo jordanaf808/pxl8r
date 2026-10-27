@@ -12,6 +12,7 @@ import {
   pageGrids,
 } from './schema'
 import {
+  createCellSchema,
   createGridSchema,
   updateCellSchema,
   updateGridSchema,
@@ -254,6 +255,40 @@ export const bulkUpsertPageGrids = createServerFn({ method: 'POST' })
     return {
       success: results.length > 0,
       results: results,
+    }
+  })
+
+export const createCell = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(createCellSchema)
+  .handler(async ({ data, context }) => {
+    const { user } = context
+    const { gridId, pixelId } = data
+
+    if (!user.id) throw new Error('Not Logged In.')
+    await assertGridOwner(gridId, user.id)
+
+    // The new cell goes at the end of its row. Its position is worked out
+    // inside the INSERT, so it reads the row as it is when the row is written.
+    // A pixel that isn't linked to the grid fails the composite foreign key
+    const results = await db
+      .insert(cells)
+      .values({
+        ownerId: user.id,
+        gridId,
+        pixelId,
+        type: 'boolean',
+        position: sql`(
+          SELECT COALESCE(MAX(${cells.position}), -1) + 1
+          FROM ${cells}
+          WHERE ${cells.gridId} = ${gridId} AND ${cells.pixelId} = ${pixelId}
+        )`,
+      })
+      .returning()
+
+    return {
+      success: results.length > 0,
+      results,
     }
   })
 
