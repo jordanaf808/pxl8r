@@ -67,7 +67,7 @@ export function computeColumnCount({
   // n * (cellWidth + gap) <= containerWidth + gap
   const fitCount = Math.floor((containerWidth + gap) / (cellWidth + gap))
 
-  // Never hide a filled cell, and keep one empty slot for the hover "+"
+  // Never hide a filled cell, and keep one empty slot for the "+"
   return Math.max(perRowMax + 1, fitCount)
 }
 

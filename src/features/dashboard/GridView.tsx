@@ -7,10 +7,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { Cell, Grid, GridPixel, Pixel } from '@/db/types'
+import type { Cell, CreateCellInput, Grid, GridPixel, Pixel } from '@/db/types'
 import { buildGridRows } from '@/lib/utils/grid'
 import { computeGridStats } from '@/lib/utils/stats'
-import { FilledCell } from './GridSlots'
+import { DANGER_COLOR } from './cell-editor/styles'
+import { AddCellButton, FilledCell } from './GridSlots'
 import { useGridColumns } from './hooks/useGridColumns'
 import { PixelAxis } from './PixelAxis'
 
@@ -33,6 +34,8 @@ interface GridViewProps {
   onOpenSettings: () => void
   onDeleteGrid: () => void
   onEditCell: (editing: EditingCell) => void
+  /** Settles once the new cell is in `cells` */
+  onCreateCell: (input: CreateCellInput) => Promise<unknown>
 }
 
 /** What the cell editor needs to open on a cell */
@@ -58,7 +61,20 @@ export function GridView({
   onOpenSettings,
   onDeleteGrid,
   onEditCell,
+  onCreateCell,
 }: GridViewProps) {
+  const [addFailed, setAddFailed] = useState(false)
+
+  async function addCell(pixelId: string): Promise<void> {
+    setAddFailed(false)
+    try {
+      await onCreateCell({ gridId: grid.id, pixelId })
+    } catch (error) {
+      console.error('Error adding a cell', error)
+      setAddFailed(true)
+    }
+  }
+
   const rows = useMemo(
     () => buildGridRows(gridPixels, cells),
     [gridPixels, cells],
@@ -188,9 +204,13 @@ export function GridView({
                 >
                   {Array.from({ length: columns }, (_, index) => {
                     const cell = row.cells.at(index)
+                    // The first empty slot holds the "+". Its key stays the
+                    // same when a new cell lands in front of it, so React
+                    // keeps the button, and the keyboard's focus with it
+                    const isAddSlot = index === row.cells.length
                     return (
                       <div
-                        key={cell?.id ?? `empty-${index}`}
+                        key={cell?.id ?? (isAddSlot ? 'add' : `empty-${index}`)}
                         data-testid="grid-slot"
                         data-filled={cell !== undefined}
                         className="flex items-center justify-center"
@@ -209,6 +229,12 @@ export function GridView({
                             }
                           />
                         )}
+                        {isAddSlot && (
+                          <AddCellButton
+                            pixelName={row.pixel.name}
+                            onAdd={() => addCell(row.pixel.id)}
+                          />
+                        )}
                       </div>
                     )
                   })}
@@ -217,6 +243,18 @@ export function GridView({
             </div>
           </div>
         </div>
+
+        {/* Under the cells, not in the header: the header's height is what
+            keeps the axis rows level with the cell rows */}
+        {addFailed && (
+          <p
+            role="alert"
+            className="pt-3 text-sm font-serif"
+            style={{ color: DANGER_COLOR }}
+          >
+            The cell couldn’t be added. Try again.
+          </p>
+        )}
       </div>
     </div>
   )

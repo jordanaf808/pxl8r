@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import {
@@ -6,10 +7,17 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react'
 import { GridView } from './GridView'
-import { makeCell, makeGrid, makeGridPixel } from '@/lib/utils/grid.fixtures'
+import type { CreateCellInput } from '@/db/types'
+import {
+  GRID_ID,
+  makeCell,
+  makeGrid,
+  makeGridPixel,
+} from '@/lib/utils/grid.fixtures'
 
 // jsdom has no ResizeObserver. These tests set the width once and never
 // resize, so it only has to exist
@@ -67,6 +75,7 @@ describe('GridView', () => {
         onOpenSettings={() => {}}
         onDeleteGrid={() => {}}
         onEditCell={() => {}}
+        onCreateCell={async () => {}}
       />,
     )
 
@@ -106,6 +115,7 @@ describe('GridView', () => {
         onOpenSettings={() => {}}
         onDeleteGrid={() => {}}
         onEditCell={() => {}}
+        onCreateCell={async () => {}}
       />,
     )
     document.body.innerHTML = html
@@ -135,6 +145,7 @@ describe('GridView', () => {
         onOpenSettings={() => {}}
         onDeleteGrid={() => {}}
         onEditCell={() => {}}
+        onCreateCell={async () => {}}
       />,
     )
 
@@ -152,5 +163,83 @@ describe('GridView', () => {
     expect(cellRows.map((row) => row.getAttribute('aria-label'))).toEqual([
       'Read a book',
     ])
+  })
+
+  it('has a "+" in the first empty slot of each row, and nowhere else', () => {
+    setCellAreaWidth(640)
+    render(
+      <GridView
+        grid={makeGrid()}
+        gridPixels={gridPixels}
+        cells={cells}
+        orientation="horizontal"
+        onOpenSettings={() => {}}
+        onDeleteGrid={() => {}}
+        onEditCell={() => {}}
+        onCreateCell={async () => {}}
+      />,
+    )
+
+    for (const [name, cellCount] of [
+      ['Morning run', 3],
+      ['Read a book', 1],
+    ] as const) {
+      const row = screen.getByRole('group', { name })
+      const [addButton, ...others] = within(row).getAllByRole('button', {
+        name: `Add a cell to ${name}`,
+      })
+      expect(others).toEqual([])
+      const slots = within(row).getAllByTestId('grid-slot')
+      expect(slots[cellCount].contains(addButton)).toBe(true)
+    }
+  })
+
+  it('adds a cell with the "+", and keeps focus on that row\'s "+"', async () => {
+    setCellAreaWidth(640)
+    const sent: CreateCellInput[] = []
+
+    // GridView gets its cells from its parent, as it does from Dashboard
+    function WithCells() {
+      const [gridCells, setGridCells] = useState(cells)
+      return (
+        <GridView
+          grid={makeGrid()}
+          gridPixels={gridPixels}
+          cells={gridCells}
+          orientation="horizontal"
+          onOpenSettings={() => {}}
+          onDeleteGrid={() => {}}
+          onEditCell={() => {}}
+          onCreateCell={async (input) => {
+            sent.push(input)
+            setGridCells((prev) => [
+              ...prev,
+              makeCell({ id: 'cell-new', pixelId: input.pixelId, position: 1 }),
+            ])
+          }}
+        />
+      )
+    }
+    render(<WithCells />)
+
+    const addButton = screen.getByRole('button', {
+      name: 'Add a cell to Read a book',
+    })
+    addButton.focus()
+    fireEvent.click(addButton)
+
+    await waitFor(() =>
+      expect(slotsOf('Read a book').slice(0, 3)).toEqual([
+        'filled',
+        'filled',
+        'empty',
+      ]),
+    )
+    expect(sent).toEqual([{ gridId: GRID_ID, pixelId: 'pixel-b' }])
+    expect(document.activeElement).toBe(addButton)
+    const slots = within(
+      screen.getByRole('group', { name: 'Read a book' }),
+    ).getAllByTestId('grid-slot')
+    expect(slots[2].contains(addButton)).toBe(true)
   })
 })

@@ -67,6 +67,7 @@ export function Dashboard({
     addGridPixels,
     removeGridPixels,
     removeGridCells,
+    createCellHandler,
     updateCellHandler,
   } = useGridState(
     userData.grids,
@@ -165,6 +166,7 @@ export function Dashboard({
               onOpenSettings={() => setGridModal('settings')}
               onDeleteGrid={() => setIsDeleteDialogOpen(true)}
               onEditCell={setEditingCell}
+              onCreateCell={createCellHandler}
             />
           )}
         </GridTabs>

@@ -1,9 +1,20 @@
-import { Timer } from 'lucide-react'
+import { useState } from 'react'
+import { Plus, Timer } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { PIXEL_COLORS } from '@/db/types'
 import type { Cell, Pixel } from '@/db/types'
+import { FOCUS_RING } from './cell-editor/styles'
 
 // Centred in GridView's 64px slot, as in mockup 2b
 const CELL_SIZE = 52
+
+// As on the timer's buttons: a label at once would flash at every pointer
+// that crosses the grid
+const HOVER_LABEL_DELAY_MS = 700
 
 interface FilledCellProps {
   cell: Cell
@@ -54,5 +65,48 @@ export function FilledCell({ cell, pixel, column, onEdit }: FilledCellProps) {
         </div>
       )}
     </button>
+  )
+}
+
+interface AddCellButtonProps {
+  pixelName: string
+  /** Settles once the new cell is in the grid, or the add has failed */
+  onAdd: () => Promise<void>
+}
+
+// Faint at rest, so a phone, which has no hover, still shows it (#118)
+export function AddCellButton({ pixelName, onAdd }: AddCellButtonProps) {
+  const [isAdding, setIsAdding] = useState(false)
+
+  async function add(): Promise<void> {
+    setIsAdding(true)
+    await onAdd()
+    setIsAdding(false)
+  }
+
+  return (
+    <Tooltip delayDuration={HOVER_LABEL_DELAY_MS}>
+      <TooltipTrigger asChild>
+        {/* aria-disabled, not disabled, while its add is out: the browser
+            drops focus from a disabled button onto the page */}
+        <button
+          type="button"
+          aria-label={`Add a cell to ${pixelName}`}
+          aria-disabled={isAdding || undefined}
+          onClick={isAdding ? undefined : add}
+          className={`flex items-center justify-center border-[1.5px] border-dashed border-(--journal-ink)/60 text-(--journal-ink)/60 cursor-pointer hover:border-solid hover:border-(--journal-ink) hover:text-(--journal-ink) hover:bg-(--journal-paper) focus-visible:border-solid focus-visible:border-(--journal-ink) focus-visible:text-(--journal-ink) focus-visible:bg-(--journal-paper) aria-disabled:cursor-default aria-disabled:opacity-50 ${FOCUS_RING}`}
+          style={{ width: CELL_SIZE, height: CELL_SIZE, borderRadius: '4px' }}
+        >
+          <Plus size={20} strokeWidth={2.5} aria-hidden="true" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        sideOffset={6}
+        className="bg-(--journal-ink) text-(--journal-paper) text-xs font-semibold px-2 py-1"
+      >
+        Add cell
+      </TooltipContent>
+    </Tooltip>
   )
 }
