@@ -242,4 +242,55 @@ describe('GridView', () => {
     ).getAllByTestId('grid-slot')
     expect(slots[2].contains(addButton)).toBe(true)
   })
+
+  it('opens the row modal from a row label', () => {
+    render(
+      <GridView
+        grid={makeGrid()}
+        gridPixels={gridPixels}
+        cells={cells}
+        orientation="horizontal"
+        onOpenSettings={() => {}}
+        onDeleteGrid={() => {}}
+        onEditCell={() => {}}
+        onCreateCell={async () => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Read a book' }))
+
+    expect(
+      screen.getByRole('dialog', { name: 'Row: Read a book' }),
+    ).toBeTruthy()
+  })
+
+  it('opens the row modal from an empty slot, which is not a Tab stop', () => {
+    setCellAreaWidth(640)
+    render(
+      <GridView
+        grid={makeGrid()}
+        gridPixels={gridPixels}
+        cells={cells}
+        orientation="horizontal"
+        onOpenSettings={() => {}}
+        onDeleteGrid={() => {}}
+        onEditCell={() => {}}
+        onCreateCell={async () => {}}
+      />,
+    )
+
+    // Slot 2 holds the "+"; slot 6 is an ordinary empty slot
+    const slot = within(
+      screen.getByRole('group', { name: 'Read a book' }),
+    ).getAllByTestId('grid-slot')[5]
+    expect(slot.querySelector('button, a, input, [tabindex]')).toBe(null)
+
+    const target = slot.firstElementChild
+    if (!target) throw new Error('The empty slot draws nothing to click')
+    fireEvent.click(target)
+
+    expect(
+      screen.getByRole('dialog', { name: 'Row: Read a book' }),
+    ).toBeTruthy()
+  })
 })

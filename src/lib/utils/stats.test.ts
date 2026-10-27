@@ -1,6 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { computeGlobalStats } from './stats'
+import { averageRating, computeGlobalStats } from './stats'
 import { makeCell } from './grid.fixtures'
+
+function cellRated(id: string, rating: number | null) {
+  return { ...makeCell({ id, pixelId: 'pixel-a', position: 0 }), rating }
+}
+
+describe('averageRating', () => {
+  it('is null when no cell is rated', () => {
+    expect(averageRating([cellRated('a', null), cellRated('b', null)])).toBe(
+      null,
+    )
+  })
+
+  it('averages only the rated cells, to one decimal', () => {
+    const cells = [
+      cellRated('a', 4),
+      cellRated('b', 5),
+      cellRated('c', 4),
+      cellRated('d', null),
+    ]
+
+    expect(averageRating(cells)).toBe(4.3)
+  })
+})
 
 describe('computeGlobalStats', () => {
   it('measures completion time up to completedAt, not up to a later edit', () => {

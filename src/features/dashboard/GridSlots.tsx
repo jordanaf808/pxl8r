@@ -110,3 +110,20 @@ export function AddCellButton({ pixelName, onAdd }: AddCellButtonProps) {
     </Tooltip>
   )
 }
+
+interface EmptySlotProps {
+  onOpenRow: () => void
+}
+
+// Opens the row by mouse or touch only. Not a button and not focusable: the
+// row's label opens the same modal from the keyboard, so a long row doesn't
+// add a Tab stop per slot (#119)
+export function EmptySlot({ onOpenRow }: EmptySlotProps) {
+  return (
+    <div
+      onClick={onOpenRow}
+      className="cursor-pointer hover:bg-(--journal-tan)/70"
+      style={{ width: CELL_SIZE, height: CELL_SIZE, borderRadius: '4px' }}
+    />
+  )
+}

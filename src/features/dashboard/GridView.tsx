@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { Cell, CreateCellInput, Grid, GridPixel, Pixel } from '@/db/types'
 import { buildGridRows } from '@/lib/utils/grid'
 import { DANGER_COLOR } from './cell-editor/styles'
-import { AddCellButton, FilledCell } from './GridSlots'
+import { AddCellButton, EmptySlot, FilledCell } from './GridSlots'
 import { GridHeader } from './GridHeader'
 import { useGridColumns } from './hooks/useGridColumns'
+import { useListFocus } from './hooks/useListFocus'
+import { PixelRowModal } from './modals/PixelRowModal'
 import { PixelAxis } from './PixelAxis'
 
 // Each slot is a 64px square with the 52px cell centred in it, as in mockup
@@ -85,6 +87,21 @@ export function GridView({
   const [filter, setFilter] = useState('')
   const visibleRows = rows.filter((row) => matchesFilter(row.pixel, filter))
 
+  // The row whose modal is open, kept by id so the modal shows the row as it
+  // is now. The index is where its label was, for focus once the modal closes
+  const [openRowAt, setOpenRowAt] = useState<{ id: string; index: number }>()
+  const openRow = rows.find((row) => row.pixel.id === openRowAt?.id)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const { listRef, focusRow } = useListFocus<HTMLUListElement>(
+    visibleRows.map((row) => row.pixel.id),
+    headingRef,
+  )
+
+  function openRowModal(pixelId: string) {
+    const index = visibleRows.findIndex((row) => row.pixel.id === pixelId)
+    setOpenRowAt({ id: pixelId, index })
+  }
+
   const slotColumns = {
     gridTemplateColumns: `repeat(${columns}, ${SLOT_SIZE}px)`,
   }
@@ -98,6 +115,9 @@ export function GridView({
         onFilterChange={setFilter}
         headerHeight={STATS_HEIGHT + LABELS_HEIGHT}
         rowHeight={SLOT_SIZE}
+        onOpenRow={openRowModal}
+        listRef={listRef}
+        headingRef={headingRef}
       />
       {/* Padding goes here, not on the cell area: useGridColumns measures the
           cell area's clientWidth, which would count its own padding as room
@@ -190,6 +210,11 @@ export function GridView({
                             onAdd={() => addCell(row.pixel.id)}
                           />
                         )}
+                        {!cell && !isAddSlot && (
+                          <EmptySlot
+                            onOpenRow={() => openRowModal(row.pixel.id)}
+                          />
+                        )}
                       </div>
                     )
                   })}
@@ -211,6 +236,19 @@ export function GridView({
           </p>
         )}
       </div>
+
+      {openRow && openRowAt && (
+        <PixelRowModal
+          key={openRow.pixel.id}
+          row={openRow}
+          rowNumber={rows.indexOf(openRow) + 1}
+          gridName={grid.name}
+          onClose={() => setOpenRowAt(undefined)}
+          // Back to the row's label. With the row gone, focusRow picks the
+          // label now in its place, or the one before it (#124)
+          onClosed={() => focusRow(openRowAt)}
+        />
+      )}
     </div>
   )
 }

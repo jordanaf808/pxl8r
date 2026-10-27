@@ -11,6 +11,15 @@ export function computeGridStats(cells: Cell[]) {
   return { totalCells, completedCount, avgProgress }
 }
 
+// The mean of the rated cells, to one decimal, or null when none is rated
+export function averageRating(cells: Cell[]): number | null {
+  const ratings = cells.flatMap((c) => (c.rating === null ? [] : [c.rating]))
+  if (ratings.length === 0) return null
+
+  const total = ratings.reduce((sum, rating) => sum + rating, 0)
+  return Math.round((total / ratings.length) * 10) / 10
+}
+
 export function computeGlobalStats(
   pixels: Pixel[],
   cells: Cell[],
