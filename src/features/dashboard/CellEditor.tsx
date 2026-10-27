@@ -107,6 +107,13 @@ export function CellEditor({
     hadTimer.current = hasTimer
   }, [form.timerMinutes])
 
+  // Inline, the editor takes the place of the row modal's Add cell button,
+  // which had focus. The heading takes it, so a screen reader says the column
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (inline) headingRef.current?.focus()
+  }, [inline])
+
   if (editor.isGone) {
     return (
       <div role="alert" className="flex flex-col gap-3 text-(--journal-ink)">
@@ -136,7 +143,13 @@ export function CellEditor({
       className="flex flex-col gap-4.5 min-w-0 text-(--journal-ink)"
     >
       {inline ? (
-        <h3 className="text-base font-bold">Column {column}</h3>
+        <h3
+          ref={headingRef}
+          tabIndex={-1}
+          className={`text-base font-bold ${FOCUS_RING}`}
+        >
+          Column {column}
+        </h3>
       ) : (
         <PixelHeader
           pixel={pixel}

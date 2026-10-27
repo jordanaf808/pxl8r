@@ -110,6 +110,15 @@ describe('PixelRowModal', () => {
     expect(stat('completed')).toBe('3 / 5')
   })
 
+  it('moves focus to "Column 5" when the editor takes Add cell’s place', async () => {
+    renderModal()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add cell' }))
+
+    const heading = await screen.findByRole('heading', { name: 'Column 5' })
+    await waitFor(() => expect(document.activeElement).toBe(heading))
+  })
+
   it('closes the modal on Cancel, and keeps the new cell', async () => {
     const sent = renderModal()
 
