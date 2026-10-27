@@ -3,6 +3,7 @@ import { useServerFn } from '@tanstack/react-start'
 import {
   createGrid as createGridServerFn,
   updateGrid as updateGridServerFn,
+  createCell as createCellServerFn,
   updateCell as updateCellServerFn,
   deleteGridById as deleteGridByIdServerFn,
   bulkUpsertGridPixels as bulkUpsertGridPixelsServerFn,
@@ -16,6 +17,7 @@ import type {
   GridPixel,
   NewGridData,
   GridsByPixelIdMap,
+  CreateCellInput,
   UpdateCellInput,
 } from '@/db/types'
 import {
@@ -43,6 +45,7 @@ export function useGridState(
   const bulkUpsertGridPixels = useServerFn(bulkUpsertGridPixelsServerFn)
   const deleteGridPixels = useServerFn(deleteGridPixelsServerFn)
   const deleteManyCellsById = useServerFn(deleteManyCellsByIdServerFn)
+  const createCell = useServerFn(createCellServerFn)
   const updateCell = useServerFn(updateCellServerFn)
 
   const [grids, setGrids] = useState<Grid[]>(initialGrids)
@@ -317,6 +320,23 @@ export function useGridState(
     }
   }
 
+  // Resolves with the new cell. The server makes its id and its position, so
+  // state changes once the server has answered, as in addGridPixels
+  async function createCellHandler(input: CreateCellInput): Promise<Cell> {
+    const created = await createCell({ data: input })
+    if (created.results.length === 0)
+      throw new Error('Error creating cell', { cause: created })
+
+    const newCell = created.results[0]
+    setCellsByGridId((prev) =>
+      new Map(prev).set(input.gridId, [
+        ...(prev.get(input.gridId) ?? []),
+        newCell,
+      ]),
+    )
+    return newCell
+  }
+
   // Resolves with the saved cell, or null when the cell no longer exists
   async function updateCellHandler(
     update: UpdateCellInput,
@@ -360,6 +380,7 @@ export function useGridState(
     addGridPixels,
     removeGridPixels,
     removeGridCells,
+    createCellHandler,
     updateCellHandler,
   }
 }
