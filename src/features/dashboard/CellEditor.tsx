@@ -62,6 +62,11 @@ interface CellEditorProps {
   onSave: (fields: CellFields) => Promise<Cell | null>
   onRemove: () => Promise<unknown>
   onClose: () => void
+  /**
+   * Shown inside the row modal, under its own header, so it shows only
+   * "Column n" in place of the pixel's header (#122)
+   */
+  inline?: boolean
   ref?: Ref<CellEditorHandle>
 }
 
@@ -73,6 +78,7 @@ export function CellEditor({
   onSave,
   onRemove,
   onClose,
+  inline = false,
   ref,
 }: CellEditorProps) {
   const editor = useCellEditor({
@@ -129,11 +135,15 @@ export function CellEditor({
       aria-busy={editor.isBusy}
       className="flex flex-col gap-4.5 min-w-0 text-(--journal-ink)"
     >
-      <PixelHeader
-        pixel={pixel}
-        subtitle={`${gridName} · column ${column}`}
-        onClose={editor.requestClose}
-      />
+      {inline ? (
+        <h3 className="text-base font-bold">Column {column}</h3>
+      ) : (
+        <PixelHeader
+          pixel={pixel}
+          subtitle={`${gridName} · column ${column}`}
+          onClose={editor.requestClose}
+        />
+      )}
 
       <div className="flex flex-col gap-1.5">
         <div className="flex items-baseline justify-between">

@@ -167,6 +167,8 @@ export function Dashboard({
               onDeleteGrid={() => setIsDeleteDialogOpen(true)}
               onEditCell={setEditingCell}
               onCreateCell={createCellHandler}
+              onSaveCell={updateCellHandler}
+              onRemoveCell={removeGridCells}
             />
           )}
         </GridTabs>

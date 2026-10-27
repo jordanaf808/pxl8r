@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
+import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import {
@@ -11,7 +12,7 @@ import {
   within,
 } from '@testing-library/react'
 import { GridView } from './GridView'
-import type { CreateCellInput } from '@/db/types'
+import type { Cell, CreateCellInput } from '@/db/types'
 import {
   GRID_ID,
   makeCell,
@@ -50,6 +51,24 @@ const cells = [
   makeCell({ id: 'cell-d', pixelId: 'pixel-b', position: 0 }),
 ]
 
+// For the tests that never press a "+"
+function createNothing(): Promise<Cell> {
+  return new Promise(() => {})
+}
+
+const baseProps: ComponentProps<typeof GridView> = {
+  grid: makeGrid(),
+  gridPixels,
+  cells,
+  orientation: 'horizontal',
+  onOpenSettings: () => {},
+  onDeleteGrid: () => {},
+  onEditCell: () => {},
+  onCreateCell: createNothing,
+  onSaveCell: async () => null,
+  onRemoveCell: async () => {},
+}
+
 beforeEach(() => {
   vi.stubGlobal('ResizeObserver', StubResizeObserver)
 })
@@ -66,18 +85,7 @@ describe('GridView', () => {
     // Slots are 64px wide, so 640px fits ten
     setCellAreaWidth(640)
 
-    render(
-      <GridView
-        grid={makeGrid()}
-        gridPixels={gridPixels}
-        cells={cells}
-        orientation="horizontal"
-        onOpenSettings={() => {}}
-        onDeleteGrid={() => {}}
-        onEditCell={() => {}}
-        onCreateCell={async () => {}}
-      />,
-    )
+    render(<GridView {...baseProps} />)
 
     expect(slotsOf('Morning run')).toEqual([
       'filled',
@@ -106,18 +114,7 @@ describe('GridView', () => {
   })
 
   it('draws one slot past the longest row in server HTML, where nothing can be measured', () => {
-    const html = renderToString(
-      <GridView
-        grid={makeGrid()}
-        gridPixels={gridPixels}
-        cells={cells}
-        orientation="horizontal"
-        onOpenSettings={() => {}}
-        onDeleteGrid={() => {}}
-        onEditCell={() => {}}
-        onCreateCell={async () => {}}
-      />,
-    )
+    const html = renderToString(<GridView {...baseProps} />)
     document.body.innerHTML = html
 
     // The longest row has three cells
@@ -136,18 +133,7 @@ describe('GridView', () => {
   })
 
   it('hides a filtered-out row from both the axis and the cell area', () => {
-    render(
-      <GridView
-        grid={makeGrid()}
-        gridPixels={gridPixels}
-        cells={cells}
-        orientation="horizontal"
-        onOpenSettings={() => {}}
-        onDeleteGrid={() => {}}
-        onEditCell={() => {}}
-        onCreateCell={async () => {}}
-      />,
-    )
+    render(<GridView {...baseProps} />)
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Filter pixels' }), {
       target: { value: 'read' },
@@ -167,18 +153,7 @@ describe('GridView', () => {
 
   it('has a "+" in the first empty slot of each row, and nowhere else', () => {
     setCellAreaWidth(640)
-    render(
-      <GridView
-        grid={makeGrid()}
-        gridPixels={gridPixels}
-        cells={cells}
-        orientation="horizontal"
-        onOpenSettings={() => {}}
-        onDeleteGrid={() => {}}
-        onEditCell={() => {}}
-        onCreateCell={async () => {}}
-      />,
-    )
+    render(<GridView {...baseProps} />)
 
     for (const [name, cellCount] of [
       ['Morning run', 3],
@@ -203,19 +178,17 @@ describe('GridView', () => {
       const [gridCells, setGridCells] = useState(cells)
       return (
         <GridView
-          grid={makeGrid()}
-          gridPixels={gridPixels}
+          {...baseProps}
           cells={gridCells}
-          orientation="horizontal"
-          onOpenSettings={() => {}}
-          onDeleteGrid={() => {}}
-          onEditCell={() => {}}
           onCreateCell={async (input) => {
             sent.push(input)
-            setGridCells((prev) => [
-              ...prev,
-              makeCell({ id: 'cell-new', pixelId: input.pixelId, position: 1 }),
-            ])
+            const newCell = makeCell({
+              id: 'cell-new',
+              pixelId: input.pixelId,
+              position: 1,
+            })
+            setGridCells((prev) => [...prev, newCell])
+            return newCell
           }}
         />
       )
@@ -244,18 +217,7 @@ describe('GridView', () => {
   })
 
   it('opens the row modal from a row label', () => {
-    render(
-      <GridView
-        grid={makeGrid()}
-        gridPixels={gridPixels}
-        cells={cells}
-        orientation="horizontal"
-        onOpenSettings={() => {}}
-        onDeleteGrid={() => {}}
-        onEditCell={() => {}}
-        onCreateCell={async () => {}}
-      />,
-    )
+    render(<GridView {...baseProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Read a book' }))
 
@@ -266,18 +228,7 @@ describe('GridView', () => {
 
   it('opens the row modal from an empty slot, which is not a Tab stop', () => {
     setCellAreaWidth(640)
-    render(
-      <GridView
-        grid={makeGrid()}
-        gridPixels={gridPixels}
-        cells={cells}
-        orientation="horizontal"
-        onOpenSettings={() => {}}
-        onDeleteGrid={() => {}}
-        onEditCell={() => {}}
-        onCreateCell={async () => {}}
-      />,
-    )
+    render(<GridView {...baseProps} />)
 
     // Slot 2 holds the "+"; slot 6 is an ordinary empty slot
     const slot = within(

@@ -1,5 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
-import type { Cell, CreateCellInput, Grid, GridPixel, Pixel } from '@/db/types'
+import type {
+  Cell,
+  CreateCellInput,
+  Grid,
+  GridPixel,
+  Pixel,
+  UpdateCellInput,
+} from '@/db/types'
 import { buildGridRows } from '@/lib/utils/grid'
 import { DANGER_COLOR } from './cell-editor/styles'
 import { AddCellButton, EmptySlot, FilledCell } from './GridSlots'
@@ -28,8 +35,14 @@ interface GridViewProps {
   onOpenSettings: () => void
   onDeleteGrid: () => void
   onEditCell: (editing: EditingCell) => void
-  /** Settles once the new cell is in `cells` */
-  onCreateCell: (input: CreateCellInput) => Promise<unknown>
+  /** Resolves with the new cell once it's in `cells` */
+  onCreateCell: (input: CreateCellInput) => Promise<Cell>
+  /** Resolves with the saved cell, or null when the cell no longer exists */
+  onSaveCell: (update: UpdateCellInput) => Promise<Cell | null>
+  onRemoveCell: (removal: {
+    gridId: string
+    cellData: { cellId: string; pixelId: string }[]
+  }) => Promise<unknown>
 }
 
 /** What the cell editor needs to open on a cell */
@@ -56,6 +69,8 @@ export function GridView({
   onDeleteGrid,
   onEditCell,
   onCreateCell,
+  onSaveCell,
+  onRemoveCell,
 }: GridViewProps) {
   const [addFailed, setAddFailed] = useState(false)
 
@@ -243,6 +258,9 @@ export function GridView({
           row={openRow}
           rowNumber={rows.indexOf(openRow) + 1}
           gridName={grid.name}
+          onCreateCell={onCreateCell}
+          onSaveCell={onSaveCell}
+          onRemoveCell={onRemoveCell}
           onClose={() => setOpenRowAt(undefined)}
           // Back to the row's label. With the row gone, focusRow picks the
           // label now in its place, or the one before it (#124)

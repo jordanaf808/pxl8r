@@ -1,6 +1,12 @@
+import { useRef, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { PIXEL_UNIT_LABELS } from '@/db/types'
+import type { Cell, CreateCellInput, UpdateCellInput } from '@/db/types'
 import type { GridRow } from '@/lib/utils/grid'
+import { CellEditor } from '../CellEditor'
+import type { CellEditorHandle } from '../CellEditor'
+import { DANGER_COLOR, FOCUS_RING } from '../cell-editor/styles'
 import { PixelHeader } from '../PixelHeader'
 import { RowStats } from '../pixel-row/RowStats'
 
@@ -10,6 +16,14 @@ interface PixelRowModalProps {
   /** The row's place in the grid, counted from 1 */
   rowNumber: number
   gridName: string
+  /** Resolves with the new cell once it's in the row */
+  onCreateCell: (input: CreateCellInput) => Promise<Cell>
+  /** Resolves with the saved cell, or null when the cell no longer exists */
+  onSaveCell: (update: UpdateCellInput) => Promise<Cell | null>
+  onRemoveCell: (removal: {
+    gridId: string
+    cellData: { cellId: string; pixelId: string }[]
+  }) => Promise<unknown>
   onClose: () => void
   /** Called once the modal has closed. The host places focus */
   onClosed: () => void
@@ -19,16 +33,44 @@ export function PixelRowModal({
   row,
   rowNumber,
   gridName,
+  onCreateCell,
+  onSaveCell,
+  onRemoveCell,
   onClose,
   onClosed,
 }: PixelRowModalProps) {
   const { pixel } = row
+  // The cell Add cell made. The editor shows on it until the modal closes
+  const [newCell, setNewCell] = useState<Cell | null>(null)
+  const [isAdding, setIsAdding] = useState(false)
+  const [addFailed, setAddFailed] = useState(false)
+  const editorRef = useRef<CellEditorHandle>(null)
+
+  // With the editor open, closing could lose an edit, so the editor decides
+  function requestClose() {
+    if (editorRef.current) editorRef.current.requestClose()
+    else onClose()
+  }
+
+  // The cell is saved before the editor opens on it: the editor's timer saves
+  // at once, and a save needs the id the server makes (#117)
+  async function addCell(): Promise<void> {
+    setIsAdding(true)
+    setAddFailed(false)
+    try {
+      setNewCell(await onCreateCell({ gridId: row.gridId, pixelId: pixel.id }))
+    } catch (error) {
+      console.error('Error adding a cell', error)
+      setAddFailed(true)
+    }
+    setIsAdding(false)
+  }
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose()
+        if (!open) requestClose()
       }}
     >
       <DialogContent
@@ -54,7 +96,7 @@ export function PixelRowModal({
           <PixelHeader
             pixel={pixel}
             subtitle={`${gridName} · row ${rowNumber}`}
-            onClose={onClose}
+            onClose={requestClose}
           />
 
           {(pixel.description || pixel.endGoal !== null) && (
@@ -74,6 +116,61 @@ export function PixelRowModal({
           )}
 
           <RowStats cells={row.cells} />
+
+          {newCell ? (
+            // Save, Cancel and Delete cell close the whole modal (#123).
+            // Cancel keeps the new cell, blank (#117)
+            <div className="pt-4 border-t border-(--journal-tan)">
+              <CellEditor
+                ref={editorRef}
+                cell={newCell}
+                pixel={pixel}
+                gridName={gridName}
+                column={row.cells.findIndex((c) => c.id === newCell.id) + 1}
+                inline
+                onSave={(fields) =>
+                  onSaveCell({
+                    id: newCell.id,
+                    gridId: newCell.gridId,
+                    ...fields,
+                  })
+                }
+                onRemove={() =>
+                  onRemoveCell({
+                    gridId: newCell.gridId,
+                    cellData: [
+                      { cellId: newCell.id, pixelId: newCell.pixelId },
+                    ],
+                  })
+                }
+                onClose={onClose}
+              />
+            </div>
+          ) : (
+            <>
+              {/* aria-disabled, not disabled, while the add is out: the
+                  browser drops focus from a disabled button onto the page */}
+              <button
+                type="button"
+                aria-disabled={isAdding || undefined}
+                onClick={isAdding ? undefined : addCell}
+                className={`flex items-center justify-center gap-1.5 w-full h-12 text-[15px] font-semibold border-[1.5px] border-dashed border-(--journal-ink)/60 cursor-pointer hover:bg-(--journal-paper) aria-disabled:cursor-default aria-disabled:opacity-50 ${FOCUS_RING}`}
+                style={{ borderRadius: '2px 6px 3px 7px' }}
+              >
+                <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
+                Add cell
+              </button>
+              {addFailed && (
+                <p
+                  role="alert"
+                  className="-mt-2 text-sm font-serif"
+                  style={{ color: DANGER_COLOR }}
+                >
+                  The cell couldn’t be added. Try again.
+                </p>
+              )}
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
