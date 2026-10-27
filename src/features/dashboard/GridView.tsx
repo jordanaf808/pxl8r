@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { EllipsisVertical, Timer } from 'lucide-react'
+import { EllipsisVertical } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,17 +7,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { PIXEL_COLORS } from '@/db/types'
 import type { Cell, Grid, GridPixel, Pixel } from '@/db/types'
 import { buildGridRows } from '@/lib/utils/grid'
 import { computeGridStats } from '@/lib/utils/stats'
+import { FilledCell } from './GridSlots'
 import { useGridColumns } from './hooks/useGridColumns'
 import { PixelAxis } from './PixelAxis'
 
 // Each slot is a 64px square with the 52px cell centred in it, as in mockup
 // 2b. The graph paper's dots sit at the slot corners, so they fall every 64px
 const SLOT_SIZE = 64
-const CELL_SIZE = 52
 
 // The stats block and the column labels sit above the first cell row. The
 // axis header is as tall as both together, so its first row lines up with it
@@ -48,55 +47,6 @@ function matchesFilter(pixel: Pixel, filter: string): boolean {
   const term = filter.trim().toLowerCase()
   return [pixel.name, pixel.type, pixel.description ?? ''].some((text) =>
     text.toLowerCase().includes(term),
-  )
-}
-
-function FilledCell({
-  cell,
-  pixel,
-  column,
-  onEdit,
-}: EditingCell & { onEdit: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onEdit}
-      aria-label={`${pixel.name}, column ${column}${cell.completedAt ? ', completed' : ''}`}
-      className="relative overflow-hidden transition-all cursor-pointer hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--journal-ink)"
-      style={{
-        width: CELL_SIZE,
-        height: CELL_SIZE,
-        backgroundColor: PIXEL_COLORS[pixel.color].bg + 'ee',
-        border: '1px solid var(--journal-warm)',
-        borderRadius: '4px',
-        boxShadow:
-          'inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 4px rgba(0,0,0,0.20)',
-      }}
-      title={pixel.name}
-    >
-      {cell.timerStartedAt && (
-        <Timer
-          size={12}
-          className="absolute top-0.5 right-0.5 text-(--journal-ink) opacity-70"
-        />
-      )}
-
-      {cell.progress > 0 && (
-        <div
-          className="absolute bottom-0 left-0 right-0 h-1.5"
-          style={{ backgroundColor: 'rgba(0,0,0,0.15)' }}
-        >
-          <div
-            className="h-full transition-all duration-500"
-            style={{
-              width: `${cell.progress}%`,
-              backgroundColor: 'rgba(255,255,255,0.45)',
-              borderRadius: '0 1px 1px 0',
-            }}
-          />
-        </div>
-      )}
-    </button>
   )
 }
 
