@@ -168,3 +168,11 @@ export const updateCellSchema = z.object({
 })
 
 export type UpdateCellInput = z.infer<typeof updateCellSchema>
+
+// Only ids: the server picks the position and writes a blank cell.
+export const createCellSchema = z.object({
+  gridId: z.uuid(),
+  pixelId: z.uuid(),
+})
+
+export type CreateCellInput = z.infer<typeof createCellSchema>

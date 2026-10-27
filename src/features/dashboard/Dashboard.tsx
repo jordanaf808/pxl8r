@@ -51,7 +51,7 @@ export function Dashboard({
   initialGridId,
   onActiveGridChange,
 }: DashboardProps) {
-  const { pixels, createPixelHandler } = usePixelState(
+  const { pixels, createPixelHandler, updatePixelHandler } = usePixelState(
     userData.pixels,
     userData.gridsData.ungroupedPixels,
   )
@@ -67,6 +67,7 @@ export function Dashboard({
     addGridPixels,
     removeGridPixels,
     removeGridCells,
+    createCellHandler,
     updateCellHandler,
   } = useGridState(
     userData.grids,
@@ -165,6 +166,11 @@ export function Dashboard({
               onOpenSettings={() => setGridModal('settings')}
               onDeleteGrid={() => setIsDeleteDialogOpen(true)}
               onEditCell={setEditingCell}
+              onCreateCell={createCellHandler}
+              onSaveCell={updateCellHandler}
+              onRemoveCell={removeGridCells}
+              onUpdatePixel={updatePixelHandler}
+              onDeleteRow={removeGridPixels}
             />
           )}
         </GridTabs>

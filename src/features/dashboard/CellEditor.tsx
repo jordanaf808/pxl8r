@@ -1,7 +1,6 @@
 import { useEffect, useId, useImperativeHandle, useRef } from 'react'
 import type { ReactNode, Ref } from 'react'
-import { Plus, Trash2, X } from 'lucide-react'
-import { PIXEL_COLORS, PIXEL_TYPE_LABELS } from '@/db/types'
+import { Plus, Trash2 } from 'lucide-react'
 import type { Cell, Pixel } from '@/db/types'
 import { CompleteButton } from './cell-editor/CompleteButton'
 import { DeleteCellDialog } from './cell-editor/DeleteCellDialog'
@@ -21,6 +20,7 @@ import {
 import type { CellFields, ValueEditorProps } from './cell-editor/types'
 import { CountdownTimer } from './CountdownTimer'
 import { useCellEditor } from './hooks/useCellEditor'
+import { PixelHeader } from './PixelHeader'
 
 // updateCellSchema rejects a longer note
 const NOTE_MAX_LENGTH = 500
@@ -62,6 +62,11 @@ interface CellEditorProps {
   onSave: (fields: CellFields) => Promise<Cell | null>
   onRemove: () => Promise<unknown>
   onClose: () => void
+  /**
+   * Shown inside the row modal, under its own header, so it shows only
+   * "Column n" in place of the pixel's header (#122)
+   */
+  inline?: boolean
   ref?: Ref<CellEditorHandle>
 }
 
@@ -73,6 +78,7 @@ export function CellEditor({
   onSave,
   onRemove,
   onClose,
+  inline = false,
   ref,
 }: CellEditorProps) {
   const editor = useCellEditor({
@@ -100,6 +106,13 @@ export function CellEditor({
     if (hadTimer.current && !hasTimer) addTimerRef.current?.focus()
     hadTimer.current = hasTimer
   }, [form.timerMinutes])
+
+  // Inline, the editor takes the place of the row modal's Add cell button,
+  // which had focus. The heading takes it, so a screen reader says the column
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (inline) headingRef.current?.focus()
+  }, [inline])
 
   if (editor.isGone) {
     return (
@@ -129,36 +142,21 @@ export function CellEditor({
       aria-busy={editor.isBusy}
       className="flex flex-col gap-4.5 min-w-0 text-(--journal-ink)"
     >
-      <div className="flex items-start gap-2.5">
-        <span
-          aria-hidden="true"
-          className="w-3.5 h-3.5 mt-2 shrink-0"
-          style={{
-            backgroundColor: PIXEL_COLORS[pixel.color].bg,
-            borderRadius: '1px 3px 2px 4px',
-          }}
+      {inline ? (
+        <h3
+          ref={headingRef}
+          tabIndex={-1}
+          className={`text-base font-bold ${FOCUS_RING}`}
+        >
+          Column {column}
+        </h3>
+      ) : (
+        <PixelHeader
+          pixel={pixel}
+          subtitle={`${gridName} · column ${column}`}
+          onClose={editor.requestClose}
         />
-        <div className="flex-1 min-w-0">
-          <h2 className="text-[22px] font-bold leading-tight">{pixel.name}</h2>
-          <p className="text-[13px] font-serif opacity-70">
-            {gridName} · column {column}
-          </p>
-        </div>
-        <span
-          className="shrink-0 mt-1 text-[11px] font-serif px-1.5 py-0.5 bg-(--journal-tan)"
-          style={{ borderRadius: '1px 4px 2px 5px' }}
-        >
-          {PIXEL_TYPE_LABELS[pixel.type]}
-        </span>
-        <button
-          type="button"
-          aria-label="Close"
-          onClick={editor.requestClose}
-          className={`flex items-center justify-center shrink-0 w-8 h-8 -mt-0.5 -mr-1.5 rounded-sm cursor-pointer hover:bg-(--journal-tan) ${FOCUS_RING}`}
-        >
-          <X size={18} aria-hidden="true" />
-        </button>
-      </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <div className="flex items-baseline justify-between">

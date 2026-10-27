@@ -1,23 +1,25 @@
-import { useMemo, useState } from 'react'
-import { EllipsisVertical, Timer } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { PIXEL_COLORS } from '@/db/types'
-import type { Cell, Grid, GridPixel, Pixel } from '@/db/types'
+import { useMemo, useRef, useState } from 'react'
+import type {
+  Cell,
+  CreateCellInput,
+  Grid,
+  GridPixel,
+  Pixel,
+  UpdateCellInput,
+  UpdatePixelType,
+} from '@/db/types'
 import { buildGridRows } from '@/lib/utils/grid'
-import { computeGridStats } from '@/lib/utils/stats'
+import { DANGER_COLOR } from './cell-editor/styles'
+import { AddCellButton, EmptySlot, FilledCell } from './GridSlots'
+import { GridHeader } from './GridHeader'
 import { useGridColumns } from './hooks/useGridColumns'
+import { useListFocus } from './hooks/useListFocus'
+import { PixelRowModal } from './modals/PixelRowModal'
 import { PixelAxis } from './PixelAxis'
 
 // Each slot is a 64px square with the 52px cell centred in it, as in mockup
 // 2b. The graph paper's dots sit at the slot corners, so they fall every 64px
 const SLOT_SIZE = 64
-const CELL_SIZE = 52
 
 // The stats block and the column labels sit above the first cell row. The
 // axis header is as tall as both together, so its first row lines up with it
@@ -34,6 +36,19 @@ interface GridViewProps {
   onOpenSettings: () => void
   onDeleteGrid: () => void
   onEditCell: (editing: EditingCell) => void
+  /** Resolves with the new cell once it's in `cells` */
+  onCreateCell: (input: CreateCellInput) => Promise<Cell>
+  /** Resolves with the saved cell, or null when the cell no longer exists */
+  onSaveCell: (update: UpdateCellInput) => Promise<Cell | null>
+  onRemoveCell: (removal: {
+    gridId: string
+    cellData: { cellId: string; pixelId: string }[]
+  }) => Promise<unknown>
+  onUpdatePixel: (pixel: UpdatePixelType) => Promise<void>
+  onDeleteRow: (removal: {
+    gridId: string
+    pixelIds: string[]
+  }) => Promise<unknown>
 }
 
 /** What the cell editor needs to open on a cell */
@@ -51,55 +66,6 @@ function matchesFilter(pixel: Pixel, filter: string): boolean {
   )
 }
 
-function FilledCell({
-  cell,
-  pixel,
-  column,
-  onEdit,
-}: EditingCell & { onEdit: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onEdit}
-      aria-label={`${pixel.name}, column ${column}${cell.completedAt ? ', completed' : ''}`}
-      className="relative overflow-hidden transition-all cursor-pointer hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--journal-ink)"
-      style={{
-        width: CELL_SIZE,
-        height: CELL_SIZE,
-        backgroundColor: PIXEL_COLORS[pixel.color].bg + 'ee',
-        border: '1px solid var(--journal-warm)',
-        borderRadius: '4px',
-        boxShadow:
-          'inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 4px rgba(0,0,0,0.20)',
-      }}
-      title={pixel.name}
-    >
-      {cell.timerStartedAt && (
-        <Timer
-          size={12}
-          className="absolute top-0.5 right-0.5 text-(--journal-ink) opacity-70"
-        />
-      )}
-
-      {cell.progress > 0 && (
-        <div
-          className="absolute bottom-0 left-0 right-0 h-1.5"
-          style={{ backgroundColor: 'rgba(0,0,0,0.15)' }}
-        >
-          <div
-            className="h-full transition-all duration-500"
-            style={{
-              width: `${cell.progress}%`,
-              backgroundColor: 'rgba(255,255,255,0.45)',
-              borderRadius: '0 1px 1px 0',
-            }}
-          />
-        </div>
-      )}
-    </button>
-  )
-}
-
 export function GridView({
   grid,
   gridPixels,
@@ -108,7 +74,25 @@ export function GridView({
   onOpenSettings,
   onDeleteGrid,
   onEditCell,
+  onCreateCell,
+  onSaveCell,
+  onRemoveCell,
+  onUpdatePixel,
+  onDeleteRow,
 }: GridViewProps) {
+  // A failed add or delete, shown under the cells
+  const [failure, setFailure] = useState<string | null>(null)
+
+  async function addCell(pixelId: string): Promise<void> {
+    setFailure(null)
+    try {
+      await onCreateCell({ gridId: grid.id, pixelId })
+    } catch (error) {
+      console.error('Error adding a cell', error)
+      setFailure('The cell couldn’t be added. Try again.')
+    }
+  }
+
   const rows = useMemo(
     () => buildGridRows(gridPixels, cells),
     [gridPixels, cells],
@@ -127,7 +111,33 @@ export function GridView({
   const [filter, setFilter] = useState('')
   const visibleRows = rows.filter((row) => matchesFilter(row.pixel, filter))
 
-  const { avgProgress, completedCount, totalCells } = computeGridStats(cells)
+  // The row whose modal is open, kept by id so the modal shows the row as it
+  // is now. The index is where its label was, for focus once the modal closes
+  const [openRowAt, setOpenRowAt] = useState<{ id: string; index: number }>()
+  const openRow = rows.find((row) => row.pixel.id === openRowAt?.id)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const { listRef, focusRow } = useListFocus<HTMLUListElement>(
+    visibleRows.map((row) => row.pixel.id),
+    headingRef,
+  )
+
+  function openRowModal(pixelId: string) {
+    const index = visibleRows.findIndex((row) => row.pixel.id === pixelId)
+    setOpenRowAt({ id: pixelId, index })
+  }
+
+  // The row leaves the screen at once and comes back if the delete fails
+  async function deleteRow(pixelId: string): Promise<void> {
+    setOpenRowAt(undefined)
+    setFailure(null)
+    try {
+      await onDeleteRow({ gridId: grid.id, pixelIds: [pixelId] })
+    } catch (error) {
+      console.error('Error deleting a row', error)
+      setFailure('The row couldn’t be deleted. Try again.')
+    }
+  }
+
   const slotColumns = {
     gridTemplateColumns: `repeat(${columns}, ${SLOT_SIZE}px)`,
   }
@@ -141,6 +151,9 @@ export function GridView({
         onFilterChange={setFilter}
         headerHeight={STATS_HEIGHT + LABELS_HEIGHT}
         rowHeight={SLOT_SIZE}
+        onOpenRow={openRowModal}
+        listRef={listRef}
+        headingRef={headingRef}
       />
       {/* Padding goes here, not on the cell area: useGridColumns measures the
           cell area's clientWidth, which would count its own padding as room
@@ -154,49 +167,13 @@ export function GridView({
           boxShadow: '2px 3px 0px var(--journal-warm)',
         }}
       >
-        {/* The description takes the room the stats leave. On a phone that's
-            almost none, and stats that couldn't shrink would stick out past
-            the panel and widen the whole page */}
-        <div
-          className="flex items-start gap-5 pt-5"
-          style={{ height: STATS_HEIGHT }}
-        >
-          <p className="flex-1 min-w-0 text-base font-serif text-(--journal-ink) opacity-75 truncate">
-            {grid.description}
-          </p>
-          <div className="flex items-baseline gap-2.5 min-w-0 text-(--journal-ink)">
-            <span className="shrink-0 text-xl font-bold leading-tight">
-              {avgProgress}%
-            </span>
-            <span className="text-sm font-serif opacity-70 truncate">
-              {completedCount} / {totalCells}
-              <span className="max-sm:sr-only"> completed</span>
-            </span>
-
-            {/* Here, not on the active tab: a tab list may only hold tabs, and
-                a button inside one fails the accessibility check for it */}
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                aria-label={`${grid.name} options`}
-                className="self-center shrink-0 -mr-2 p-1 opacity-60 hover:opacity-100 transition-opacity cursor-pointer focus-visible:outline-2 focus-visible:outline-(--journal-ink)"
-              >
-                <EllipsisVertical size={18} />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="bg-(--journal-cream) text-(--journal-ink) border-(--journal-warm) font-serif"
-              >
-                <DropdownMenuItem onSelect={onOpenSettings}>
-                  Grid settings…
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-(--journal-warm)" />
-                <DropdownMenuItem variant="destructive" onSelect={onDeleteGrid}>
-                  Delete grid…
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+        <GridHeader
+          grid={grid}
+          cells={cells}
+          height={STATS_HEIGHT}
+          onOpenSettings={onOpenSettings}
+          onDeleteGrid={onDeleteGrid}
+        />
 
         {/* The cell area. It takes its width from the panel, holds only the
             slot columns, and scrolls sideways when a row is longer than fits.
@@ -238,9 +215,13 @@ export function GridView({
                 >
                   {Array.from({ length: columns }, (_, index) => {
                     const cell = row.cells.at(index)
+                    // The first empty slot holds the "+". Its key stays the
+                    // same when a new cell lands in front of it, so React
+                    // keeps the button, and the keyboard's focus with it
+                    const isAddSlot = index === row.cells.length
                     return (
                       <div
-                        key={cell?.id ?? `empty-${index}`}
+                        key={cell?.id ?? (isAddSlot ? 'add' : `empty-${index}`)}
                         data-testid="grid-slot"
                         data-filled={cell !== undefined}
                         className="flex items-center justify-center"
@@ -259,6 +240,17 @@ export function GridView({
                             }
                           />
                         )}
+                        {isAddSlot && (
+                          <AddCellButton
+                            pixelName={row.pixel.name}
+                            onAdd={() => addCell(row.pixel.id)}
+                          />
+                        )}
+                        {!cell && !isAddSlot && (
+                          <EmptySlot
+                            onOpenRow={() => openRowModal(row.pixel.id)}
+                          />
+                        )}
                       </div>
                     )
                   })}
@@ -267,7 +259,37 @@ export function GridView({
             </div>
           </div>
         </div>
+
+        {/* Under the cells, not in the header: the header's height is what
+            keeps the axis rows level with the cell rows */}
+        {failure && (
+          <p
+            role="alert"
+            className="pt-3 text-sm font-serif"
+            style={{ color: DANGER_COLOR }}
+          >
+            {failure}
+          </p>
+        )}
       </div>
+
+      {openRow && openRowAt && (
+        <PixelRowModal
+          key={openRow.pixel.id}
+          row={openRow}
+          rowNumber={rows.indexOf(openRow) + 1}
+          gridName={grid.name}
+          onCreateCell={onCreateCell}
+          onSaveCell={onSaveCell}
+          onRemoveCell={onRemoveCell}
+          onUpdatePixel={onUpdatePixel}
+          onDeleteRow={() => deleteRow(openRow.pixel.id)}
+          onClose={() => setOpenRowAt(undefined)}
+          // Back to the row's label. With the row gone, focusRow picks the
+          // label now in its place, or the one before it (#124)
+          onClosed={() => focusRow(openRowAt)}
+        />
+      )}
     </div>
   )
 }

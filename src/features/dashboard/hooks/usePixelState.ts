@@ -30,11 +30,20 @@ export function usePixelState(
     setUngroupedPixels((prev) => [...createdPixel.results, ...prev])
   }
 
-  async function updatePixelHandler(pixelData: UpdatePixelType) {
+  async function updatePixelHandler(pixelData: UpdatePixelType): Promise<void> {
     const snapshot = pixels
-    setPixels((prev) => prev.map((p) => (p.id === pixelData.id ? { ...p, ...pixelData } : p)))
-    const result = await updatePixel({ data: pixelData })
-    if (result.success !== true) setPixels(snapshot)
+    setPixels((prev) =>
+      prev.map((p) => (p.id === pixelData.id ? { ...p, ...pixelData } : p)),
+    )
+    // The form closes without waiting for this, so a failure puts the old
+    // pixel back and is logged, not thrown: nothing would catch it
+    try {
+      const result = await updatePixel({ data: pixelData })
+      if (result.success !== true) setPixels(snapshot)
+    } catch (error) {
+      setPixels(snapshot)
+      console.error('Error updating pixel', error)
+    }
   }
 
   return {
